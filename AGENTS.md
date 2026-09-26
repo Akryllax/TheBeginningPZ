@@ -44,10 +44,14 @@ smooth turn after fixing braking pulses, but requested faster driving. The curre
 uses a 50 km/h road ceiling constrained by stock drivetrain/brakes, loaded mass and script
 steering properties. That ceiling is not a measured cruising speed on the short test course.
 One client subsequently accepted the faster run (24.1 km/h peak, about 13 km/h through the
-bend). Native and client-present parked-car traces show a conservative safety stop, but its
-stationary appearance was inconclusive with the short cleanup delay; the harness now holds
-road-test cars for 20 seconds. NPC boarding continuity and two-client consistency remain
-unvalidated; see the implementation ledger for exact results and limitations.
+bend). The early abrupt parked-car stop and disappearance were rejected even after a longer
+cleanup delay. Parked cars now produce a planned stopping point and persistent wait/resume;
+one client confirmed a smooth stop and continued visibility during a 66-second wait. The
+server resumed and completed the original trip after exact fixture removal. Temperament
+selects optional honking; that observed driver chose silence, so audible horn playback is
+still pending. Passing reservations have detached conflict/expiry tests, but safe bypass
+execution, managed multi-car traffic, NPC boarding and two-client consistency remain
+unvalidated; see the implementation ledger and traffic design for limits and next gates.
 
 See `SKILLS.md` for task-specific workflows. Existing user authorization applies to
 routine implementation and validation; do not add repeated approval prompts.

@@ -14,6 +14,7 @@ final class BezierFixture {
     static void check(boolean v,String text){ScenarioFixture.check(v,text);}
     static void run()throws Exception{
         TrafficSafetyFixture.run();
+        ParkedObstacleFixture.run();
         BezierPath path=course();
         check(Math.abs(path.length-(48+3*Math.PI))<.01,"Arc length does not approximate quarter circle");
         check(Math.abs(path.at(0).heading()-Math.PI/2)<1e-9&&Math.abs(path.at(path.length).heading()-Math.PI)<1e-9,"Endpoint tangent wrong");

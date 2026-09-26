@@ -10,6 +10,72 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Planned stopping, queue persistence and traffic personality — 2026-09-27
+
+The longer-held obstacle trial still failed the user's visual acceptance: the car accelerated
+about two tiles, stopped abruptly with a distant untouched obstacle, then appeared to disappear
+after about five seconds. Private evidence `client-parked-visible-20260926_224219/` recorded
+20 seconds of native-body presence but did not establish the client's view or world/registry
+membership. Do not reinterpret that trace as a passed visual test. The specific parked fixture
+was removed through the game's method and verified absent from the database.
+
+Cause of premature braking: every finite predicted contact triggered full emergency braking,
+even a parked car several seconds away. `ParkedObstacle` now computes a bounded geometric
+stopping point; `ProbeDriver` uses the existing capability-aware speed/braking envelope,
+waits without a stall failure and resumes its original route when the obstacle clears.
+Scheduled stops are preserved. Moving, occupied, client-owned or unknown hazards retain
+the stricter response. Queue time is excluded from the route deadline and bounded to five
+minutes in this disposable harness. World, native registry and chunk membership are checked
+and published separately from native-body existence. These fields are not packet receipts.
+
+`TrafficTemperament` and `TrafficBlockage` provide stable preferences, optional one-episode
+honking, patience and staggered bounded bypass requests. Stock server horn start/stop calls
+are used; no client patch or replacement game class is involved. The probe uses native car
+identity as its test seed; integrated residents will require their durable resident seed.
+`TrafficPassReservations` has a bounded four-car arbitration model: oldest waiter wins an
+overlapping corridor, stable ID breaks ties, native generations/token matches prevent stale
+release, unused leases expire, and entered stale leases retain occupancy while stopping
+permission. Fresh matching observations may reconcile the owner; confirmed exit releases
+the corridor. It is not yet wired to a native multi-car executor. No bypass is executed by
+this iteration. [[Design/Traffic Incidents]] records the accepted wait/honk/pass behavior,
+safe opposing-lane use, conflict resolution and bounded imperfect-driving requirements.
+
+Automated: compatibility/premain/protocol/native-asset fixtures and existing turn simulations
+pass, plus independent parked-approach simulations for normal and weaker/heavier cars. They
+wait 35 seconds without stalling, preserve the stop sign, then finish after obstacle removal.
+Tests cover horn probability/delay, deterministic traits, bypass retry pacing and competing
+reservations including stale occupied corridors and generation recovery. Evidence:
+`artifacts/parked-approach-reservation-tests.log`. This is not multi-car physics validation.
+
+Empty-server native evidence: `artifacts/scenario-agent/native-parked-queue-20260926_225816/`,
+deployed agent SHA256 `6979d5977be560fe18274c16e2600418119d6bf4fc798c4f840147f194e54e7f`,
+epoch `02c56483-d54d-454f-9eab-416ee4918588`. The car traveled 23.16 tiles and stopped at
+(10806.6641, 9861.5), roughly 6.35 tiles from the parked fixture centre. It waited 40.69
+seconds, retained every sampled body/world/registry/chunk check, then resumed and completed
+the original route and stop after exact fixture removal. Peak 22.25 km/h; native body count
+returned to zero. Warm hook p95 <=0.5 ms, p99 <=2.4 ms, max 4.192 ms. No client was connected.
+
+One-client evidence: `artifacts/scenario-agent/client-parked-queue-20260926_230154/`, same
+deployed agent and epoch. The user confirmed **smooth stopping and continued visibility**,
+with no horn heard. The car stopped at (10806.5625, 9861.5), waited 66.34 seconds, then the
+server recorded resumption, one served stop sign and `route_arrived`. Peak 24.43 km/h;
+native bodies returned to zero. Warm hook p95 <=0.2 ms, p99 <=0.4 ms, max 3.529 ms. This
+run produced no new client error lines. All 262 sampled waiting snapshots retained native
+body, world, registry and chunk membership. This
+driver's episode roll was 0.8770 against a 0.4913 horn chance, so silence was selected rather
+than a failed sound invocation. Audible horn replication still needs a selected-horn trial.
+The user accepted the approach and wait; post-removal driving is server trace evidence.
+Both fixtures were removed through exact-ID/script/position/rest/occupancy-checked native
+removal; the one-use test Lua extension was restored byte-for-byte. Production and playable
+worlds were not changed. Passing, moving traffic, intentional native crashes, integrated
+resident trips and two-client agreement remain separate pending gates.
+
+The final source/build additionally contains the detached reservation arbiter and reserves
+enough road deadline for the full five-second brake timeout plus 20-second viewing hold;
+legacy straight probes keep their original eight-second reserve. The running test epoch
+retains the explicitly recorded earlier JAR. Final source will load on its next restart;
+do not attribute the native/client receipts above to an unrun binary hash.
+
 ## Observed smooth turn and vehicle-capability iteration — 2026-09-27
 
 The first observed Bézier/stop run reached its goal but **failed visible smoothness**.

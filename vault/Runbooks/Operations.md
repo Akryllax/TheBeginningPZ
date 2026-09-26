@@ -99,12 +99,17 @@ python3 scripts/build_scenario_agent.py --test
 
 Once status reports the current server epoch, `./dayone vehicle-probe-control start` requests the driving experiment; `./dayone vehicle-probe-control stop` requests braking/stopping that experiment. These controls do not start or shut down the server container. Use `./dayone vehicle-probe-stop` for graceful server shutdown. Control requests are bound to the current server epoch. A missing status file means initialization has not yet produced evidence.
 
-Road probes hold the car stationary for 20 seconds before automatic removal, so observers
-can distinguish braking from cleanup. This is disposable test behaviour, not the planned
-persistent traffic lifecycle. A generic `failed` result with `predicted_vehicle_contact`
-records a safety-aborted route; assess the accompanying stop/clearance trace and actual
-client report rather than treating the status label alone as a failed detector or a passed
-visual test. Remove only exact, recorded parked fixtures after each obstacle trial.
+Road probes hold the car stationary for 20 seconds after route completion or a terminal
+safety stop. A known static parked obstacle now creates a planned stopping point and
+`waiting_obstacle`: the car stays present until it clears, the operator stops the experiment,
+or five minutes of total queue waiting elapse. Queue time is excluded from the driving
+deadline. It may honk based on its test identity's temperament, then requests bounded bypass
+planning; bypass execution is currently disabled pending a reviewed clearance adapter.
+The probe's native-body, world, registry and chunk-membership fields distinguish server
+presence from a client visibility report. These are diagnostics, not measured packets.
+Moving/unknown hazards may still terminate with `predicted_vehicle_contact`; assess the
+trace and actual client report separately. Remove only exact, recorded parked fixtures
+after each obstacle trial. This disposable harness is not the persistent traffic lifecycle.
 
 Route configuration requires the probe server to be stopped. It validates bounded numeric
 waypoints, keeps the previous private configuration and source artifact, and shares an

@@ -19,6 +19,59 @@ predicted motion/stopping corridor. Slow, wait or brake locally; request a repla
 when stopped and a bounded closure observation is available. A Bézier path provides
 geometry, tangent and curvature; it does not establish clearance or right of way.
 
+### Blockages, personality and passing
+
+Accepted 2026-09-27: a blocked driver waits, may honk after several seconds, then looks
+for a safe way around. Drivers differ, and avoidance must coexist with imperfect physical
+driving and occasional crashes. Do not make every car honk together, pick a new personality
+each frame, or repeatedly alternate between the same conflicting paths.
+
+Use a stable resident seed for patience, horn tendency/delay/duration, stopped spacing and
+replan interval. An obstruction episode chooses whether to honk once. Count patience while
+actually waiting, not while approaching. Retain the car and its route while blocked; removal
+of the obstruction resumes the original trip. Horns use the stock server vehicle sound
+state, including its normal world-sound consequences and native replication.
+
+Sequence: `approaching -> waiting -> seeking_bypass -> yielding/reserved -> passing ->
+rejoining`. The high-level service can choose a different road when a persistent closure
+makes a local maneuver impossible. The server must retain immediate braking without IPC.
+For a local pass, consider at most two bounded candidates on known drivable road, including
+a short use of the opposite lane only when the full maneuver, oncoming gap and rejoin are
+freshly verified. No sidewalk/grass shortcut, blind junction entry or reversing near a
+player. Check the swept oriented vehicle footprint, steering/turn radius and braking
+capability; the current conservative circular forecast is insufficient to approve
+side-by-side passing in adjacent lanes. A route proposal alone cannot execute a pass.
+
+Reserve the maneuver's complete inflated swept corridor, including entry and rejoin, on
+the authoritative server. Opposing/overlapping requests are decided in one bounded batch:
+oldest waiter first, stable resident ID for ties. One winner proceeds; the other waits
+outside the shared corridor. Keep the winner until it clears rather than swapping priority
+each tick. Replans use each driver's staggered interval. Admission and execution both
+recheck native ownership, actors and live oncoming traffic; a reservation is not a promise
+that the space will stay clear.
+
+An unused reservation can expire. An entered reservation whose heartbeat expires remains
+occupied and commands a stop until fresh ownership/clearance permits reconciliation or
+confirmed physical exit releases it. Never grant the same gap just because its previous
+occupant became stale. Bound this table by the four-moving-car fleet cap. A genuine
+stand-off requests a different road or stays queued; it must not oscillate or teleport.
+
+Personality affects ordinary timing and preferred gaps within the vehicle's physical
+limits. Add bounded perception/reaction and tracking error only after the baseline passes
+moving-traffic tests. Keep continuous native physics, so sudden hazards and imperfect
+execution can still produce contact; do not add ghosting, invulnerability or position
+snaps. Higher-risk staged mistakes remain named incident actions under the all-player
+exclusion rules below. Do not randomly disable the safety scan to manufacture crashes.
+
+Current step: gradual parked-car approach, persistent wait/resume and temperament-based
+honking are connected to the disposable server probe. Bounded bypass requests are emitted
+after patience expires. `TrafficPassReservations` has detached conflict, stale-occupancy,
+priority and generation tests; it is **not yet connected to a managed multi-car executor**.
+Live bypass execution stays disabled until a candidate's full road footprint and dynamic
+clearance are verified. Required follow-up evidence: stationary bypass, opposing contenders,
+new obstacle during a pass, blocked rejoin, stale-owner recovery, native contact and two
+ordinary clients. None of those are established by a single-car stopping test.
+
 An incident is a separately authorized server-owned action with named participants,
 reserved route/impact/aftermath areas and a stable event ID. Never switch off collision
 avoidance globally. Only the selected scenario-owned pair may collide intentionally;
@@ -116,7 +169,8 @@ reconciliation and physical creation/audio adapters remain to be implemented and
 `CollisionForecast` provides continuous contact prediction. These tests are not native
 crashes or visibility proofs. Corrected Bézier driving has passed a one-client smooth-turn
 check at the initial low speed and a subsequent faster capability-aware run. Native traces
-confirm a conservative parked-car stop; the first client-present obstacle run did not give
-a clear view of its stationary phase, so visual braking remains pending alongside moving
-blockers. No physical crash director/event is enabled. Record new receipts in
+confirmed a conservative parked-car stop, but the user rejected both the early abrupt stop
+and disappearance even with the 20-second hold. Revised planned stopping and wait/resume
+have separate receipts; visual braking remains pending alongside moving blockers.
+No physical crash director/event is enabled. Record new receipts in
 [[Experiments/Implementation Ledger]].

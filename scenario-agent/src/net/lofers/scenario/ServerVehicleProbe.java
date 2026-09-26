@@ -14,7 +14,7 @@ import zombie.vehicles.*;
 /** One opt-in empty car in a disposable world. Physics and game state stay on the game thread. */
 final class ServerVehicleProbe {
     private static final Set<String> PREPARING=Set.of("loading","validating_road","preparing_terrain","preparing_physics");
-    private static final Set<String> ACTIVE=Set.of("loading","validating_road","preparing_terrain","preparing_physics","settling","driving","braking","stopped_visible");
+    private static final Set<String> ACTIVE=Set.of("loading","validating_road","preparing_terrain","preparing_physics","settling","driving","waiting_obstacle","braking","stopped_visible");
     private final ProbeControl.Config config;
     private final ProbeControl io;
     private final String world,epoch;
@@ -30,6 +30,13 @@ final class ServerVehicleProbe {
     private float nativeMass;
     private double forecastContact=Double.POSITIVE_INFINITY;
     private int forecastBlocker=-1;
+    private double parkedStop=Double.POSITIVE_INFINITY;
+    private int parkedBlocker=-1,bypassRequests;
+    private long waitingNanos;
+    private TrafficTemperament temperament;
+    private TrafficBlockage blockage;
+    private TrafficBlockage.Decision blockageDecision;
+    private boolean worldPresent,registryPresent,chunkPresent;
     private ProbeDriver driver;
     private final ProbeSafetyWork safetyWork=new ProbeSafetyWork();
     private long safetyScanNanos,safetyScanMaxNanos,safetyScanOver1ms;
@@ -71,6 +78,7 @@ final class ServerVehicleProbe {
                     error="";finishReason="";distance=0;maxSpeed=0;publications=0;physicsFrames=0;chunkCursor=0;validationCursor=0;cellCursor=0;control=null;
                     warmTiming=new ProbeTiming();coldTiming=new ProbeTiming();coldOperations.clear();stepMaxNanos=0;applied=null;carLimits=null;
                     safetyScanNanos=safetyScanMaxNanos=safetyScanOver1ms=0;safetyStatus="";
+                    waitingNanos=0;parkedStop=Double.POSITIVE_INFINITY;parkedBlocker=-1;bypassRequests=0;blockageDecision=null;
                     stopDistance=0;displacement=0;goalDistance=route.length;lastX=config.x();lastY=config.y();lastZ=0;
                     nativeBefore=-1;nativeAfter=-1;started=System.nanoTime();phase("loading");
                 }
@@ -137,6 +145,10 @@ final class ServerVehicleProbe {
                 long coldStart=System.nanoTime();try{create();}finally{coldCost("vehicle_create",coldStart);}phase("settling");
             }
             if(vehicle==null)return;
+            worldPresent=!vehicle.isRemovedFromWorld();
+            registryPresent=VehicleManager.instance.getVehicleByID((short)vehicleId)==vehicle;
+            chunkPresent=vehicle.chunk!=null&&vehicle.chunk.vehicles.contains(vehicle);
+            if(!worldPresent||!registryPresent||!chunkPresent){fail("probe_world_membership_lost");return;}
             if(!vehicle.isNetPlayerAuthorization(BaseVehicle.Authorization.Server)||vehicle.getNetPlayerId()!=-1){fail("native_authority_changed");return;}
             if(vehicle.hasPassenger()){fail("unexpected_passenger");return;}
             if(!loadedCorridor()){fail("road_chunks_unloaded");return;}
@@ -149,24 +161,35 @@ final class ServerVehicleProbe {
             if(lastZ<-0.5||lastZ>4){fail("invalid_physics_height");return;}
             if(speed>Math.max(8,config.speed()+3)||distance>config.distance()+5){fail("motion_limit_exceeded");return;}
             long now=System.nanoTime();
-            if(now-bodyStarted>config.deadlineSeconds()*1_000_000_000L){fail("absolute_deadline");return;}
+            if(phase.equals("waiting_obstacle"))waitingNanos+=Math.max(0,now-lastControlAt);
+            if(now-bodyStarted-waitingNanos>config.deadlineSeconds()*1_000_000_000L){fail("absolute_deadline");return;}
             if(phase.equals("settling")&&now-phaseAt>2_000_000_000L)phase("driving");
             double delta=lastControlAt==0?0.1:(now-lastControlAt)/1_000_000_000.0;lastControlAt=now;
             float force=0,brake=80,steering=0;
-            if(phase.equals("driving")){
+            if(phase.equals("driving")||phase.equals("waiting_obstacle")){
                 if(route.trajectory!=null){
                     carLimits=NativeProbeControls.limits(vehicle,speed);driver.limits(carLimits);
                     if(nativeMass!=vehicle.getMass()){nativeMass=vehicle.getMass();Bullet.setVehicleMass(vehicleId,nativeMass);}
                 }
                 String danger=config.roadMode()?warmSafety():"";
                 safetyStatus=danger;
-                control=driver.step(lastX,lastY,forward.x,forward.z,speed,delta,danger);
+                control=driver.step(lastX,lastY,forward.x,forward.z,speed,delta,danger,parkedStop);
                 if(!control.stopReason().isEmpty()){error=control.stopReason();finishReason=error;phase("braking");}
                 else if(control.arrived()){finishReason="route_arrived";phase("braking");}
-                else if(now-bodyStarted>(config.deadlineSeconds()-8)*1_000_000_000L){error="drive_deadline";finishReason=error;phase("braking");}
+                else if(waitingNanos>300_000_000_000L){error="obstacle_wait_deadline";finishReason=error;phase("braking");}
+                else if(now-bodyStarted-waitingNanos>(config.deadlineSeconds()-(config.roadMode()?26:8))*1_000_000_000L){error="drive_deadline";finishReason=error;phase("braking");}
+                else if(driver.waitingForObstacle()&&!phase.equals("waiting_obstacle"))phase("waiting_obstacle");
+                else if(!driver.waitingForObstacle()&&phase.equals("waiting_obstacle"))phase("driving");
                 force=(float)control.engineForce();brake=(float)control.brake();steering=(float)control.steering();
+                if(control.stopReason().isEmpty()&&!control.arrived()){
+                    blockageDecision=blockage.step(parkedBlocker,driver.waitingForObstacle(),delta);
+                    if(blockageDecision.requestBypass())bypassRequests++;
+                }
             }
-            if(!phase.equals("driving")){force=0;brake=100;steering=0;}
+            boolean horn=phase.equals("waiting_obstacle")&&blockageDecision!=null&&blockageDecision.horn();
+            if(horn&&!vehicle.soundHornOn)vehicle.onHornStart();
+            else if(!horn&&vehicle.soundHornOn)vehicle.onHornStop();
+            if(!phase.equals("driving")&&!phase.equals("waiting_obstacle")){force=0;brake=100;steering=0;}
             if(route.trajectory!=null){
                 applied=NativeProbeControls.apply(vehicle,speed,force,brake,steering);
                 force=applied.force();brake=applied.brake();steering=applied.steering();
@@ -234,6 +257,7 @@ final class ServerVehicleProbe {
     }
     private String scanSafety(){
         forecastContact=Double.POSITIVE_INFINITY;forecastBlocker=-1;
+        parkedStop=Double.POSITIVE_INFINITY;parkedBlocker=-1;
         Arrays.fill(checkedRoadTiles,0L);checkOriginX=(int)Math.floor(lastX)-64;checkOriginY=(int)Math.floor(lastY)-64;
         // The current body footprint, plus conservative stopping-space samples,
         // must remain asphalt and clear. This checks actual native pose, not
@@ -270,8 +294,7 @@ final class ServerVehicleProbe {
             IsoChunk chunk=ServerMap.instance.getChunk(xy.x(),xy.y());if(chunk==null||!chunk.loaded)return "nearby_chunk_unloaded";
             for(BaseVehicle other:chunk.vehicles){if(other==vehicle)continue;
                 if(!safetyWork.vehicle())return "vehicle_check_capacity";
-                forecastBlocker=other.getId();
-                if(forecastBlocker<0)return "vehicle_identity_unavailable";
+                if(other.getId()<0)return "vehicle_identity_unavailable";
                 // Client packet age is not available in this adapter. Never
                 // treat a stale/client-owned velocity as a fresh native sample.
                 if(other.hasPassenger()||other.getNetPlayerId()!=-1||!other.isNetPlayerAuthorization(BaseVehicle.Authorization.Server))return "untracked_vehicle_near_course";
@@ -281,13 +304,16 @@ final class ServerVehicleProbe {
                 else if(!Float.isFinite(other.getCurrentSpeedKmHour())||Math.abs(other.getCurrentSpeedKmHour())>.1)return "vehicle_motion_unavailable";
                 VehicleScript otherScript=other.getScript();if(otherScript==null)return "vehicle_shape_unavailable";
                 double radius=Math.hypot(otherScript.getExtents().x(),otherScript.getExtents().z())/2;
-                double contact=CollisionForecast.firstContact(predicted,bodyRadius+.65,
-                    new CollisionForecast.Obstacle(other.getX(),other.getY(),vx,vy,radius,0));
-                forecastContact=Math.min(forecastContact,contact);
-                if(Double.isFinite(contact))return "predicted_vehicle_contact";
+                var obstacle=new CollisionForecast.Obstacle(other.getX(),other.getY(),vx,vy,radius,0);
+                double contact=CollisionForecast.firstContact(predicted,bodyRadius+.65,obstacle);
+                if(contact<forecastContact){forecastContact=contact;forecastBlocker=other.getId();}
+                if(contact==0)return "immediate_vehicle_contact";
+                if(Math.hypot(vx,vy)<=.03&&Float.isFinite(other.getCurrentSpeedKmHour())&&Math.abs(other.getCurrentSpeedKmHour())<=.1){
+                    double stop=ParkedObstacle.stopProgress(route,progress,lastX,lastY,bodyRadius+.65,obstacle,temperament.stoppedGap());
+                    if(stop<parkedStop){parkedStop=stop;parkedBlocker=other.getId();}
+                }else if(Double.isFinite(contact))return "predicted_vehicle_contact";
             }
         }
-        forecastBlocker=-1;
         return "";
     }
     private void create(){
@@ -316,6 +342,7 @@ final class ServerVehicleProbe {
         if(!IsoChunk.doSpawnedVehiclesInInvalidPosition(vehicle))throw new IllegalStateException("engine_rejected_spawn_position");
         vehicle.setSquare(square);vehicle.chunk=square.chunk;vehicle.chunk.vehicles.add(vehicle);
         worldAdded=true;vehicle.addToWorld();vehicleId=vehicle.getId();
+        temperament=TrafficTemperament.forResident(vehicleId);blockage=new TrafficBlockage(vehicleId,temperament);
         if(vehicleId<0||vehicle.getController()==null)throw new IllegalStateException("vehicle_creation_incomplete");
         vehicle.setNetPlayerAuthorization(BaseVehicle.Authorization.Server,-1);
         // Constructor does not add server bodies. Coordinates match the native
@@ -347,6 +374,7 @@ final class ServerVehicleProbe {
     }
     private void cleanupInternal(){
         if(vehicle==null){releaseTerrain();return;}
+        if(vehicle.soundHornOn)vehicle.onHornStop();
         try{if(nativeBody){Bullet.controlVehicle(vehicleId,0,100,0);Bullet.setVehicleActive(vehicle,false);Bullet.removeVehicle(vehicleId);nativeBody=false;}}
         catch(Throwable t){error="native_cleanup_failed:"+t.getClass().getSimpleName();}
         try{
@@ -373,6 +401,14 @@ final class ServerVehicleProbe {
         Map<String,String> s=new LinkedHashMap<>();
         s.put("world",world);s.put("server_epoch",epoch);s.put("phase",phase);s.put("error",error);s.put("finish_reason",finishReason);
         s.put("command_id",Long.toString(commandId));s.put("body_registered",Boolean.toString(nativeBody));s.put("vehicle_id",Integer.toString(vehicleId));
+        s.put("world_present",Boolean.toString(vehicle!=null&&worldPresent));
+        s.put("registry_present",Boolean.toString(vehicle!=null&&registryPresent));s.put("chunk_present",Boolean.toString(vehicle!=null&&chunkPresent));
+        s.put("parked_stop_progress",Double.toString(parkedStop));s.put("parked_blocker",Integer.toString(parkedBlocker));
+        s.put("obstacle_wait_seconds",Double.toString(waitingNanos/1_000_000_000.0));s.put("bypass_requests",Integer.toString(bypassRequests));
+        s.put("bypass_execution","disabled_pending_reviewed_corridor");
+        s.put("horn_on",Boolean.toString(vehicle!=null&&vehicle.soundHornOn));
+        if(blockageDecision!=null)s.put("blockage_state",blockageDecision.state());
+        if(temperament!=null){s.put("driver_patience_seconds",Double.toString(temperament.patienceSeconds()));s.put("driver_horn_chance",Double.toString(temperament.hornChance()));}
         s.put("x",Double.toString(lastX));s.put("y",Double.toString(lastY));s.put("physics_z",Double.toString(lastZ));
         s.put("speed_kmh",Double.toString(speed));s.put("max_speed_kmh",Double.toString(maxSpeed));s.put("distance",Double.toString(distance));s.put("stop_distance",Double.toString(stopDistance));
         s.put("route_mode",config.roadMode()?"validated_waypoints":"legacy_straight");s.put("route_length",Double.toString(route.length));

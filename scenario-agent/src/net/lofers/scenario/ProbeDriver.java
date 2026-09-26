@@ -10,6 +10,8 @@ final class ProbeDriver {
     private final List<Stop> stops;
     private int nextStop;
     private double held;
+    private boolean waitingForObstacle;
+    boolean waitingForObstacle(){return waitingForObstacle;}
     int completedStops(){return nextStop;}
     double stopHoldSeconds(){return held;}
     private final ProbeRoute route;
@@ -34,7 +36,12 @@ final class ProbeDriver {
         this.route=route;this.speedLimit=speedLimit;this.wheelbase=wheelbase;
     }
     Output step(double x,double y,double forwardX,double forwardY,double speed,double dt,String emergency){
+        return step(x,y,forwardX,forwardY,speed,dt,emergency,Double.POSITIVE_INFINITY);
+    }
+    Output step(double x,double y,double forwardX,double forwardY,double speed,double dt,String emergency,double obstacleStop){
+        waitingForObstacle=false;
         if(!ProbeRoute.finite(x,y,forwardX,forwardY,speed,dt)||speed<0||dt<=0||dt>1)return stop("invalid_observation",false,0);
+        if(Double.isNaN(obstacleStop)||obstacleStop==Double.NEGATIVE_INFINITY)return stop("invalid_obstacle_stop",false,0);
         if(emergency!=null&&!emergency.isEmpty())return stop(emergency,false,0);
         if(speed>Math.max(6.5,speedLimit+2.5))return stop("excessive_speed",false,0);
         double norm=Math.hypot(forwardX,forwardY);if(norm<0.5||norm>1.5)return stop("invalid_heading",false,0);
@@ -49,6 +56,13 @@ final class ProbeDriver {
         if(projection.progress()>progress+4)return stop("unexpected_route_jump",false,projection.distance());
         progress=Math.max(progress,projection.progress());double remaining=route.length-progress;
         double stopDistance=Double.POSITIVE_INFINITY;
+        double obstacleDistance=obstacleStop-progress;
+        // A parked vehicle is a temporary destination, not a failed route.
+        // Do not consume a scheduled stop while queued short of its line.
+        if(obstacleDistance<.35){
+            waitingForObstacle=speed<.25;held=0;stalled=0;previousProgress=progress;
+            return stop("",false,projection.distance());
+        }
         if(nextStop<stops.size()){
             Stop stop=stops.get(nextStop);stopDistance=stop.progress()-progress;
             if(stopDistance<-.75)return stop("stop_line_overrun",false,projection.distance());
@@ -59,6 +73,7 @@ final class ProbeDriver {
                 nextStop++;held=0;stopDistance=Double.POSITIVE_INFINITY;
             }
         }
+        stopDistance=Math.min(stopDistance,obstacleDistance);
         double endDistance=Math.hypot(route.points.getLast().x()-x,route.points.getLast().y()-y);
         if(remaining<0.8&&endDistance<0.7)return stop("",true,projection.distance());
         stalled=progress>previousProgress+0.08?0:stalled+dt;if(stalled>10)return stop("no_route_progress",false,projection.distance());

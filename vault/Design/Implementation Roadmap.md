@@ -32,6 +32,10 @@ original seated model while onboard, ordinary Lua clients and server-only JVM in
    aware controls and sustained cruise on a sufficiently long road; the short course cannot
    establish 50 km/h cruise. One client now accepts the faster turn (24.1 km/h actual peak,
    about 13 km/h through the bend). Record parked/moving blocker results separately.
+   Parked approach/wait now passes one-client visual acceptance: the car remained visible
+   during a 66-second queue, and the server resumed the route after fixture removal.
+   Optional horn timing is connected; the observed driver selected silence, so sound
+   playback is still unverified. Moving blockers remain a separate gate.
 3. Extract managed native vehicle control from the disposable probe. Own only registered
    scenario bodies and reference-counted terrain; retain parked cars after completion.
    Use bounded loading ahead, local emergency braking and road/vehicle speed envelopes.
@@ -47,7 +51,13 @@ original seated model while onboard, ordinary Lua clients and server-only JVM in
 ## Blockers and traffic incidents
 
 Add [[Traffic Incidents]] after the lane/stop controller. Normal driving retains local
-blocker forecasting and braking. Validate native two-car contacts in an empty world before
+blocker forecasting and braking. Extend persistent queues with temperament-dependent
+honking and patience, bounded attempts to find a drivable bypass, and authoritative
+reservations when two cars want the same gap. The detached reservation arbiter exists;
+native candidate clearance, passing/rejoin control and managed multi-car wiring are next.
+Allow bounded imperfect driving through normal physics, without disabling actor checks
+or manufacturing ordinary crashes by random emergency-brake failures. Validate native
+two-car contacts in an empty world before
 staging a visible crash. Incidents reserve the complete hazard envelope and exclude every
 player and player-owned object, including likely approaches. Off-screen crashes emit one
 spatial sound and retain discoverable aftermath at that same recorded location. Preserve
