@@ -28,5 +28,32 @@ def test_probe_package_contains_only_original_visual_assets(tmp_path):
     ops.package_driver_assets(driver.ROOT, tmp_path / 'driver')
     files = {str(p.relative_to(tmp_path / 'driver')) for p in (tmp_path / 'driver').rglob('*') if p.is_file()}
     assert files == {'42/mod.info', '42/media/models_X/Lofers/SeatedDriver.x',
-                     '42/media/textures/Lofers/DriverPalette.png', '42/media/scripts/lofers_driver.txt'}
+                     '42/media/textures/Lofers/DriverPalette.png', '42/media/scripts/lofers_driver.txt',
+                     '42/media/lua/server/LofersDriverProbeWeather.lua'}
     assert 'require=' not in (tmp_path / 'driver/42/mod.info').read_text()
+
+
+def test_visibility_setup_is_disposable_server_only(tmp_path):
+    from lupa.lua51 import LuaRuntime
+    ops.package_driver_assets(driver.ROOT, tmp_path / 'driver')
+    script = (tmp_path / 'driver/42/media/lua/server/LofersDriverProbeWeather.lua').read_text()
+    for world, server, expected in [('AKR_DayOne', True, False), ('LofersVehicleProbe_test', False, False),
+                                    ('LofersVehicleProbe_test', True, True)]:
+        lua = LuaRuntime()
+        lua.globals().world = world
+        lua.globals().server = server
+        lua.execute('''
+            function isServer() return server end
+            function getServerName() return world end
+            removed=false; enabled=false; intensity=1
+            Events={OnTick={Add=function(f) callback=f end,Remove=function(f) removed=true end}}
+            local fog={setAdminValue=function(self,v) intensity=v end,setEnableAdmin=function(self,v) enabled=v end}
+            function getClimateManager() return {
+                transmitServerStopWeather=function() end,
+                getClimateFloat=function(self,id) assert(id==5);return fog end,
+                getFogIntensity=function() return intensity end} end
+        ''')
+        lua.execute(script)
+        lua.execute('callback();if not removed then callback() end')
+        assert lua.globals().enabled == expected
+        assert lua.globals().removed

@@ -10,6 +10,23 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## First client driver-model run — 2026-09-26
+
+The single-client run was stopped after the user reported Error 13 and obscuring fog.
+The earliest relevant client error was failure to open the vehicle script: Linux path
+resolution requested `~/Zomboid/mods/home/akr/zomboid/mods/lofersdriverprobe/42/media/scripts/lofers_driver.txt`.
+Subsequent vehicle-sound null-script and vehicle-update byte-count errors were recorded;
+no successful visible driver replication is claimed. Private client log and server samples
+are in `artifacts/scenario-agent/client-driver-20260926_205618/`.
+
+Installed a narrow local directory symlink from that requested mod path to the original
+`LofersDriverProbe` directory; no installed game files were changed. Client restart and
+confirmation that the script loads remain required. The generic `stopweather` command
+was insufficient to clear the reported fog. Added a disposable-world-only server Lua
+fog override to the test package. After graceful restart, epoch
+`31591e9e-25f0-4287-9a6b-18df379dcf95` logged actual fog intensity zero and the probe armed.
+Fourteen targeted packaging/operations/visibility tests pass. A new client run is pending.
+
 ## Commute foundations and original driver — 2026-09-26
 
 - Added [[Design/Implementation Roadmap]] as the accepted continuation. Persistent

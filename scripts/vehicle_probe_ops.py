@@ -106,7 +106,7 @@ def prepare(m, driver_model=False):
 
 
 def package_driver_assets(root, destination):
-    """An isolated original asset-only mod; no gameplay or upstream dependencies."""
+    """An isolated original visual test mod with disposable-world visibility setup."""
     media = root / 'mods/LofersStoryteller/42/media'
     (destination / 'common').mkdir(parents=True, exist_ok=True)
     version = destination / '42'
@@ -121,6 +121,31 @@ def package_driver_assets(root, destination):
         output = version / 'media' / name
         output.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(media / name, output)
+    weather = version / 'media/lua/server/LofersDriverProbeWeather.lua'
+    weather.parent.mkdir(parents=True, exist_ok=True)
+    weather.write_text('''-- Original visibility setup, restricted to disposable driver tests.
+local ticks=0
+local function clearFog()
+    if not isServer() or not string.find(getServerName(), "^LofersVehicleProbe_") then
+        Events.OnTick.Remove(clearFog);return
+    end
+    local cm=getClimateManager()
+    if not cm then return end
+    ticks=ticks+1
+    if ticks==1 then
+        cm:transmitServerStopWeather()
+        local fog=cm:getClimateFloat(5)
+        fog:setAdminValue(0);fog:setEnableAdmin(true)
+    elseif cm:getFogIntensity()==0 then
+        print("[LofersDriverProbe] confirmed server fog intensity=0")
+        Events.OnTick.Remove(clearFog)
+    elseif ticks>=300 then
+        print("[LofersDriverProbe] fog override not confirmed")
+        Events.OnTick.Remove(clearFog)
+    end
+end
+Events.OnTick.Add(clearFog)
+''')
 
 
 @serialized
