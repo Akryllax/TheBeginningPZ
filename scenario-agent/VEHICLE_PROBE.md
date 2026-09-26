@@ -94,7 +94,7 @@ The 5×5 native server-cell layout is specific to this binary. Before using this
 path in a normal world, compatibility checks must cover that native library as
 well as Java classes.
 
-One empty SmallCar settled on the road, drove from `(10756.5,9856.5)` to
+One empty SmallCar settled on the paved test strip, drove from `(10756.5,9856.5)` to
 `(10766.5546875,9856.5)`, braked, remained in the world for the three-second hold and
 was removed. Stopping distance was 10.0546875 tiles; maximum observed speed was
 4.8211 km/h and final speed was 0.0528 km/h, below the 0.25 km/h stopped threshold.
@@ -116,3 +116,27 @@ prove ordinary-client interpolation or packet delivery, late joins, turning,
 obstacle handling, player-car collisions, ownership transfer, NPC passengers,
 or reliability in a normal populated world. No game client was launched for
 this test and no client Java agent or core-file replacement was used.
+
+## One-client observation: 2026-09-26
+
+The same agent ran in epoch `843041a8-4934-4e1c-8c39-bb98af7e11e1` with one player
+connected to the isolated server on port 16281. The player reported that the car
+appeared, briefly accelerated and disappeared, then confirmed: “Yes, it moved
+smoothly, but drove on the sidewalk.” This establishes qualitative visibility and
+smooth movement on one ordinary client. It does not measure the duration of the
+client-visible trajectory, interpolation delay or agreement between two clients.
+
+The probe uses fixed coordinates and straight force control. Its strip was on the
+sidewalk; it does not yet use the planner's road graph or steering. Automatic
+removal after a three-second stopped hold is deliberate test cleanup.
+
+Server evidence independently recorded 10.09375 tiles traveled, maximum speed
+4.8211 km/h, final speed 0.05275 km/h and Server/-1 authority throughout the captured
+live samples. The run completed without error. The native body count returned to
+zero and both temporary native terrain cells were removed. The maximum measured
+probe tick was 170.6 ms; steady-state capacity remains unmeasured. Raw server status
+retains `client_validation=not_observed` because it cannot attest to rendering;
+the separate receipt records the attributed player report.
+
+Local evidence is under
+`artifacts/scenario-agent/client-observation-20260926T192615Z-843041a8/`.

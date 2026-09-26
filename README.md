@@ -21,6 +21,9 @@ Those results do not establish visible NPC behavior, safe driving, or two-client
 The current integration work targets ordinary Lua clients and **server-only JVM injection**.
 An isolated empty-vehicle test passed native movement, braking and cleanup: the car traveled
 10.05 tiles using server physics. This required explicit native server terrain cells.
+One connected player then confirmed visible, smooth movement on an ordinary client. The
+probe followed a fixed straight strip on the sidewalk; road-following steering is not wired
+into it. Client-visible duration and interpolation latency were not measured.
 Integration with normal gameplay, collision ownership, NPC seating, unloaded resident
 reconciliation, and the full outbreak/adaptive event progression remain incomplete. Native
 vehicle packets still need observation from two real clients.

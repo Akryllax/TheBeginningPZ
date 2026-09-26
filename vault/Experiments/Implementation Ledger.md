@@ -53,6 +53,15 @@ development; it is not a complete or multiplayer-validated release.
   No client was connected. See `scenario-agent/VEHICLE_PROBE.md` for the exact pinned native
   library and evidence paths; normal-world integration, collision ownership and NPC seats
   are separate unpassed gates.
+- **One ordinary client observed visible, smooth movement** in a subsequent run with one
+  player on port 16281. The player identified the path as the sidewalk and initially
+  described brief acceleration before disappearance. This was a fixed straight test strip,
+  without road-following steering; removal after the short stopped hold was intentional.
+  Server evidence recorded 10.09375 tiles, continuous Server/-1 ownership in captured live
+  samples, no error, zero remaining native vehicle bodies and both native cells removed.
+  Client-visible duration and interpolation latency were not measured, and no second
+  client participated. The one-client peak probe tick was 170.6 ms, so no production
+  performance claim follows from this test.
 - Connected the workspace to `Akryllax/TheBeginningPZ`, retaining remote main commit
   `7b528a3` and its GPL-3.0 license. Read-only candidate audit found no actual credential
   matches or game/decompiled binary payloads. Raw live baseline configuration and generated
