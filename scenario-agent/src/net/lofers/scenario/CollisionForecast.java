@@ -13,7 +13,7 @@ final class CollisionForecast {
         double radius=egoRadius+obstacle.radius+.2+speed*obstacle.ageSeconds;
         for(int i=1;i<path.size();i++){
             Pose a=path.get(i-1),b=path.get(i);double dt=b.time-a.time;
-            if(!ProbeRoute.finite(a.time,a.x,a.y,b.time,b.x,b.y)||a.time<0||b.time>8||dt<=0)return 0;
+            if(!ProbeRoute.finite(a.time,a.x,a.y,b.time,b.x,b.y)||a.time<0||b.time>12||dt<=0)return 0;
             double dx=a.x-obstacle.x-obstacle.vx*a.time,dy=a.y-obstacle.y-obstacle.vy*a.time;
             double vx=(b.x-a.x)/dt-obstacle.vx,vy=(b.y-a.y)/dt-obstacle.vy;
             double c=dx*dx+dy*dy-radius*radius;if(c<=0)return a.time;
@@ -26,7 +26,7 @@ final class CollisionForecast {
         return Double.POSITIVE_INFINITY;
     }
     static List<Pose> following(ProbeRoute route,double progress,double x,double y,double speedMps,double horizon){
-        if(!ProbeRoute.finite(progress,x,y,speedMps,horizon)||speedMps<0||speedMps>60||horizon<=0||horizon>8)throw new IllegalArgumentException("Invalid forecast");
+        if(!ProbeRoute.finite(progress,x,y,speedMps,horizon)||speedMps<0||speedMps>60||horizon<=0||horizon>12)throw new IllegalArgumentException("Invalid forecast");
         var out=new ArrayList<Pose>();out.add(new Pose(0,x,y));
         int steps=Math.min(64,Math.max(1,(int)Math.ceil(horizon/.2)));
         for(int i=1;i<=steps;i++){double t=horizon*i/steps;var p=route.at(progress+speedMps*t);out.add(new Pose(t,p.x(),p.y()));}

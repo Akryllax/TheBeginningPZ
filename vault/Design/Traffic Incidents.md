@@ -1,7 +1,7 @@
 ---
 type: design
 status: accepted-implementation-in-progress
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # Traffic incidents
@@ -114,6 +114,9 @@ reconciliation and physical creation/audio adapters remain to be implemented and
 
 `TrafficIncidentSafety` supplies detached all-player reachable-area admission checks, and
 `CollisionForecast` provides continuous contact prediction. These tests are not native
-crashes or visibility proofs. Corrected Bézier driving has passed empty-server native tests;
-no physical crash director/event is enabled. Record new receipts in
+crashes or visibility proofs. Corrected Bézier driving has passed a one-client smooth-turn
+check at the initial low speed and a subsequent faster capability-aware run. Native traces
+confirm a conservative parked-car stop; the first client-present obstacle run did not give
+a clear view of its stationary phase, so visual braking remains pending alongside moving
+blockers. No physical crash director/event is enabled. Record new receipts in
 [[Experiments/Implementation Ledger]].

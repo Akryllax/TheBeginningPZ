@@ -35,6 +35,13 @@ def test_default_course_stays_slow_and_lane_stop_is_explicit():
     assert traffic_settings({'lane_mode':True,'speed_kmh':15,'stops':[{'progress':5,'hold_seconds':2}]},[(0,0),(20,0)])==(True,15,[(5,2)])
 
 
+def test_street_limit_requires_curved_lane_course_and_stays_bounded():
+    course={'lane_mode':True,'speed_kmh':50,'beziers':[line((0,0),(20,0))]}
+    assert traffic_settings(course,[(0,0),(20,0)])==(True,50,[])
+    with pytest.raises(ValueError):traffic_settings({**course,'speed_kmh':51},[(0,0),(20,0)])
+    with pytest.raises(ValueError):traffic_settings({**course,'beziers':[]},[(0,0),(20,0)])
+
+
 def line(a,b):
     return [{'x':a[0]+(b[0]-a[0])*t,'y':a[1]+(b[1]-a[1])*t} for t in (0,1/3,2/3,1)]
 

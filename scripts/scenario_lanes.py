@@ -111,7 +111,7 @@ def muldraugh_lane_course(surface):
     bad=[p for p in sorted(cells) if not surface.asphalt(*p)]
     if bad:raise ValueError(f'Lane footprint leaves asphalt: {bad[:8]}')
     return {'waypoints':[{'x':x,'y':y} for x,y in points], 'lane_mode':True,'beziers':curves,
-            'speed_kmh':15, 'stops':[{'progress':24.75,'hold_seconds':2}],
+            'speed_kmh':50, 'stops':[{'progress':24.75,'hold_seconds':2}],
             'traffic_evidence':{'sign_xy':list(sign),'sprites':matches,'facing':'W',
                 'eastbound_lane_y':9861.5,'northbound_lane_x':10820.5,
                 'verified_footprint_tiles':len(cells),'half_width':.95,'half_length':1.95,

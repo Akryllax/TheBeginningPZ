@@ -20,11 +20,19 @@ final class ServerVehicleProbe {
     private final String world,epoch;
     private final ProbeRoute route;
     private final Vector3f forward=new Vector3f();
-    private final float[] blockerPhysics=new float[27];
+    private final NativeVehicleSamples nativeSamples=new NativeVehicleSamples();
+    private final NativeVehicleSamples.Source nativeSource=new NativeVehicleSamples.Source(){
+        public int count(){return Bullet.getVehicleCount();}
+        public int read(int offset,float[] buffer){return Bullet.getVehiclePhysics(offset,buffer);}
+    };
+    private ProbeCarLimits carLimits;
+    private NativeProbeControls.Applied applied;
+    private float nativeMass;
     private double forecastContact=Double.POSITIVE_INFINITY;
     private int forecastBlocker=-1;
     private ProbeDriver driver;
-    private ProbeSafetyBudget safetyBudget=new ProbeSafetyBudget();
+    private final ProbeSafetyWork safetyWork=new ProbeSafetyWork();
+    private long safetyScanNanos,safetyScanMaxNanos,safetyScanOver1ms;
     private String safetyStatus="";
     private ProbeDriver.Output control;
     private BaseVehicle vehicle;
@@ -61,8 +69,8 @@ final class ServerVehicleProbe {
                 if(command.action().equals("stop")){finishReason="operator_stop";if(vehicle!=null)phase("braking");else{cleanup();phase("stopped");}}
                 else if(vehicle==null&&!PREPARING.contains(phase)) {
                     error="";finishReason="";distance=0;maxSpeed=0;publications=0;physicsFrames=0;chunkCursor=0;validationCursor=0;cellCursor=0;control=null;
-                    warmTiming=new ProbeTiming();coldTiming=new ProbeTiming();coldOperations.clear();stepMaxNanos=0;
-                    safetyBudget=new ProbeSafetyBudget();safetyStatus="";
+                    warmTiming=new ProbeTiming();coldTiming=new ProbeTiming();coldOperations.clear();stepMaxNanos=0;applied=null;carLimits=null;
+                    safetyScanNanos=safetyScanMaxNanos=safetyScanOver1ms=0;safetyStatus="";
                     stopDistance=0;displacement=0;goalDistance=route.length;lastX=config.x();lastY=config.y();lastZ=0;
                     nativeBefore=-1;nativeAfter=-1;started=System.nanoTime();phase("loading");
                 }
@@ -146,27 +154,38 @@ final class ServerVehicleProbe {
             double delta=lastControlAt==0?0.1:(now-lastControlAt)/1_000_000_000.0;lastControlAt=now;
             float force=0,brake=80,steering=0;
             if(phase.equals("driving")){
-                String danger=safetyBudget.update(config.roadMode()?warmSafety(System.nanoTime()+1_000_000L):"",delta);
+                if(route.trajectory!=null){
+                    carLimits=NativeProbeControls.limits(vehicle,speed);driver.limits(carLimits);
+                    if(nativeMass!=vehicle.getMass()){nativeMass=vehicle.getMass();Bullet.setVehicleMass(vehicleId,nativeMass);}
+                }
+                String danger=config.roadMode()?warmSafety():"";
                 safetyStatus=danger;
                 control=driver.step(lastX,lastY,forward.x,forward.z,speed,delta,danger);
-                if(!control.stopReason().isEmpty()&&!danger.equals("safety_refresh_pending")){error=control.stopReason();finishReason=error;phase("braking");}
+                if(!control.stopReason().isEmpty()){error=control.stopReason();finishReason=error;phase("braking");}
                 else if(control.arrived()){finishReason="route_arrived";phase("braking");}
                 else if(now-bodyStarted>(config.deadlineSeconds()-8)*1_000_000_000L){error="drive_deadline";finishReason=error;phase("braking");}
                 force=(float)control.engineForce();brake=(float)control.brake();steering=(float)control.steering();
             }
             if(!phase.equals("driving")){force=0;brake=100;steering=0;}
+            if(route.trajectory!=null){
+                applied=NativeProbeControls.apply(vehicle,speed,force,brake,steering);
+                force=applied.force();brake=applied.brake();steering=applied.steering();
+            }
             // Direct native API is intentional: BaseVehicle's server branch skips it.
             Bullet.setVehicleStatic(vehicle,false);Bullet.setVehicleActive(vehicle,true);
             Bullet.controlVehicle(vehicleId,force,brake,steering);vehicle.setCurrentSteering(steering);
             vehicle.getController().engineForce=force;vehicle.getController().brakingForce=brake;
             vehicle.getController().acceleratorOn=force>0;vehicle.getController().brakeOn=brake>0;
-            vehicle.throttle=force>0?0.25f:0;vehicle.setBraking(brake>0);
+            vehicle.throttle=force>0?(applied==null?.25f:(float)Math.min(1,force/Math.max(1,applied.availableForce()))):0;vehicle.setBraking(brake>0);
             vehicle.setStoplightsOn(brake>0);vehicle.updateFlags=(short)(vehicle.updateFlags|2);publications++;
             if(phase.equals("braking")){
                 if(speed<0.25&&now-phaseAt>1_000_000_000L){stopDistance=distance;phase("stopped_visible");}
                 else if(now-phaseAt>5_000_000_000L){fail("brake_deadline");return;}
             }
-            if(phase.equals("stopped_visible")&&now-phaseAt>3_000_000_000L){cleanup();phase(error.isEmpty()?"complete":"failed");}
+            // Give observers time to distinguish a stationary car from removal.
+            // Legacy straight probes retain their shorter absolute deadline.
+            long visibleNanos=config.roadMode()?20_000_000_000L:3_000_000_000L;
+            if(phase.equals("stopped_visible")&&now-phaseAt>visibleNanos){cleanup();phase(error.isEmpty()?"complete":"failed");}
         }catch(Throwable t){fail(t.getClass().getSimpleName()+":"+Objects.toString(t.getMessage(),""));}
         finally {
             if(System.nanoTime()>nextStatus){publish();nextStatus=System.nanoTime()+250_000_000L;}
@@ -196,27 +215,36 @@ final class ServerVehicleProbe {
             for(IsoMovingObject object:moving)if(object!=vehicle)return "actor_in_vehicle_path";}
         return "";
     }
-    private final long[] checkedRoadTiles=new long[64];
+    private final long[] checkedRoadTiles=new long[256];
     private int checkOriginX,checkOriginY;
-    private String checkRoadOnce(int x,int y,long deadline){
+    private String checkRoadOnce(int x,int y){
         int dx=x-checkOriginX,dy=y-checkOriginY;
-        if(dx<0||dx>=64||dy<0||dy>=64)return "road_check_extent";
-        long bit=1L<<dx;if((checkedRoadTiles[dy]&bit)!=0)return "";
-        if(System.nanoTime()>deadline)return "road_check_budget";
-        checkedRoadTiles[dy]|=bit;return tileProblem(x,y,true,true);
+        if(dx<0||dx>=128||dy<0||dy>=128)return "road_check_extent";
+        int row=dy*2+(dx>>>6);long bit=1L<<(dx&63);if((checkedRoadTiles[row]&bit)!=0)return "";
+        if(!safetyWork.tile())return "road_check_capacity";
+        checkedRoadTiles[row]|=bit;return tileProblem(x,y,true,true);
     }
-    private String warmSafety(long deadline){
+    private String warmSafety(){
+        long begin=System.nanoTime();safetyWork.reset();
+        try{return scanSafety();}
+        finally{
+            safetyScanNanos=System.nanoTime()-begin;safetyScanMaxNanos=Math.max(safetyScanMaxNanos,safetyScanNanos);
+            if(safetyScanNanos>1_000_000L)safetyScanOver1ms++;
+        }
+    }
+    private String scanSafety(){
         forecastContact=Double.POSITIVE_INFINITY;forecastBlocker=-1;
-        Arrays.fill(checkedRoadTiles,0L);checkOriginX=(int)Math.floor(lastX)-32;checkOriginY=(int)Math.floor(lastY)-32;
+        Arrays.fill(checkedRoadTiles,0L);checkOriginX=(int)Math.floor(lastX)-64;checkOriginY=(int)Math.floor(lastY)-64;
         // The current body footprint, plus conservative stopping-space samples,
         // must remain asphalt and clear. This checks actual native pose, not
         // merely whether the planned centerline belongs to a broad road polygon.
         for(int y=(int)Math.floor(lastY-3);y<=(int)Math.floor(lastY+3);y++)for(int x=(int)Math.floor(lastX-3);x<=(int)Math.floor(lastX+3);x++){
             double dx=Math.max(Math.max(x-lastX,0),lastX-(x+1.0)),dy=Math.max(Math.max(y-lastY,0),lastY-(y+1.0));
             if(route.laneMode?!ProbeFootprint.touches(x,y,lastX,lastY,forward.x,forward.z):Math.hypot(dx,dy)>2.25)continue;
-            String problem=checkRoadOnce(x,y,deadline);if(!problem.isEmpty())return problem;
+            String problem=checkRoadOnce(x,y);if(!problem.isEmpty())return problem;
         }
-        double stopping=Math.min(route.laneMode?18:4,2+Math.pow(speed/3.6,2)/1.2);
+        double deceleration=carLimits==null?.6:carLimits.brakingDeceleration();
+        double stopping=Math.min(route.trajectory!=null?64:route.laneMode?18:4,2+Math.pow(speed/3.6,2)/(2*deceleration));
         if(route.trajectory!=null){
             // The precomputed full-width swept corridor follows the curve; a
             // straight ray would falsely leave asphalt while approaching a turn.
@@ -225,31 +253,32 @@ final class ServerVehicleProbe {
             for(var tile:route.tiles){
                 double dx=tile.x()+.5-lastX,dy=tile.y()+.5-lastY;
                 if(dx*dx+dy*dy>radius*radius)continue;
-                String problem=checkRoadOnce(tile.x(),tile.y(),deadline);if(!problem.isEmpty())return problem;
+                String problem=checkRoadOnce(tile.x(),tile.y());if(!problem.isEmpty())return problem;
             }
         }else for(double along=2;along<=stopping;along+=0.5)for(int side=-1;side<=1;side++){
                 int x=(int)Math.floor(lastX+forward.x*along+forward.z*side),y=(int)Math.floor(lastY+forward.z*along-forward.x*side);
-                String problem=checkRoadOnce(x,y,deadline);if(!problem.isEmpty())return problem;
+                String problem=checkRoadOnce(x,y);if(!problem.isEmpty())return problem;
         }
         double progress=control==null?0:control.progress();
-        double horizon=Math.min(8,2+speed/3.6/.6);
+        double horizon=Math.min(12,2+speed/3.6/deceleration);
         var predicted=CollisionForecast.following(route,progress,lastX,lastY,speed/3.6,horizon);
-        int seen=0;
+        String snapshotProblem=nativeSamples.refresh(nativeSource);if(!snapshotProblem.isEmpty())return snapshotProblem;
+        if(nativeSamples.get(vehicleId)==null)return "own_native_vehicle_missing";
         // Include the loaded curve and its margin, not just the current 3x3
         // chunks. This is still a bounded probe, not a world-wide traffic census.
         for(var xy:route.chunks){
-            if(System.nanoTime()>deadline)return "vehicle_check_budget";
             IsoChunk chunk=ServerMap.instance.getChunk(xy.x(),xy.y());if(chunk==null||!chunk.loaded)return "nearby_chunk_unloaded";
             for(BaseVehicle other:chunk.vehicles){if(other==vehicle)continue;
-                if(++seen>64||System.nanoTime()>deadline)return "vehicle_check_budget";
+                if(!safetyWork.vehicle())return "vehicle_check_capacity";
                 forecastBlocker=other.getId();
                 if(forecastBlocker<0)return "vehicle_identity_unavailable";
                 // Client packet age is not available in this adapter. Never
                 // treat a stale/client-owned velocity as a fresh native sample.
                 if(other.hasPassenger()||other.getNetPlayerId()!=-1||!other.isNetPlayerAuthorization(BaseVehicle.Authorization.Server))return "untracked_vehicle_near_course";
                 double vx=0,vy=0;
-                if(Bullet.getOwnVehiclePhysics(other.getId(),blockerPhysics)==0){vx=blockerPhysics[7];vy=blockerPhysics[9];}
-                else if(Math.abs(other.getCurrentSpeedKmHour())>.1)return "vehicle_motion_unavailable";
+                var motion=nativeSamples.get(other.getId());
+                if(motion!=null){vx=motion.vx();vy=motion.vy();}
+                else if(!Float.isFinite(other.getCurrentSpeedKmHour())||Math.abs(other.getCurrentSpeedKmHour())>.1)return "vehicle_motion_unavailable";
                 VehicleScript otherScript=other.getScript();if(otherScript==null)return "vehicle_shape_unavailable";
                 double radius=Math.hypot(otherScript.getExtents().x(),otherScript.getExtents().z())/2;
                 double contact=CollisionForecast.firstContact(predicted,bodyRadius+.65,
@@ -301,6 +330,7 @@ final class ServerVehicleProbe {
         }
         VehiclePart tank=vehicle.getPartById("GasTank");if(tank!=null)tank.setContainerContentAmount(20);
         vehicle.engineDoRunning();
+        nativeMass=vehicle.getMass();Bullet.setVehicleMass(vehicleId,nativeMass);
         vehicle.updateBulletStats();Bullet.setVehicleStatic(vehicle,false);Bullet.setVehicleActive(vehicle,true);
         float[] nativeState=new float[27];
         if(Bullet.getOwnVehiclePhysics(vehicleId,nativeState)!=0||Bullet.getVehicleCount()!=nativeBefore+1)throw new IllegalStateException("native_body_registration_failed");
@@ -347,9 +377,24 @@ final class ServerVehicleProbe {
         s.put("speed_kmh",Double.toString(speed));s.put("max_speed_kmh",Double.toString(maxSpeed));s.put("distance",Double.toString(distance));s.put("stop_distance",Double.toString(stopDistance));
         s.put("route_mode",config.roadMode()?"validated_waypoints":"legacy_straight");s.put("route_length",Double.toString(route.length));
         s.put("driver_model",Boolean.toString(config.driverModel()));
+        s.put("street_limit_kmh",Double.toString(config.speed()));
+        if(carLimits!=null){
+            s.put("vehicle_mass",Double.toString(carLimits.mass()));s.put("vehicle_max_speed_kmh",Double.toString(carLimits.maxSpeed()));
+            s.put("vehicle_drive_force_limit",Double.toString(carLimits.driveForce()));
+            s.put("vehicle_steering_limit",Double.toString(carLimits.steeringAngle()));s.put("vehicle_steering_rate",Double.toString(carLimits.steeringRate()));
+            s.put("planned_braking_mps2",Double.toString(carLimits.brakingDeceleration()));s.put("planned_lateral_mps2",Double.toString(carLimits.lateralAcceleration()));
+        }
+        if(applied!=null){
+            s.put("applied_engine_force",Float.toString(applied.force()));s.put("applied_brake_force",Float.toString(applied.brake()));
+            s.put("native_available_engine_force",Double.toString(applied.availableForce()));s.put("native_available_brake_force",Double.toString(applied.availableBrake()));
+        }
         s.put("lane_mode",Boolean.toString(route.laneMode));
         s.put("path_kind",route.trajectory==null?"polyline":"cubic_bezier");
-        s.put("safety_status",safetyStatus);s.put("safety_budget_brakes",Long.toString(safetyBudget.pauses()));
+        s.put("safety_status",safetyStatus);
+        s.put("safety_scan_ms",Double.toString(safetyScanNanos/1_000_000.0));
+        s.put("safety_scan_max_ms",Double.toString(safetyScanMaxNanos/1_000_000.0));
+        s.put("safety_scan_over_1ms",Long.toString(safetyScanOver1ms));
+        s.put("safety_scan_tiles",Integer.toString(safetyWork.tiles()));s.put("safety_scan_vehicles",Integer.toString(safetyWork.vehicles()));
         s.put("forecast_contact_seconds",Double.toString(forecastContact));s.put("forecast_blocker",Integer.toString(forecastBlocker));
         if(driver!=null){
             s.put("signed_deviation",Double.toString(driver.signedDeviation()));
@@ -367,6 +412,7 @@ final class ServerVehicleProbe {
         s.put("heading_degrees",Double.toString(heading));
         s.put("loaded_body_radius",Double.toString(bodyRadius));s.put("loaded_wheelbase",Double.toString(wheelbase));
         if(control!=null){s.put("route_progress",Double.toString(control.progress()));s.put("cross_track",Double.toString(control.crossTrack()));
+            s.put("engine_force",Double.toString(control.engineForce()));s.put("brake_force",Double.toString(control.brake()));
             s.put("steering_radians",Double.toString(control.steering()));s.put("target_speed_kmh",Double.toString(control.targetSpeed()));
             s.put("target_x",Double.toString(control.targetX()));s.put("target_y",Double.toString(control.targetY()));}
         s.put("owner",vehicle==null?"none":vehicle.getAuthorizationDescription());s.put("world_ticks",Long.toString(ticks));

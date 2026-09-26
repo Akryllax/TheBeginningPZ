@@ -21,7 +21,7 @@ final class ProbeControl implements Runnable {
             String curves=p.getProperty("vehicle_probe.beziers","").strip();
             boolean laneMode=Boolean.parseBoolean(p.getProperty("vehicle_probe.lane_mode","false"));
             if(laneMode&&!roadMode)throw new IllegalArgumentException("Lane mode requires road route");
-            double yaw=bounded(p,"heading_degrees",90,0,360),distance=bounded(p,"distance",10,2,12),speed=bounded(p,"speed_kmh",4,1,laneMode?15:5);
+            double yaw=bounded(p,"heading_degrees",90,0,360),distance=bounded(p,"distance",10,2,12),speed=bounded(p,"speed_kmh",4,1,!curves.isEmpty()?50:laneMode?15:5);
             if(!curves.isEmpty()&&(!roadMode||!laneMode))throw new IllegalArgumentException("Bezier course requires lane mode");
             ProbeRoute route=!curves.isEmpty()?new ProbeRoute(BezierPath.parse(curves)):(roadMode?ProbeRoute.parse(points,laneMode):ProbeRoute.straight(x,y,yaw,distance));
             if(Math.hypot(route.points.getFirst().x()-x,route.points.getFirst().y()-y)>0.01)throw new IllegalArgumentException("Route must start at configured spawn");

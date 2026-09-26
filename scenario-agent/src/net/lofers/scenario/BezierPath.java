@@ -86,11 +86,14 @@ final class BezierPath {
     }
     /** Braking envelope, looking across segment joins with fixed bounded work. */
     double speedLimit(double progress,double horizon,double cruiseKmh){
+        return speedLimit(progress,horizon,cruiseKmh,2.5,1.6);
+    }
+    double speedLimit(double progress,double horizon,double cruiseKmh,double lateralAcceleration,double deceleration){
         double allowed=cruiseKmh/3.6;
         for(int i=0;i<=32;i++){
             double distance=horizon*i/32;Sample p=at(progress+distance);
-            double curveLimit=Math.sqrt(.45/Math.max(1e-6,Math.abs(p.curvature)));
-            allowed=Math.min(allowed,Math.sqrt(curveLimit*curveLimit+2*.6*Math.max(0,distance-2)));
+            double curveLimit=Math.sqrt(lateralAcceleration/Math.max(1e-6,Math.abs(p.curvature)));
+            allowed=Math.min(allowed,Math.sqrt(curveLimit*curveLimit+2*deceleration*Math.max(0,distance-2)));
         }
         return allowed*3.6;
     }

@@ -2,7 +2,7 @@ package net.lofers.scenario;
 
 import java.util.*;
 
-/** Bounded low-speed pure pursuit. All positions are native observations, never writes. */
+/** Bounded pure pursuit. All positions are native observations, never writes. */
 final class ProbeDriver {
     record Output(double engineForce,double brake,double steering,double targetSpeed,double progress,double crossTrack,
                   double remaining,double headingError,double targetX,double targetY,boolean arrived,String stopReason) {}
@@ -14,6 +14,8 @@ final class ProbeDriver {
     double stopHoldSeconds(){return held;}
     private final ProbeRoute route;
     private final double speedLimit,wheelbase;
+    private ProbeCarLimits limits=ProbeCarLimits.fixture();
+    void limits(ProbeCarLimits observed){limits=Objects.requireNonNull(observed);}
     private double progress,steering,stalled,previousProgress;
     private double signedDeviation,pathHeadingError,pathCurvature,lookaheadDistance,previewDistance,predictedDeviation,predictedHeadingError;
     double signedDeviation(){return signedDeviation;}
@@ -25,7 +27,7 @@ final class ProbeDriver {
     double predictedHeadingError(){return predictedHeadingError;}
     ProbeDriver(ProbeRoute route,double speedLimit,double wheelbase){this(route,speedLimit,wheelbase,List.of());}
     ProbeDriver(ProbeRoute route,double speedLimit,double wheelbase,List<Stop> stops){
-        if(!ProbeRoute.finite(speedLimit,wheelbase)||speedLimit<1||speedLimit>(route.laneMode?15:5)||wheelbase<1.5||wheelbase>4)throw new IllegalArgumentException("Driver configuration outside probe bounds");
+        if(!ProbeRoute.finite(speedLimit,wheelbase)||speedLimit<1||speedLimit>(route.trajectory!=null?50:route.laneMode?15:5)||wheelbase<1.5||wheelbase>4)throw new IllegalArgumentException("Driver configuration outside probe bounds");
         this.stops=List.copyOf(stops);
         double prev=0;if(stops.size()>4)throw new IllegalArgumentException("Too many stops");
         for(Stop stop:stops){if(!ProbeRoute.finite(stop.progress(),stop.holdSeconds())||stop.progress()<2||stop.progress()>route.length-3||stop.progress()<=prev||stop.holdSeconds()<1||stop.holdSeconds()>5)throw new IllegalArgumentException("Invalid stop");prev=stop.progress();}
@@ -62,16 +64,22 @@ final class ProbeDriver {
         stalled=progress>previousProgress+0.08?0:stalled+dt;if(stalled>10)return stop("no_route_progress",false,projection.distance());
         if(progress>previousProgress+0.08)previousProgress=progress;
         double lookahead=route.trajectory==null?2.3+Math.min(speed/3.6,4.2)*0.2:Math.max(2.3,Math.min(4,1.8+speed/3.6*.4));
-        lookaheadDistance=lookahead;previewDistance=Math.min(22,Math.max(8,2+Math.pow(speed/3.6,2)/1.2));
+        double deceleration=route.trajectory==null?.6:limits.brakingDeceleration();
+        lookaheadDistance=lookahead;previewDistance=Math.min(64,Math.max(10,3+Math.pow(speed/3.6,2)/(2*deceleration)));
         ProbeRoute.Point target=route.at(progress+lookahead);
         double dx=target.x()-x,dy=target.y()-y,targetDistance=Math.hypot(dx,dy);
         double error=ProbeRoute.wrap(Math.atan2(dx,dy)-Math.atan2(forwardX,forwardY));
         if(Math.abs(error)>Math.toRadians(110))return stop("heading_diverged",false,projection.distance());
         double curvature=2*Math.sin(error)/Math.max(1,targetDistance);
-        double desired=Math.max(-0.65,Math.min(0.65,Math.atan(wheelbase*curvature)));
-        double change=1.2*Math.min(dt,0.25);steering+=Math.max(-change,Math.min(change,desired-steering));
+        double angleLimit=route.trajectory==null?.65:limits.steeringAngle();
+        double rate=route.trajectory==null?1.2:limits.steeringRate();
+        double desired=Math.max(-angleLimit,Math.min(angleLimit,Math.atan(wheelbase*curvature)));
+        double change=rate*Math.min(dt,0.25);steering+=Math.max(-change,Math.min(change,desired-steering));
         double turnSpeed=route.laneMode?5:2.2;
-        double targetSpeed=Math.min(speedLimit,Math.abs(curvature)>0.10?turnSpeed:speedLimit);
+        // Curved trajectories already have a continuous curvature/braking
+        // envelope. The old polyline threshold would insert a second, abrupt
+        // speed step as steering passed 0.10, even on a constant-radius bend.
+        double targetSpeed=route.trajectory==null?Math.min(speedLimit,Math.abs(curvature)>0.10?turnSpeed:speedLimit):speedLimit;
         // Reduce speed before sharp course changes enter the immediate lookahead.
         for(int i=1;route.trajectory==null&&i<route.points.size()-1;i++)if(route.cumulative[i]>progress&&route.cumulative[i]-progress<(route.laneMode?22:5)){
             var a=route.points.get(i-1);var b=route.points.get(i);var c=route.points.get(i+1);
@@ -79,23 +87,35 @@ final class ProbeDriver {
             if(turn>Math.toRadians(10))targetSpeed=Math.min(targetSpeed,route.laneMode?Math.sqrt(Math.pow(turnSpeed/3.6,2)+2*.6*Math.max(0,route.cumulative[i]-progress-3))*3.6:2.2);
         }
         if(route.trajectory!=null){
-            targetSpeed=Math.min(targetSpeed,route.trajectory.speedLimit(progress,previewDistance,speedLimit));
-            // One-second bicycle rollout of the current command. It predicts only
-            // this car's motion, never assumes another actor will yield.
-            double px=x,py=y,pyaw=yaw;
+            targetSpeed=Math.min(targetSpeed,Math.min(limits.maxSpeed(),deceleration*10*3.6));
+            targetSpeed=Math.min(targetSpeed,route.trajectory.speedLimit(progress,previewDistance,targetSpeed,limits.lateralAcceleration(),deceleration));
+            // Preview the steering updates across segment joins, rather than
+            // extrapolating one fixed steering angle through the entire turn.
+            double px=x,py=y,pyaw=yaw,ps=progress,psteer=steering;
             for(int i=0;i<10;i++){
-                double v=speed/3.6;pyaw+=v/wheelbase*Math.tan(steering)*.1;
+                double v=speed/3.6;
+                var ahead=route.trajectory.project(px,py,ps-1,ps+v*.1+2);ps=Math.max(ps,ahead.progress());
+                var aim=route.at(ps+lookahead);
+                double e=ProbeRoute.wrap(Math.atan2(aim.x()-px,aim.y()-py)-pyaw);
+                double wanted=Math.max(-angleLimit,Math.min(angleLimit,Math.atan(wheelbase*2*Math.sin(e)/Math.max(1,Math.hypot(aim.x()-px,aim.y()-py)))));
+                psteer+=Math.max(-rate*.1,Math.min(rate*.1,wanted-psteer));
+                pyaw+=v/wheelbase*Math.tan(psteer)*.1;
                 px+=v*Math.sin(pyaw)*.1;py+=v*Math.cos(pyaw)*.1;
             }
             var prediction=route.trajectory.project(px,py,progress-1,progress+speed/3.6+3);
             predictedDeviation=prediction.deviation();predictedHeadingError=ProbeRoute.wrap(prediction.sample().heading()-pyaw);
-            if(Math.abs(predictedDeviation)>.5)targetSpeed=Math.min(targetSpeed,2.5);
+            if(Math.abs(predictedDeviation)>.5)targetSpeed=Math.min(targetSpeed,speed*Math.sqrt(.5/Math.abs(predictedDeviation)));
         }
-        targetSpeed=Math.min(targetSpeed,Math.max(0.65,Math.sqrt(2*0.45*Math.max(0,endDistance-0.5))*3.6));
-        if(Double.isFinite(stopDistance))targetSpeed=Math.min(targetSpeed,Math.max(.4,Math.sqrt(2*.6*Math.max(0,stopDistance-.25))*3.6));
+        targetSpeed=Math.min(targetSpeed,Math.max(0.65,Math.sqrt(2*(route.trajectory==null?.45:deceleration)*Math.max(0,endDistance-0.5))*3.6));
+        if(Double.isFinite(stopDistance))targetSpeed=Math.min(targetSpeed,Math.max(.4,Math.sqrt(2*deceleration*Math.max(0,stopDistance-.25))*3.6));
         if(Math.abs(error)>Math.toRadians(60))targetSpeed=Math.min(targetSpeed,1.2);
-        double force=Math.max(0,Math.min(650,(targetSpeed-speed)*550));
-        double brake=speed>targetSpeed+0.25?Math.min(80,15+(speed-targetSpeed)*15):0;
+        double force=Math.max(0,Math.min(route.trajectory==null?650:limits.driveForce(),(targetSpeed-speed)*(route.trajectory==null?550:limits.mass()*.55)));
+        double excess=Math.max(0,speed-targetSpeed);
+        // No minimum service-brake impulse: small corrections must not apply
+        // the large force used by a stop/hazard. Retain stronger braking for
+        // sustained tracking error; emergency stops still use full brake.
+        double brake=route.trajectory==null?(speed>targetSpeed+0.25?Math.min(80,15+excess*15):0):
+            Math.min(80,6*excess+40*Math.pow(Math.max(0,excess-.3),2));
         if(brake>0)force=0;
         return new Output(force,brake,steering,targetSpeed,progress,projection.distance(),remaining,error,target.x(),target.y(),false,"");
     }

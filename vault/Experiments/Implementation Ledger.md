@@ -1,7 +1,7 @@
 ---
 type: experiment-ledger
 status: first-week-implementation-in-progress
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # Implementation ledger
@@ -9,6 +9,101 @@ updated: 2026-09-26
 This ledger separates requested design from measured implementation evidence. The deployed
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
+
+## Observed smooth turn and vehicle-capability iteration — 2026-09-27
+
+The first observed Bézier/stop run reached its goal but **failed visible smoothness**.
+The user heard/saw braking during the turn. The trace showed a second, abrupt 5 km/h
+curvature threshold and two full-brake commands caused only by cooperative scan timeouts;
+speed fell to 1.31 km/h. Evidence: `artifacts/scenario-agent/client-suite-20260926_215614/`.
+
+Removed the duplicate speed threshold, made service-brake corrections continuous, and
+replaced live scan timeout braking with hard operation limits plus duration telemetry.
+An empty-server run then held 5.870–5.904 km/h through the measured bend with zero braking.
+Evidence: `artifacts/scenario-agent/continuous-turn-2e28eb76-82f4-483e-bd9e-b2241346006a/`.
+The next one-client run held 5.869–5.902 km/h with zero bend braking; the user explicitly
+confirmed an excellent, smooth turn, but rejected the low speed. It completed the configured
+stop and used the correct exit lane, then stopped for `actor_in_vehicle_path` near the goal;
+do not report a clean `route_arrived` result for this run. No new client errors were recorded.
+Warm hook p95 <=0.2 ms, p99 <=0.3 ms, max 0.415 ms; maximum safety scan 0.358 ms.
+Evidence: `artifacts/scenario-agent/client-continuous-turn-20260926_221020/`, agent SHA256
+`3e155fed42dc09c6e04baab0e8e5313d3f20b3ed38dfb5152cf87e1bff77b783`.
+
+The parked-car trial exposed a real adapter bug: `getOwnVehiclePhysics` throws
+`Vehicle not found` for a normal parked car without a server native body. The probe failed
+before moving and removed its own body. This was **not successful blocker braking**.
+Evidence: `artifacts/scenario-agent/client-parked-obstacle-20260926_221214/`.
+The parked fixture was spawned only in this disposable world, at approximately
+(10803.0, 9861.8984); its SQLite persistent ID is 19, absent from the before-test snapshot.
+Replacing the lookup with bounded native snapshot enumeration distinguishes body absence
+from invalid/incomplete observations. Unknown moving or client-owned cars still stop the probe.
+
+The user requested faster driving with a roughly 50 km/h street limit, while explicitly
+respecting each car's engine power, rates and properties. The revised adapter uses the
+installed drivetrain/gear/RPM and service-brake routines, caps requests by their outputs,
+applies loaded mass to Bullet and respects script steering limits. Curvature and braking
+preferences now use observed vehicle capabilities; details and limits are in
+[[Design/Navigation]]. The test course remains too short to prove sustained 50 km/h travel.
+The earlier smoothness pass applies only to the 6 km/h bend; faster results require separate
+evidence. Raw source reconstruction remains private under
+`artifacts/decompiled/vehicle-capabilities/`; no engine implementation is redistributed.
+
+Automated checks: 163 project tests and 116 Observer tests/frontend build passed before
+the capability changes. Native C++ core and 13 actual socket scenarios also passed, including
+32-resident/30-batch round trips at p50 14.741 ms, p95 18.688 ms and max 20.723 ms. These
+detached worker tests do not connect its plans to the current test car. The capability
+iteration passes all **164 project tests** (including 31 targeted Python checks), Java compatibility/protocol/premain/native-asset
+fixtures and ten independent bicycle simulations, including a weaker, heavier vehicle.
+Private logs: `artifacts/all-test-project-observer.log`, `artifacts/all-test-native-worker.log`,
+`artifacts/vehicle-capabilities-tests.log`. Native/client capability calibration is separate.
+
+The first native-snapshot calibration rejected the JNI header's fractional integer encoding
+(observed ID 253.1 / wheel count 4.1). The parser now follows the pinned engine's truncating
+read, with finite/range/duplicate/completeness checks; a regression fixture includes this
+encoding. The subsequent native parked-car test successfully detected `predicted_vehicle_contact`
+and stopped at (10785.65625, 9861.5), about 17.35 tiles from the stationary fixture centre.
+Peak speed 11.733 km/h, cleanup native body count zero; no client was connected. Warm hook
+p95 <=0.5 ms, p99 <=2.0 ms, max 1.972 ms. Evidence:
+`artifacts/scenario-agent/native-parked-fixed-20260926_222813/`.
+This proves conservative detection/braking for one static obstacle, not contact/damage or
+moving-traffic avoidance. A one-use native Lua removal attempt did not remove the fixture;
+the original test Lua file was restored. After graceful shutdown, the recorded fixture row
+alone was removed from a backed-up disposable vehicles database; all other blobs were
+unchanged and SQLite integrity passed. No running save or player vehicle was edited.
+
+The clear-road native capability run then completed with agent SHA256
+`6b2e7f6664f80d6b48bb89410ab6b9d2b66b2b7500cae53bd455907a444fee5b`, epoch
+`9b12adff-2a7d-4dcc-b22c-978f60f21dfb`. The street ceiling was 50 km/h; actual peak was
+22.873 km/h on this short stop-sign course. Six 250 ms samples in progress 33–39 measured
+11.950–11.996 km/h and **zero applied braking** through the bend. The repaired SmallCar's
+loaded mass was 934 kg, top-speed property 70 km/h and steering slew limit 0.9 rad/s;
+its observed tyre grip reduced the lateral preference to 1.875 m/s². Sampled engine/brake
+forces never exceeded the installed drivetrain/service-brake outputs. These are sampled
+limits, not an exhaustive proof for all vehicle states. One configured stop completed,
+the car finished in the correct lane at (10820.5, 9839.1171875), and native bodies returned
+to zero. Warm hook p95 <=0.4 ms, p99 <=1.9 ms, max 2.033 ms; cold creation 22.547 ms.
+Evidence: `artifacts/scenario-agent/native-faster-turn-20260926_223200/`.
+The subsequent one-client run completed and the user confirmed **“Speed and turn feel good.”**
+Peak speed was 24.105 km/h; six measured bend samples held 12.910–12.945 km/h with no applied
+braking. It served the stop, used the correct lane, cleaned up its native body and generated
+no new client errors. Sampled engine/brake output stayed within native available force.
+Warm hook p95 <=0.3 ms, p99 <=0.4 ms, max 0.733 ms. Evidence:
+`artifacts/scenario-agent/client-faster-turn-20260926_223439/`, same agent/epoch. Sustained
+50 km/h travel and two-client agreement remain untested.
+
+The repeated client-present obstacle trial detected the parked car and stopped after
+2.66 tiles, roughly 17 tiles short of it, with zero new client errors. The user saw the
+moving car briefly accelerate and disappear, rather than clearly observing it stationary.
+This is **inconclusive visual braking evidence**, despite the recorded safety stop.
+Evidence: `artifacts/scenario-agent/client-parked-fixed-20260926_223605/`. Its exact parked
+fixture was removed through the stock game method and confirmed absent from the database;
+the one-use original Lua file change was restored. To make the next visual test useful,
+road probes now remain in `stopped_visible` for 20 seconds instead of three before cleanup.
+The legacy straight probe retains its shorter timeout. The next obstacle position will
+allow a longer visible approach; this harness change does not change the accepted controller.
+
+No physical crash director, incident sound adapter or durable aftermath materializer was
+enabled by these tests. Two-client consistency and integrated resident commutes remain pending.
 
 ## Bézier lanes, stop handling and traffic-incident foundations — 2026-09-26
 

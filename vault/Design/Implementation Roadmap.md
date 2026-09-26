@@ -1,7 +1,7 @@
 ---
 type: design
 status: accepted-implementation-in-progress
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # Implementation roadmap
@@ -26,11 +26,15 @@ original seated model while onboard, ordinary Lua clients and server-only JVM in
    when approaching a car would exceed the existing six-action limit.
    The latest one-client turn exposed missing lane discipline and stop handling. Validate
    a right-hand lane course, stop-line dwell and faster bounded cruise before adding traffic.
-   The corrected Bézier course now passes empty-server native runs at 15 km/h with a
-   two-second stop and the correct exit lane; the corresponding client test is pending.
+   The corrected Bézier course passed a one-client smooth-turn check with a two-second
+   stop and correct exit lane. The user then requested a roughly 50 km/h street limit and
+   vehicle-specific engine, brake and steering constraints. Validate the faster capability-
+   aware controls and sustained cruise on a sufficiently long road; the short course cannot
+   establish 50 km/h cruise. One client now accepts the faster turn (24.1 km/h actual peak,
+   about 13 km/h through the bend). Record parked/moving blocker results separately.
 3. Extract managed native vehicle control from the disposable probe. Own only registered
    scenario bodies and reference-counted terrain; retain parked cars after completion.
-   Use bounded loading ahead, local emergency braking and existing low-speed limits.
+   Use bounded loading ahead, local emergency braking and road/vehicle speed envelopes.
 4. Detailed seated-driver presentation is now low priority by user choice after the
    first visible turn. Preserve the original model as an optional representation. Add explicit
    boarding/onboard/exiting/unresolved states, semantic driver-seat reservations, snapshot

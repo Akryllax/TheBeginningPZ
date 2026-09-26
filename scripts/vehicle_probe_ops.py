@@ -211,7 +211,8 @@ def route_points(payload):
 def traffic_settings(payload, points):
     lane=payload.get('lane_mode',False)
     speed=payload.get('speed_kmh',4)
-    if type(lane) is not bool or type(speed) not in (int,float) or not math.isfinite(speed) or not 1<=speed<=(15 if lane else 5):
+    ceiling=50 if lane and payload.get('beziers') else 15 if lane else 5
+    if type(lane) is not bool or type(speed) not in (int,float) or not math.isfinite(speed) or not 1<=speed<=ceiling:
         raise ValueError('Invalid lane mode or bounded speed')
     rows=payload.get('stops',[])
     if not isinstance(rows,list) or len(rows)>4:raise ValueError('At most four stops')

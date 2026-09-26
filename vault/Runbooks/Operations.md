@@ -1,7 +1,7 @@
 ---
 type: runbook
 status: active
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # Operations
@@ -84,7 +84,7 @@ and the separate route-artifact preparation command.
 
 ## Disposable server vehicle probe
 
-The probe has its own fresh world under `artifacts/vehicle-probe/`, a private copy of the built agent JAR, read-only core game files and no loaded game mods (`Mods` and `WorkshopItems` are empty). It uses an unoccupied vehicle, no NPCs, no fake players and no planner. Clients use the ordinary game. The probe deliberately does not pause when empty; whether native physics advances without a real player is a test result to record.
+The probe has its own fresh world under `artifacts/vehicle-probe/`, a private copy of the built agent JAR and read-only core game files. The default has no loaded game mods; `vehicle-probe-create driver-model` adds only the original `LofersDriverProbe` assets and disposable-server visibility setup. It uses an unoccupied vehicle, no NPCs, no fake players and no planner. Clients use the ordinary game, plus that asset mod when selected. The probe deliberately does not pause when empty; whether native physics advances without a real player is a test result to record.
 
 Both disposable harnesses use `.132` UDP **16281/16282** and loopback TCP **27035**. Stop the existing scenario test with `scenario-test-stop` before starting the probe; use `vehicle-probe-stop` before starting the other harness. They never share the normal world's save or Observer state.
 
@@ -98,6 +98,13 @@ python3 scripts/build_scenario_agent.py --test
 ```
 
 Once status reports the current server epoch, `./dayone vehicle-probe-control start` requests the driving experiment; `./dayone vehicle-probe-control stop` requests braking/stopping that experiment. These controls do not start or shut down the server container. Use `./dayone vehicle-probe-stop` for graceful server shutdown. Control requests are bound to the current server epoch. A missing status file means initialization has not yet produced evidence.
+
+Road probes hold the car stationary for 20 seconds before automatic removal, so observers
+can distinguish braking from cleanup. This is disposable test behaviour, not the planned
+persistent traffic lifecycle. A generic `failed` result with `predicted_vehicle_contact`
+records a safety-aborted route; assess the accompanying stop/clearance trace and actual
+client report rather than treating the status label alone as a failed detector or a passed
+visual test. Remove only exact, recorded parked fixtures after each obstacle trial.
 
 Route configuration requires the probe server to be stopped. It validates bounded numeric
 waypoints, keeps the previous private configuration and source artifact, and shares an

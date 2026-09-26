@@ -1,7 +1,7 @@
 ---
 type: design
 status: implemented-static-preprocessing
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # Precomputed navigation
@@ -146,9 +146,23 @@ The 57.426-tile trajectory has a straight cubic, a radius-six quarter-turn appro
 and a straight cubic. Joins require matching position/tangent; no C2 continuity claim is
 made. Analytic derivatives provide heading/curvature, with a bounded arc-length table,
 progress-window projection and signed lateral error. Steering looks 2.3–4 tiles ahead;
-speed regulation previews 8–22 tiles across segment joins. A one-second bicycle rollout
-estimates deviation/heading under the current command. Cruise is capped at 15 km/h,
-with curvature and stopping envelopes slowing before bends and stops.
+speed regulation previews 10–64 tiles across segment joins. A one-second bicycle rollout
+includes future steering adjustments across joins and estimates deviation/heading. The
+reviewed curved course now specifies a **50 km/h street limit**, further reduced by vehicle
+capabilities, curvature and stopping envelopes. Its short approach and required stops cannot
+demonstrate sustained 50 km/h travel. The original polyline tests retain their 5/15 km/h bounds.
+
+The latest native adapter calls the installed, hash-guarded drivetrain and braking methods;
+it does not reproduce their engine/gear/RPM implementation or replace game classes. Requested
+force is capped by the stock drivetrain result; brake demand is a fraction of the car's
+condition-dependent service brake strength. The loaded mass is passed to Bullet, and steering
+uses the script's speed-dependent angle clamp and a slew limit derived from its increment.
+Missing/nonfunctional tyres or invalid capabilities reject the probe. Planning uses current
+power, mass, top speed and tyre friction with conservative braking/lateral estimates. These
+estimates are driving preferences, not verified SI conversions of Bullet brake/friction units.
+The current native proof remains specific to the reviewed, repaired SmallCar, not arbitrary
+modded vehicles, worn components, wet surfaces or towing. No pose or velocity is forced to
+meet the street limit; native physics determines the resulting motion.
 
 The implementation uses original Java/Python mathematics, with no ROS dependency or
 copied controller code. Velocity-scaled lookahead, curvature regulation and forward
@@ -158,18 +172,24 @@ collision projection are established approaches described in the
 The pinned SmallCar footprint uses an oriented rectangle with sampling margin, rather
 than the graph's larger direction-independent disk. Its 192 swept tiles pass both source
 and loaded-world checks. Current body placement and the nearby curved stopping corridor
-are rechecked on the server. A cooperative 1 ms scan deadline triggers immediate braking
-and a fresh retry; two seconds of continuous scan starvation fails the probe. No incomplete
-scan authorizes acceleration. Single native calls, JVM scheduling and GC can exceed that
-cooperative deadline; report measured hook latency separately.
+are rechecked on the server. Live checks complete synchronously within hard limits of 256
+distinct road tiles, 64 nearby vehicles and 64 sampled native bodies. Incomplete or invalid
+checks still stop the car. Scan duration and scans exceeding 1 ms are measured separately;
+merely crossing a wall-clock millisecond no longer injects a full-brake command. Staged
+cold corridor validation retains its cooperative deadline. Native calls/JVM pauses can
+still exceed a duration target; report measured hook latency separately.
 
 Moving-vehicle prediction performs bounded continuous swept-circle tests between samples
-using fresh server-native velocity; unknown/client-owned nearby vehicles stop the probe
-because packet freshness is not established. Circles are conservative and are not a
+using a complete, bounded native velocity snapshot; a parked car without a native body is
+handled as static only when server-owned, unoccupied and reporting zero motion. Missing
+snapshot entries and failed/incomplete snapshots are distinct: the latter stop the probe.
+Unknown/client-owned nearby vehicles also stop it because packet freshness is not established.
+The forecast is capped at 12 seconds and 65 poses. Circles are conservative and are not a
 production adjacent-lane passing policy. Current corridor checks also reject actors,
 construction and unloaded terrain. Moving pedestrian forecasts, full streaming-range
-coverage, waiting/replanning and native blocker trials remain pending. Forecasting contact
-does not simulate impact, prove damage or authorize deliberate contact.
+coverage and waiting/replanning remain pending. One native parked-car trial now demonstrates
+conservative braking before contact; moving-blocker trials remain pending. Forecasting
+contact does not simulate impact, prove damage or authorize deliberate contact.
 
 Reproduce the isolated course after building the agent and stopping the probe:
 

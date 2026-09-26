@@ -39,9 +39,15 @@ the isolated straight-line physics probe passed and one ordinary client reported
 movement. A separate empty-server asphalt turn passed, followed by a one-client turn with clear
 visibility but incorrect lane choice, no stop-sign handling and deliberately low speed.
 Detailed seated-driver visibility is low priority by user choice. A corrected Bézier lane
-course, stop-sign dwell and 15 km/h cruise have passed empty-server native runs. Their
-client appearance, NPC boarding continuity and two-client consistency remain unvalidated;
-see the implementation ledger for the exact evidence and limitations.
+course and stop-sign dwell have passed empty-server native runs; one client confirmed a
+smooth turn after fixing braking pulses, but requested faster driving. The current iteration
+uses a 50 km/h road ceiling constrained by stock drivetrain/brakes, loaded mass and script
+steering properties. That ceiling is not a measured cruising speed on the short test course.
+One client subsequently accepted the faster run (24.1 km/h peak, about 13 km/h through the
+bend). Native and client-present parked-car traces show a conservative safety stop, but its
+stationary appearance was inconclusive with the short cleanup delay; the harness now holds
+road-test cars for 20 seconds. NPC boarding continuity and two-client consistency remain
+unvalidated; see the implementation ledger for exact results and limitations.
 
 See `SKILLS.md` for task-specific workflows. Existing user authorization applies to
 routine implementation and validation; do not add repeated approval prompts.
