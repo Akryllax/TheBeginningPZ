@@ -3,6 +3,7 @@ local C=require "LofersScenario/Config"
 local M=require "LofersScenario/Model"
 local W=require "LofersScenario/World"
 local N=require "LofersScenario/Native"
+local Road=require "LofersScenario/RoadState"
 local hasIndex,mapIndex=pcall(require,"LofersScenario/MapIndex")
 local R={players={},clients={},lastTick=0,lastDiscovery=0,lastPublish=0,lastReplica=0,lastProbe=0,lastRegional=0,
     lastTelemetry=0,timings={},leaseChanges=0,planRejections=0,dirty=false,
@@ -35,8 +36,10 @@ local function initialize()
     if not C.enabled() then return end
     R.root=ModData.getOrCreate("LofersScenario")
     if not R.root.state then R.root.state=M.new(getServerName(),getRandomUUID(),worldHour()) end
-    if R.root.state.schema~=C.schema then R.lastError="unsupported_state_schema";return end
+    local migrated,why=M.migrate(R.root.state)
+    if not migrated then R.lastError=why;return end
     R.state=R.root.state;R.epoch=R.state.world_id..":"..getRandomUUID();R.state.last_hour=worldHour()
+    Road.bind(R.state,hasIndex and mapIndex.navigation_id or "")
     R.workerMinimum=R.state.revision+1;R.workerAt=nil;R.workerReady=false
     -- Restore invalidates pending transport replies and every previous executor lease.
     R.root.bridgeIn={health="waiting",guard_ready=false};R.root.bridgeOut=nil
@@ -142,8 +145,10 @@ local function publish()
     s.revision=s.revision+1
     R.root.bridgeOut={world=s.world,server_epoch=R.epoch,revision=s.revision,
         world_hour=math.floor(worldHour()/24)*24+getGameTime():getTimeOfDay(),
-        scenario_hour=s.elapsed_hours,phase=s.phase,paused=s.status=="paused" or not R.workerReady,seed=s.seed,
-        residents=rs,places=ps,road_nodes=ns,road_edges=hasIndex and {} or s.edges,online_players=#R.players}
+        scenario_hour=s.elapsed_hours,phase=s.phase,paused=s.status=="paused" or not R.workerReady,seed=s.schedule_seed,
+        residents=rs,places=ps,road_nodes=ns,road_edges=hasIndex and {} or s.edges,online_players=#R.players,
+        navigation_id=s.navigation_id or "",
+        road_closures=Road.snapshot(s,math.floor(worldHour()/24)*24+getGameTime():getTimeOfDay())}
 end
 local function plans()
     if not R.workerReady then return end

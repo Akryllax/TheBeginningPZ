@@ -28,6 +28,7 @@ void stop_signal(int) { stopping = 1; }
 struct Result { pb::Plan plan; bool deferred{}; };
 struct Job {
     std::shared_ptr<const pb::ObservationBatch> batch;
+    std::shared_ptr<const RoadGraph> graph;
     size_t resident{};
     std::atomic_bool cancelled{false};
     std::promise<Result> promise;
@@ -40,7 +41,9 @@ class Pool {
     std::vector<std::thread> workers_;
     bool stopping_{};
     size_t admitted_{};
+    RoadGraphCache roads_;
 public:
+    std::shared_ptr<const RoadGraph> roads(const pb::ObservationBatch& batch) { return roads_.get(batch); }
     Pool(unsigned count, const std::filesystem::path& directory) {
         // Validate all worker states before starting any thread. Bad rules fail
         // startup cleanly instead of leaving a partially initialized pool.
@@ -56,7 +59,7 @@ public:
                     job = queue_.front(); queue_.pop_front();
                 }
                 Result result;
-                if (!job->cancelled) result.plan = planner->plan(*job->batch, job->batch->residents(job->resident));
+                if (!job->cancelled) result.plan = planner->plan(*job->batch, job->batch->residents(job->resident),job->graph);
                 result.deferred = job->cancelled;
                 {
                     std::lock_guard lock(mutex_);
@@ -85,8 +88,10 @@ public:
         for (auto& job : queue_) { job->promise.set_value({{}, true}); --admitted_; }
         queue_.clear(); latest_.clear();
     }
-    std::future<Result> submit(std::shared_ptr<const pb::ObservationBatch> batch, size_t resident) {
+    std::future<Result> submit(std::shared_ptr<const pb::ObservationBatch> batch, size_t resident,
+                               std::shared_ptr<const RoadGraph> graph) {
         auto job = std::make_shared<Job>(); job->batch = std::move(batch); job->resident = resident;
+        job->graph=std::move(graph);
         auto future = job->promise.get_future();
         std::lock_guard lock(mutex_);
         const auto& id = job->batch->residents(resident).id();
@@ -165,11 +170,15 @@ bool process(Session& s, const pb::Envelope& input, const std::string& world, Po
     s.last_revision = input.observations().revision();
     auto batch = std::make_shared<pb::ObservationBatch>(input.observations());
     if (batch->road_nodes().empty()) {
+        if(!batch->navigation_id().empty()&&batch->navigation_id()!=index.navigation_id())
+            return status(s,world,input.request_id(),"rejected","navigation_identity_mismatch",pool,workers);
         *batch->mutable_road_nodes() = index.road_nodes(); *batch->mutable_road_edges() = index.road_edges();
+        batch->set_navigation_id(index.navigation_id());
     }
     if (batch->places().empty()) *batch->mutable_places() = index.places();
     Pending pending; pending.request = input.request_id(); pending.revision = batch->revision(); pending.start = Clock::now();
-    for (int i = 0; i < batch->residents_size(); ++i) pending.futures.push_back(pool.submit(batch, i));
+    auto graph=pool.roads(*batch);
+    for (int i = 0; i < batch->residents_size(); ++i) pending.futures.push_back(pool.submit(batch, i,graph));
     s.pending.push_back(std::move(pending));
     return true;
 }

@@ -16,6 +16,12 @@ final class ProbeFixture {
         ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"AKR_DayOne",true),"Probe accepted playable world");
         ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",false),"Probe accepted client");
         ProbeControl.Config config=ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true);
+        ScenarioFixture.check(!config.driverModel(),"Default car unexpectedly has driver model");
+        p.setProperty("vehicle_probe.script","Base.LofersSmallCar");
+        ScenarioFixture.check(ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true).driverModel(),"Original driver variant rejected");
+        p.setProperty("vehicle_probe.script","Base.UnreviewedCar");
+        ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true),"Unreviewed vehicle accepted");
+        p.setProperty("vehicle_probe.script","Base.SmallCar");
         ScenarioFixture.check(config.yaw()==90&&config.speed()<=5&&config.distance()<=12,"Unsafe defaults");
         p.setProperty("vehicle_probe.speed_kmh","80");
         ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true),"Unbounded speed accepted");

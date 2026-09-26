@@ -174,6 +174,35 @@ def run(binary):
                     timings.append((time.perf_counter()-sent)*1000)
                 assert max(timings) < 1000, timings
             time.sleep(0.03)
+            with connect(path, "navigation-epoch") as sock:
+                trip = observation(epoch="navigation-epoch")
+                b = trip.observations
+                b.navigation_id = "fixture-roads"
+                resident = b.residents[0]
+                resident.has_vehicle = True
+                resident.vehicle_id = "car-1"
+                car = resident.vehicle_observation
+                car.id, car.profile, car.available = "car-1", "smallcar", True
+                car.position.CopyFrom(resident.position)
+                car.entry_point.CopyFrom(resident.position)
+                for i, x in enumerate((100, 200, 300, 400)):
+                    node = b.road_nodes.add(id=i+1)
+                    node.position.x, node.position.y = x, 100
+                    if i:
+                        b.road_edges.add(**{"from": i, "to": i+1, "cost": 100})
+                sock.sendall(packed(trip))
+                answer = receive(sock)
+                drives = [a for a in answer.plans.plans[0].actions if a.kind == pb.DRIVE]
+                assert len(drives) == 1 and drives[0].navigation_id == "fixture-roads"
+                assert list(drives[0].road_node_ids) == [1, 2, 3, 4]
+                b.road_closures.add(**{"from": 2, "to": 3, "expires_world_hour": 10.25, "reason": "obstacle"})
+                trip.request_id, b.revision = 3, 2
+                sock.sendall(packed(trip))
+                assert all(a.kind != pb.DRIVE for a in receive(sock).plans.plans[0].actions)
+                trip.request_id, b.revision, b.world_hour = 4, 3, 10.3
+                sock.sendall(packed(trip))
+                assert any(a.kind == pb.DRIVE for a in receive(sock).plans.plans[0].actions)
+            time.sleep(0.03)
             for bad_prefix in (0, MAX_FRAME+1, 0xffffffff):
                 with connect(path) as sock:
                     sock.sendall(struct.pack("!I", bad_prefix))

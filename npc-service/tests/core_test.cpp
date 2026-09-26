@@ -22,6 +22,11 @@ npc::pb::ObservationBatch fixture() {
     }
     return b;
 }
+void car(npc::pb::ObservationBatch& b) {
+    auto* r=b.mutable_residents(0);r->set_has_vehicle(true);r->set_vehicle_id("car-1");
+    auto* v=r->mutable_vehicle_observation();v->set_id("car-1");v->set_profile("smallcar");v->set_available(true);
+    *v->mutable_position()=at(100);*v->mutable_entry_point()=at(100);
+}
 void has(const npc::pb::Plan& plan, npc::pb::ActionKind kind) {
     for (const auto& action : plan.actions()) if (action.kind() == kind) return;
     throw std::runtime_error("missing action " + npc::pb::ActionKind_Name(kind) + " in " + plan.DebugString());
@@ -44,7 +49,7 @@ int main(int argc, char** argv) {
         b = fixture(); b.set_phase("survival"); b.mutable_residents(0)->set_has_food(false); b.mutable_residents(0)->set_hunger(0.8);
         auto* place=b.add_places();place->set_id("shop");place->set_kind("shop");*place->mutable_position()=b.residents(0).shop();place->set_available(false);
         plan=planner.plan(b,b.residents(0));has(plan,npc::pb::SCAVENGE);has(plan,npc::pb::EAT);
-        b=fixture();b.mutable_residents(0)->set_has_vehicle(true);b.mutable_residents(0)->set_vehicle_id("car-1");
+        b=fixture();car(b);
         plan=planner.plan(b,b.residents(0));has(plan,npc::pb::ENTER_VEHICLE);has(plan,npc::pb::DRIVE);has(plan,npc::pb::PARK);has(plan,npc::pb::EXIT_VEHICLE);has(plan,npc::pb::WALK);has(plan,npc::pb::WORK);
         require(plan.actions_size()==6,"drive, park, exit, walk, interact fits six actions");
         for (const auto& a:plan.actions()) if(a.kind()==npc::pb::DRIVE)require(a.route_size()==4,"A* route follows graph");
@@ -56,7 +61,7 @@ int main(int argc, char** argv) {
         b.mutable_residents(0)->set_in_vehicle(true);*b.mutable_residents(0)->mutable_position()=at(400);
         plan=planner.plan(b,b.residents(0));
         require(plan.actions_size()==4&&plan.actions(0).kind()==npc::pb::PARK&&plan.actions(1).kind()==npc::pb::EXIT_VEHICLE&&plan.actions(2).kind()==npc::pb::WALK&&plan.actions(3).kind()==npc::pb::WORK,"failed drive recovery parks and exits before walking");
-        b=fixture();b.mutable_residents(0)->set_has_vehicle(true);b.mutable_residents(0)->set_vehicle_id("car-1");
+        b=fixture();car(b);
         b.mutable_road_edges(1)->set_blocked(true); plan=planner.plan(b,b.residents(0));has(plan,npc::pb::WALK);
         require(plan.reason().find("road_disconnected")!=std::string::npos,"blocked road reason");
         b=fixture();auto route=road_route(b,b.residents(0).position(),b.residents(0).work());require(route.error.empty()&&route.points.size()==4,"directed road path");
@@ -70,6 +75,25 @@ int main(int argc, char** argv) {
         route=road_route(b,at(100,100),at(140,120));
         require(route.error.empty()&&route.points.size()==4&&route.cost==60,"bent road retains all graph segments");
         require(route.points[1].x()==120&&route.points[1].y()==100&&route.points[2].x()==120&&route.points[2].y()==120,"A* must not shortcut intermediate road bends");
+        b=fixture();b.set_navigation_id("test-graph");RoadGraphCache cache;
+        auto shared=cache.get(b);require(cache.get(b)==shared&&cache.builds()==1,"unchanged graph reused");
+        auto* closure=b.add_road_closures();closure->set_from(1);closure->set_to(2);closure->set_expires_world_hour(11);
+        require(cache.get(b)==shared&&cache.builds()==1,"closures do not rebuild static adjacency");
+        require(shared->route(at(100),at(400),b).error=="road_disconnected","active closure blocks edge");
+        b.set_world_hour(12);require(shared->route(at(100),at(400),b).error.empty(),"expired closure releases route");
+        b.set_navigation_id("other-map");require(shared->route(at(100),at(400),b).error=="navigation_identity_mismatch","wrong graph rejected");
+        b.set_navigation_id("test-graph");b.mutable_road_edges(0)->set_cost(150);
+        require(cache.get(b)!=shared&&cache.builds()==2,"changed graph bytes invalidate despite same declared id");
+        b=fixture();car(b);*b.mutable_residents(0)->mutable_position()=at(80);
+        plan=planner.plan(b,b.residents(0));require(plan.goal()=="approach_vehicle"&&plan.actions_size()==1&&plan.actions(0).target().x()==100,"walk to actual car before commute within six action budget");
+        b.mutable_residents(0)->mutable_vehicle_observation()->set_available(false);
+        plan=planner.plan(b,b.residents(0));has(plan,npc::pb::WALK);
+        for(const auto& a:plan.actions())require(a.kind()!=npc::pb::DRIVE,"unavailable car cannot drive");
+        b.mutable_residents(0)->set_in_vehicle(true);
+        plan=planner.plan(b,b.residents(0));has(plan,npc::pb::PARK);has(plan,npc::pb::EXIT_VEHICLE);
+        for(const auto& a:plan.actions())require(a.kind()!=npc::pb::DRIVE,"unavailable occupied car must recover without driving");
+        b.mutable_residents(0)->mutable_vehicle_observation()->set_speed_kmh(std::numeric_limits<double>::quiet_NaN());
+        require(!validate(b,reason)&&reason=="invalid_vehicle_observation","invalid car pose rejected");
         b=fixture();b.mutable_residents(0)->mutable_position()->set_x(std::numeric_limits<double>::quiet_NaN());require(!validate(b,reason),"NaN rejected");
         b=fixture();*b.add_residents()=b.residents(0);require(!validate(b,reason),"duplicate residents rejected");
         b=fixture(); const auto expected=normalized(planner.plan(b,b.residents(0)));

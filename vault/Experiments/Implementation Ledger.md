@@ -10,6 +10,46 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Commute foundations and original driver — 2026-09-26
+
+- Added [[Design/Implementation Roadmap]] as the accepted continuation. Persistent
+  schedule seed now has an explicit schema-1 to schema-2 migration; event RNG advances
+  cannot shift residents' routines. Population accounting counts walking car owners as
+  pedestrians and excludes parked cars from the moving-car budget.
+- Both native planning threads share immutable road adjacency and spatial lookup. Graph
+  content changes invalidate the cache even when a caller repeats its claimed identity.
+  Expiring directed closures remain separate from baked terrain. Added Protobuf navigation
+  identity, route node IDs, observed vehicle pose/entry and occupancy revision fields.
+  Absent nested Protobuf messages now preserve absence through the Java codec.
+- Planning uses the observed car position. A separate approach plan walks to its entry
+  before the six-action commute. Unavailable cars cannot start driving; occupied cars can
+  still plan parking/exit recovery. These are planner and protocol changes: the gameplay
+  adapter does not yet publish verified car observations or execute integrated commutes.
+- Created an original 204-triangle seated civilian and palette with a reproducible generator.
+  The installed native Assimp importer accepted its normals/UVs/static geometry. Added an
+  original vehicle extension referencing installed art and an asset-only disposable probe
+  package. No game art, decompiled code, or replacement engine classes are distributed.
+- Dedicated test world `LofersVehicleProbe_20260926_204822_20bc4e`, epoch
+  `de51b9ac-a9c0-4800-8b0d-6ffbc23bcb7f`, completed the six-point asphalt course with
+  `Base.LofersSmallCar` and its driver part enabled. Travelled 53.866 tiles; stopped at
+  (10818.5, 9839.1953125), approximately 0.695 tiles from the goal. No probe error;
+  native bodies returned to zero. Warm hook p95 <=0.4 ms, p99 <=0.7 ms; cold creation
+  8.515 ms. These are hook timings, not whole engine/physics frame costs.
+  Evidence: `artifacts/scenario-agent/driver-model-de51b9ac-a9c0-4800-8b0d-6ffbc23bcb7f/`.
+  The first isolated attempt found an unsupported line comment in the vehicle script;
+  fixed before this successful run. Existing upstream startup warnings remain.
+- Validation: 122 project tests; native core and actual Unix IPC checks including closure
+  expiry and route IDs; Java compatibility/premain/protocol fixtures and native asset import.
+  Regenerated the private Muldraugh map index with its navigation identity. Worker load
+  fixture (32 residents, 30 batches) measured p50 14.28 ms, p95 15.73 ms, maximum 23.11 ms;
+  this is external round-trip latency, not added game-thread work.
+- **Still pending:** client view of the driver (scale, position, visibility and replication),
+  vehicle-profile connectors/turns, managed persistent vehicles, inventory-preserving
+  boarding/exit, complete commute, human takeover and two-client validation. The original
+  `LofersDriverProbe` assets are installed in the local client's mods directory for the
+  prepared `.132:16281` test. No client Java agent is used. Normal vehicle execution remains
+  disabled; playable prototype and production `.160` were not changed.
+
 ## Navigation and road-turn iteration — 2026-09-26
 
 - Added [[Design/Navigation]]: original installed-map stacks, floor definitions and road

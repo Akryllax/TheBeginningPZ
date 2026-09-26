@@ -32,7 +32,7 @@ return function(c)
         local dist=distance(c.position,point)
         add("walk_"..label,"WALK",point,CAR|bit,0,bit,location & ~bit,
             1+dist/30,0,"", "Walk")
-        if c.has_vehicle and c.vehicle_id~="" and dist>90 and point.z==0 and c.position.z==0 then
+        if c.vehicle_available and c.vehicle_id~="" and dist>90 and point.z==0 and c.position.z==0 then
             local road_bit=bit << 17
             add("drive_"..label,"DRIVE",point,CAR|bit|road_bit,CAR,road_bit|ARRIVED,
                 location|(road_locations & ~road_bit)|PARKED,1+dist/180,0,c.vehicle_id,"Drive")
@@ -50,7 +50,9 @@ return function(c)
     travel("shop",c.shop,S,c.shop_available)
     travel("clinic",c.clinic,C,c.clinic_available)
     if c.has_vehicle and c.vehicle_id~="" then
-        add("enter_vehicle","ENTER_VEHICLE",c.position,CAR,0,CAR,PARKED|ARRIVED,0.3,0.002,c.vehicle_id,"EnterVehicle")
+        if c.vehicle_available then
+            add("enter_vehicle","ENTER_VEHICLE",c.position,CAR,0,CAR,PARKED|ARRIVED,0.3,0.002,c.vehicle_id,"EnterVehicle")
+        end
         if c.in_vehicle then
             add("park_for_recovery","PARK",c.position,CAR|PARKED,CAR,PARKED,ARRIVED,0.2,0.01,c.vehicle_id,"Park")
         end

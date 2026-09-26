@@ -224,7 +224,7 @@ final class ServerVehicleProbe {
             if(Math.hypot(dx,dy)>2.25)continue;
             String problem=tileProblem(x,y,config.roadMode(),true);if(!problem.isEmpty())throw new IllegalStateException("spawn_"+problem);
         }
-        VehicleScript script=ScriptManager.instance.getVehicle("Base.SmallCar");
+        VehicleScript script=ScriptManager.instance.getVehicle(config.driverModel()?"Base.LofersSmallCar":"Base.SmallCar");
         if(script==null||script.getWheelCount()!=4)throw new IllegalStateException("missing_four_wheel_SmallCar_script");
         bodyRadius=Math.hypot(script.getExtents().x(),script.getExtents().z())/2;
         if(!Double.isFinite(bodyRadius)||bodyRadius<=0||bodyRadius>2.25)throw new IllegalStateException("car_exceeds_validated_corridor_radius");
@@ -248,6 +248,11 @@ final class ServerVehicleProbe {
         Bullet.addVehicle(vehicleId,vehicle.getX(),vehicle.getY(),vehicle.jniTransform.origin.y,
             vehicle.savedRot.x,vehicle.savedRot.y,vehicle.savedRot.z,vehicle.savedRot.w,script.getFullName());nativeBody=true;
         vehicle.repair();vehicle.setGeneralPartCondition(1.3f,10);vehicle.setHotwired(true);
+        if(config.driverModel()) {
+            VehiclePart driverPart=vehicle.getPartById("LofersDriver");
+            if(driverPart==null)throw new IllegalStateException("missing_original_driver_part");
+            driverPart.setModelVisible("Seated",true);
+        }
         VehiclePart tank=vehicle.getPartById("GasTank");if(tank!=null)tank.setContainerContentAmount(20);
         vehicle.engineDoRunning();
         vehicle.updateBulletStats();Bullet.setVehicleStatic(vehicle,false);Bullet.setVehicleActive(vehicle,true);
@@ -295,6 +300,7 @@ final class ServerVehicleProbe {
         s.put("x",Double.toString(lastX));s.put("y",Double.toString(lastY));s.put("physics_z",Double.toString(lastZ));
         s.put("speed_kmh",Double.toString(speed));s.put("max_speed_kmh",Double.toString(maxSpeed));s.put("distance",Double.toString(distance));s.put("stop_distance",Double.toString(stopDistance));
         s.put("route_mode",config.roadMode()?"validated_waypoints":"legacy_straight");s.put("route_length",Double.toString(route.length));
+        s.put("driver_model",Boolean.toString(config.driverModel()));
         s.put("route_points",Integer.toString(route.points.size()));s.put("road_tiles_validated",Integer.toString(validationCursor));
         s.put("collision_chunks",Integer.toString(route.chunks.size()));s.put("displacement",Double.toString(displacement));s.put("goal_distance",Double.toString(goalDistance));
         s.put("heading_degrees",Double.toString(heading));

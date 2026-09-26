@@ -29,9 +29,29 @@ struct Domain {
 };
 struct Route {
     std::vector<pb::Point> points;
+    std::vector<uint32_t> node_ids;
     unsigned expansions{};
     double cost{};
     std::string error;
+};
+// Shared immutable structure; search scores/frontier and closures remain per query.
+class RoadGraph {
+public:
+    explicit RoadGraph(const pb::ObservationBatch&);
+    Route route(const pb::Point&, const pb::Point&, const pb::ObservationBatch&) const;
+    const std::string& identity() const;
+private:
+    struct Data;
+    std::shared_ptr<const Data> data_;
+};
+class RoadGraphCache {
+public:
+    std::shared_ptr<const RoadGraph> get(const pb::ObservationBatch&);
+    size_t builds() const { return builds_; }
+private:
+    std::string signature_;
+    std::shared_ptr<const RoadGraph> graph_;
+    size_t builds_{};
 };
 uint64_t stable_hash(std::string_view text);
 std::string rules_hash(const std::filesystem::path& directory);
@@ -54,9 +74,11 @@ private:
 class Planner {
 public:
     explicit Planner(const std::filesystem::path& dir) : rules_(dir) {}
-    pb::Plan plan(const pb::ObservationBatch&, const pb::Resident&);
+    pb::Plan plan(const pb::ObservationBatch&, const pb::Resident&,
+                  std::shared_ptr<const RoadGraph> graph = {});
 private:
     Rules rules_;
+    RoadGraphCache roads_;
 };
 
 int serve(const std::filesystem::path& socket, const std::string& world,

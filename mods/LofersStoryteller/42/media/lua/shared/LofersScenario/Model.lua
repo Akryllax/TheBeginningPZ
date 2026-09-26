@@ -5,11 +5,28 @@ local first={"Alex","Morgan","Robin","Sam","Jamie","Casey","Taylor","Jordan","Dr
 local last={"Miller","Hayes","Carter","Brooks","Reed","Parker","Ellis","Bennett","Cooper","Davis","Foster","Ward"}
 local roles={"worker","shopkeeper","mechanic","nurse","police","firefighter","resident","driver"}
 local function clamp(v,a,b) return math.max(a,math.min(b,v)) end
+local function scheduleSeed(identity)
+    local seed=104729
+    for i=1,#identity do seed=(seed*131+string.byte(identity,i))%2147483647 end
+    return math.max(1,seed)
+end
+function M.migrate(s)
+    if type(s)~="table" or (s.schema~=1 and s.schema~=C.schema) then return false,"unsupported_state_schema" end
+    if s.schema==1 then
+        -- Old event RNG state is not a stable schedule identity. Derive once
+        -- from the persisted world UUID; preserve the independent event stream.
+        s.schedule_seed=scheduleSeed(s.world_id or s.world or "")
+        s.schema=C.schema
+    end
+    if type(s.schedule_seed)~="number" or s.schedule_seed~=math.floor(s.schedule_seed) or
+        s.schedule_seed<1 or s.schedule_seed>=2147483647 then return false,"invalid_schedule_seed" end
+    return true
+end
 function M.point(p) return {x=p.x,y=p.y,z=p.z or 0} end
 function M.distance(a,b) return math.sqrt((a.x-b.x)^2+(a.y-b.y)^2) end
 function M.new(world,uuid,hour)
     return {schema=C.schema,world=world,world_id=uuid,status="calm",elapsed_hours=0,phase="calm",
-        started_hour=nil,last_hour=hour,revision=1,next_id=1,seed=104729,
+        started_hour=nil,last_hour=hour,revision=1,next_id=1,seed=104729,schedule_seed=scheduleSeed(uuid),
         residents={},order={},places={},place_order={},roads={},road_order={},edges={},
         receipts={},receipt_order={},events={},vehicles={},manual_steps=0}
 end
@@ -157,10 +174,15 @@ function M.count(s)
     local pedestrians,physical,vehicles=0,0,0
     for _,id in ipairs(s.order) do local r=s.residents[id]
         if r.materialized or r.lifecycle=="spawning" or r.lifecycle=="unresolved" then
-            physical=physical+1;if not r.has_vehicle then pedestrians=pedestrians+1 end
+            physical=physical+1
+            if not r.in_vehicle and r.travel_state~="onboard" and r.travel_state~="exiting" then
+                pedestrians=pedestrians+1
+            end
         end
     end
-    for _,v in pairs(s.vehicles) do if v.status~="removed" then vehicles=vehicles+1 end end
+    for _,v in pairs(s.vehicles) do
+        if v.status~="removed" and v.status~="parked" then vehicles=vehicles+1 end
+    end
     return pedestrians,physical,vehicles
 end
 return M

@@ -1,5 +1,5 @@
-local C={schema=1,version="0.2.0",maxResidents=256,maxPlaces=384,maxRoads=1024,
-    maxPedestrians=24,maxVehicles=4,maxPhysical=32,maxPlans=32,maxActions=8,
+local C={schema=2,version="0.2.0",maxResidents=256,maxPlaces=384,maxRoads=1024,
+    maxPedestrians=24,maxVehicles=4,maxPhysical=32,maxPlans=32,maxActions=6,
     maxReceipts=128,maxEvents=128,scanOperations=24,workMs=1,
     leaseSeconds=8,visibilitySeconds=2,visibilityMargin=160,workerTimeoutSeconds=5,
     maxPlayers=4,scenarioHours=168,vehicleExecution=false,

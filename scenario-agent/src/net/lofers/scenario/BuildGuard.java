@@ -11,6 +11,7 @@ final class BuildGuard {
     static final String SERVER_PHYSICS_LIBRARY="libPZBulletNoOpenGL64.so";
     static final String SERVER_PHYSICS_SHA256="256304a998a33fa9ba356182cad3ebaad0db14ac36762b806a950d0f08e95d6f";
     static final Map<String,String> HASHES=Map.ofEntries(
+        Map.entry("zombie/vehicles/VehiclePart","27febf9f1cbc8c057bf34e400c743f1e19e70638f6553b45f0140d086e329311"),
         Map.entry("zombie/network/RCONServer","c31a83c6868d6c88da96db66db10a3d3414ae39947b13e3d800afbb2c034c645"),
         Map.entry("zombie/Lua/Event","cf4b0ba953b8f965fbcacb73ebb5d1a173dc3ed140656e15b90ad932eff0e952"),
         Map.entry("zombie/Lua/LuaManager","16ea31579ae9f57725b2eca788baa135c8629b29e4cc9bafc4fb096f7742e60d"),

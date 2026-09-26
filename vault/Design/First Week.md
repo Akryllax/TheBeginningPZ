@@ -10,8 +10,11 @@ Implementation note: the user selected **server-only JVM injection with ordinary
 The initial client-agent prototype is superseded; it was never installed or launched in the
 local game. Pedestrian execution has been adapted to Lua, with gameplay validation pending.
 A separate server-only vehicle probe passed bounded straight-line native movement and
-cleanup; one ordinary client reported smooth movement. Road following, NPC occupants and
-two-client comparison remain to be validated before adopting that path for NPC driving.
+cleanup; one ordinary client reported smooth movement. A later server-only asphalt turn
+also passed. Integrated NPC driving and two-client comparison remain unvalidated.
+The next implementation sequence is [[Implementation Roadmap]]. The accepted initial
+driver presentation is a simple original seated model attached to the native car, with
+the same persistent resident restored on exit; exact seated clothing/animation is deferred.
 The playable reset still requires actual scenario and multiplayer acceptance.
 
 The user explicitly requires behavior injection without modifying installed core game files,

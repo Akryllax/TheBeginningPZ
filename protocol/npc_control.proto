@@ -9,6 +9,16 @@ message Point { double x = 1; double y = 2; int32 z = 3; }
 message Place { string id = 1; string kind = 2; Point position = 3; bool available = 4; uint64 revision = 5; }
 message RoadNode { uint32 id = 1; Point position = 2; }
 message RoadEdge { uint32 from = 1; uint32 to = 2; double cost = 3; bool blocked = 4; }
+message RoadClosure {
+  uint32 from = 1; uint32 to = 2; double expires_world_hour = 3;
+  string reason = 4;
+}
+message VehicleObservation {
+  string id = 1; Point position = 2; double heading_degrees = 3;
+  double speed_kmh = 4; string profile = 5; bool available = 6;
+  uint64 occupancy_revision = 7;
+  Point entry_point = 8;
+}
 message Resident {
   string id = 1; uint64 revision = 2; uint64 generation = 3;
   string name = 4; string role = 5; Point position = 6;
@@ -20,6 +30,7 @@ message Resident {
   string current_action = 23; uint64 plan_revision = 24;
   uint64 lease_epoch = 25; double exposed_hour = 26;
   bool in_vehicle = 27; // Actual current seat occupancy; ownership is has_vehicle.
+  VehicleObservation vehicle_observation = 28;
 }
 enum ActionKind {
   ACTION_UNSPECIFIED = 0; WAIT = 1; WALK = 2; EAT = 3; REST = 4;
@@ -31,6 +42,8 @@ message Action {
   string id = 1; ActionKind kind = 2; Point target = 3;
   string target_id = 4; double duration_hours = 5;
   repeated Point route = 6; string animation = 7;
+  string navigation_id = 8;
+  repeated uint32 road_node_ids = 9;
 }
 message Plan {
   string resident_id = 1; uint64 based_on_revision = 2;
@@ -44,6 +57,8 @@ message ObservationBatch {
   repeated Resident residents = 7; repeated Place places = 8;
   repeated RoadNode road_nodes = 9; repeated RoadEdge road_edges = 10;
   uint32 online_players = 11;
+  string navigation_id = 12;
+  repeated RoadClosure road_closures = 13;
 }
 message PlanBatch {
   uint64 observation_revision = 1; repeated Plan plans = 2;

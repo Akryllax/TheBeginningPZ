@@ -7,8 +7,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Private operator files and detached diagnostics only; this thread sees no game objects. */
 final class ProbeControl implements Runnable {
-    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode) {
-        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false);}
+    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode,boolean driverModel) {
+        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false,false);}
         double deadlineSeconds(){return roadMode?Math.min(120,Math.max(45,route.length/speed*3.6*2+15)):30;}
         static Config read(Properties p,String world,boolean server) {
             if(!Boolean.parseBoolean(p.getProperty("vehicle_probe.enabled","false")))return null;
@@ -22,7 +22,9 @@ final class ProbeControl implements Runnable {
             ProbeRoute route=roadMode?ProbeRoute.parse(points):ProbeRoute.straight(x,y,yaw,distance);
             if(Math.hypot(route.points.getFirst().x()-x,route.points.getFirst().y()-y)>0.01)throw new IllegalArgumentException("Route must start at configured spawn");
             if(Math.abs(ProbeRoute.wrap(route.heading()-Math.toRadians(yaw)))>Math.toRadians(10))throw new IllegalArgumentException("Spawn heading differs from route");
-            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode);
+            String script=p.getProperty("vehicle_probe.script","Base.SmallCar");
+            if(!Set.of("Base.SmallCar","Base.LofersSmallCar").contains(script))throw new IllegalArgumentException("Unsupported probe vehicle script");
+            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"));
         }
         private static double bounded(Properties p,String name,double fallback,double min,double max) {
             double n=Double.parseDouble(p.getProperty("vehicle_probe."+name,Double.toString(fallback)));

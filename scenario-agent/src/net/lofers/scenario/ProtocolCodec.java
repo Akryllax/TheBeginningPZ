@@ -19,7 +19,7 @@ final class ProtocolCodec {
             Object value=map.get(f.name);if(value==null)continue;
             if(f.repeated) {
                 if(!(value instanceof Map<?,?> values)) throw new IllegalArgumentException("Array required "+f.name);
-                int cap=switch(f.name){case "residents","plans"->128;case "places","road_nodes"->1024;case "road_edges"->4096;case "actions"->24;case "route"->256;default->128;};
+                int cap=switch(f.name){case "residents","plans","road_closures"->128;case "places","road_nodes"->1024;case "road_edges"->4096;case "actions"->24;case "route"->256;default->128;};
                 if(values.size()>cap)throw new IllegalArgumentException("Array limit "+f.name);
                 for(int i=1;i<=values.size();i++) {Object item=values.get((double)i);if(item==null)throw new IllegalArgumentException("Sparse array");set(builder,f,item,"add");}
             } else set(builder,f,value,"set");
@@ -54,6 +54,7 @@ final class ProtocolCodec {
                 for(Object item:list)arr.put((double)++i,SCHEMA.containsKey(f.type)?decode(f.type,item):item);
                 result.put(f.name,arr);
             } else {
+                if(SCHEMA.containsKey(f.type)&&!(boolean)value.getClass().getMethod("has"+camel(f.name)).invoke(value))continue;
                 Object v=value.getClass().getMethod("get"+camel(f.name)+suffix).invoke(value);
                 if(SCHEMA.containsKey(f.type))v=decode(f.type,v);
                 else if(v instanceof Number n)v=n.doubleValue();

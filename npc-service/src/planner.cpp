@@ -15,6 +15,10 @@ bool validate(const pb::ObservationBatch& b, std::string& reason) {
     auto fail = [&](std::string text) { reason = std::move(text); return false; };
     if (b.residents_size() > static_cast<int>(kMaxResidents) || b.places_size() > 2048 || b.road_nodes_size() > static_cast<int>(kMaxRoadNodes) || b.road_edges_size() > static_cast<int>(kMaxRoadEdges)) return fail("observation_limit");
     if (!std::isfinite(b.world_hour()) || !std::isfinite(b.scenario_hour()) || b.world_hour() < 0 || b.scenario_hour() < 0 || b.phase().size() > 32) return fail("invalid_clock_or_phase");
+    if(b.navigation_id().size()>128||b.road_closures_size()>128||
+       (b.road_closures_size()&&b.navigation_id().empty()))return fail("navigation_limits");
+    for(const auto& c:b.road_closures())if(!std::isfinite(c.expires_world_hour())||c.expires_world_hour()<0||
+        c.expires_world_hour()>b.world_hour()+24||c.reason().size()>128)return fail("invalid_road_closure");
     auto point_ok = [](const pb::Point& p) { return std::isfinite(p.x()) && std::isfinite(p.y()) && p.x() >= 0 && p.y() >= 0 && p.x() <= 100000 && p.y() <= 100000 && p.z() >= -32 && p.z() <= 32; };
     auto need_ok = [](double n) { return std::isfinite(n) && n >= 0 && n <= 1; };
     std::set<std::string> ids;
@@ -22,6 +26,14 @@ bool validate(const pb::ObservationBatch& b, std::string& reason) {
         if (r.id().empty() || r.id().size() > 128 || !ids.insert(r.id()).second || r.name().size() > 128 || r.role().size() > 32 || r.infection().size() > 32 || r.vehicle_id().size() > 128 || r.current_action().size() > 64) return fail("resident_identity");
         if (!r.has_position() || !point_ok(r.position()) || (r.has_home() && !point_ok(r.home())) || (r.has_work() && !point_ok(r.work())) || (r.has_shop() && !point_ok(r.shop())) || (r.has_clinic() && !point_ok(r.clinic()))) return fail("resident_position");
         if (!need_ok(r.hunger()) || !need_ok(r.fatigue()) || !need_ok(r.fear()) || !std::isfinite(r.health()) || r.health() < 0 || r.health() > 100 || !std::isfinite(r.exposed_hour())) return fail("resident_needs");
+        if(r.has_vehicle_observation()){
+            const auto& v=r.vehicle_observation();
+            if(v.id()!=r.vehicle_id()||v.id().empty()||v.id().size()>128||v.profile().size()>128||
+               !v.has_position()||!point_ok(v.position())||v.position().z()!=0||
+               !v.has_entry_point()||!point_ok(v.entry_point())||v.entry_point().z()!=0||
+               !std::isfinite(v.heading_degrees())||std::abs(v.heading_degrees())>360||
+               !std::isfinite(v.speed_kmh())||v.speed_kmh()<0||v.speed_kmh()>200)return fail("invalid_vehicle_observation");
+        }
     }
     ids.clear();
     for (const auto& p : b.places()) if (p.id().empty() || p.id().size() > 128 || !ids.insert(p.id()).second || p.kind().size() > 32 || !p.has_position() || !point_ok(p.position())) return fail("invalid_place");
@@ -31,7 +43,8 @@ bool validate(const pb::ObservationBatch& b, std::string& reason) {
     return true;
 }
 
-pb::Plan Planner::plan(const pb::ObservationBatch& batch, const pb::Resident& resident) {
+pb::Plan Planner::plan(const pb::ObservationBatch& batch, const pb::Resident& resident,
+                      std::shared_ptr<const RoadGraph> graph) {
     const auto started = std::chrono::steady_clock::now();
     pb::Plan result;
     result.set_resident_id(resident.id()); result.set_based_on_revision(resident.revision()); result.set_generation(resident.generation());
@@ -46,12 +59,14 @@ pb::Plan Planner::plan(const pb::ObservationBatch& batch, const pb::Resident& re
         } else if (resident.infection() == "dead" || resident.infection() == "reanimated" || resident.health() <= 0) {
             result.set_goal("inactive"); wait("resident_not_alive");
         } else {
+            if (!graph) graph = roads_.get(batch);
             auto domain = rules_.domain(batch, resident);
             result.set_goal(domain.goal); result.set_reason(domain.reason);
             std::string route_failure;
             std::erase_if(domain.actions, [&](Operator& op) {
                 if (op.action.kind() != pb::DRIVE) return false;
-                auto route = road_route(batch, resident.position(), op.action.target());
+                const auto& origin = resident.has_vehicle_observation() ? resident.vehicle_observation().position() : resident.position();
+                auto route = graph->route(origin, op.action.target(), batch);
                 if (!route.error.empty()) { route_failure = route.error; return true; }
                 const auto building = op.action.target();
                 const auto endpoint = route.points.back();
@@ -63,6 +78,8 @@ pb::Plan Planner::plan(const pb::ObservationBatch& batch, const pb::Resident& re
                         dependent.cost = 1 + std::hypot(building.x()-endpoint.x(), building.y()-endpoint.y())/30;
                 }
                 for (const auto& p : route.points) *op.action.add_route() = p;
+                op.action.set_navigation_id(graph->identity());
+                for(auto id:route.node_ids)op.action.add_road_node_ids(id);
                 return false;
             });
             // Admissible h-max delete-relaxation: estimate the cheapest way to
@@ -136,6 +153,14 @@ pb::Plan Planner::plan(const pb::ObservationBatch& batch, const pb::Resident& re
     // IDs contain the authoritative input revision and generation, so two
     // workers produce identical proposals and the game can deduplicate effects.
     pb::Point execution_position = resident.position();
+    bool driving=false;for(const auto& a:result.actions())if(a.kind()==pb::DRIVE)driving=true;
+    if(driving&&!resident.in_vehicle()&&resident.has_vehicle_observation()) {
+        const auto& entry=resident.vehicle_observation().entry_point();
+        if(std::hypot(resident.position().x()-entry.x(),resident.position().y()-entry.y())>1.5||resident.position().z()!=entry.z()){
+            result.clear_actions();result.set_goal("approach_vehicle");result.set_reason("walk_to_observed_vehicle_before_commute");
+            auto* action=result.add_actions();action->set_kind(pb::WALK);*action->mutable_target()=entry;action->set_target_id(resident.vehicle_id());
+        }
+    }
     for (int i = 0; i < result.actions_size(); ++i) {
         std::ostringstream id;
         id << resident.id() << ':' << resident.generation() << ':' << result.plan_revision() << ':' << resident.revision() << ':' << i;

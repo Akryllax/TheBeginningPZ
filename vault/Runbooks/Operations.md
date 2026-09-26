@@ -12,6 +12,13 @@ The current architecture uses server runtime Java hooks and ordinary Lua clients
 
 ## Command interface
 
+`./dayone vehicle-probe-create driver-model` prepares the isolated original seated-driver
+variant. It packages only our mesh, palette and vehicle script as `LofersDriverProbe`;
+clients need that ordinary asset mod. The default probe still uses the stock empty car.
+Use `vehicle-probe-route`, `vehicle-probe-start`, `vehicle-probe-control start` and
+`vehicle-probe-stop` as before. A completed probe removes its disposable car; it is not
+the future persistent parked-car runtime.
+
 Run `./dayone --help` for the current command list. Arguments after the command are positional; there are no command-specific help subparsers.
 
 | Command | Purpose |

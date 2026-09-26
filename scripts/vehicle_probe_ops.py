@@ -47,7 +47,7 @@ def current(m):
 
 
 @serialized
-def prepare(m):
+def prepare(m, driver_model=False):
     base = m.ROOT / 'artifacts/vehicle-probe'
     base.mkdir(parents=True, exist_ok=True)
     active = m.run([m.PODMAN, 'ps', '--filter', 'name=^lofers-vehicle-probe$', '--format', '{{.ID}}'], capture=True)
@@ -64,7 +64,7 @@ def prepare(m):
         'DefaultPort': 16281, 'UDPPort': 16282, 'RCONPort': 27035,
         'Public': 'false', 'PublicName': 'Lofers vehicle physics experiment',
         'SpawnPoint': '10753,9848,0', 'PauseEmpty': 'false',
-        'Mods': '', 'WorkshopItems': '',
+        'Mods': '\\LofersDriverProbe' if driver_model else '', 'WorkshopItems': '',
     })
     scenario.write_private(server / f'{world}.ini', ini)
     sandbox = scenario.scenario_sandbox((source / f'{m.WORLD}_SandboxVars.lua').read_text())
@@ -76,6 +76,8 @@ def prepare(m):
     (target / 'ProjectZomboid64.json').write_text(json.dumps(config, indent=2) + '\n')
     (target / 'probe').mkdir(mode=0o700)
     (target / 'Zomboid/mods').mkdir()
+    if driver_model:
+        package_driver_assets(m.ROOT, target / 'Zomboid/mods/LofersDriverProbe')
     (target / 'agent').mkdir()
     accounts = m.ROOT / f'data/Zomboid/db/{m.WORLD}.db'
     if accounts.is_file():
@@ -91,14 +93,34 @@ def prepare(m):
              f'bandits_update_file={scenario.BANDITS_SOURCE}\n'
              'vehicle_probe.enabled=true\nvehicle_probe.directory=/opt/vehicle-probe\n'
              'vehicle_probe.x=10756.5\nvehicle_probe.y=9856.5\nvehicle_probe.z=0\n'
-             'vehicle_probe.heading_degrees=90\nvehicle_probe.script=Base.SmallCar\n')
+             'vehicle_probe.heading_degrees=90\nvehicle_probe.script='
+             + ('Base.LofersSmallCar' if driver_model else 'Base.SmallCar') + '\n')
     scenario.write_private(target / 'scenario.properties', props)
     receipt = {'world': world, 'path': str(target), 'container': 'lofers-vehicle-probe',
                'ports': [16281, 16282, 27035], 'kind': 'disposable-vehicle-probe',
-               'vehicle': [10756.5, 9856.5, 0], 'status': 'prepared', 'client_java_required': False}
+               'vehicle': [10756.5, 9856.5, 0], 'status': 'prepared', 'client_java_required': False,
+               'driver_model': driver_model}
     scenario.write_private(target / 'receipt.json', json.dumps(receipt, indent=2) + '\n')
     scenario.write_private(base / 'current.json', json.dumps(receipt, indent=2) + '\n')
     print(f'Prepared isolated vehicle probe {world}. Playable world preserved.')
+
+
+def package_driver_assets(root, destination):
+    """An isolated original asset-only mod; no gameplay or upstream dependencies."""
+    media = root / 'mods/LofersStoryteller/42/media'
+    (destination / 'common').mkdir(parents=True, exist_ok=True)
+    version = destination / '42'
+    version.mkdir(exist_ok=True)
+    for scope in ('common', '42'):
+        for name in ('AnimSets', 'actiongroups'):
+            (destination / scope / 'media' / name).mkdir(parents=True, exist_ok=True)
+    (version / 'mod.info').write_text('name=Lofers original driver test\nid=LofersDriverProbe\nversionMin=42.20\n'
+                                    'description=Original static seated driver; disposable visual test only.\n')
+    files = ['models_X/Lofers/SeatedDriver.x', 'textures/Lofers/DriverPalette.png', 'scripts/lofers_driver.txt']
+    for name in files:
+        output = version / 'media' / name
+        output.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(media / name, output)
 
 
 @serialized
@@ -130,7 +152,8 @@ def start(m):
            '-v', f'{m.ROOT}/secrets/admin-password:/run/secrets/admin-password:ro,z',
            '-v', f'{m.ROOT}/game/entrypoint.sh:/home/pzuser/entrypoint.sh:ro,z',
            'localhost/zomboid-dayone_game:latest'])
-    print('Vehicle probe server starting on 192.168.1.132:16281; ordinary clients, no game mods.')
+    detail = 'original LofersDriverProbe asset mod required' if receipt.get('driver_model') else 'no game mods'
+    print(f'Vehicle probe server starting on 192.168.1.132:16281; ordinary clients, {detail}.')
 
 
 def properties(path):
@@ -229,7 +252,9 @@ def stop(m):
 
 
 def dispatch(m, command, args):
-    if command == 'vehicle-probe-create': prepare(m)
+    if command == 'vehicle-probe-create':
+        if args not in ([], ['driver-model']): raise ValueError('Expected optional driver-model')
+        prepare(m, driver_model=bool(args))
     elif command == 'vehicle-probe-start': start(m)
     elif command == 'vehicle-probe-stop': stop(m)
     elif command == 'vehicle-probe-status':

@@ -112,7 +112,9 @@ def test_receipt_ring_and_physical_counts_include_uncertain_members(lua):
         assert(#s.receipt_order==2)
         r.lifecycle='unresolved';r.has_vehicle=true
         s.vehicles.car={status='parked'}
-        local p,n,v=M.count(s);assert(p==0 and n==1 and v==1)
+        local p,n,v=M.count(s);assert(p==1 and n==1 and v==0)
+        r.in_vehicle=true;s.vehicles.car.status='unresolved'
+        p,n,v=M.count(s);assert(p==0 and n==1 and v==1)
     """)
 
 
@@ -680,4 +682,47 @@ def test_outage_contact_keeps_damage_and_defers_confirmed_infection_until_recove
         tick()
         assert(Server.workerReady and s.elapsed_hours==frozen)
         assert(r.infection=='exposed' and r.exposed_hour==frozen and not r.pending_contact_exposure)
+    """)
+
+
+def test_schedule_seed_survives_events_and_schema_migration(lua):
+    lua.execute(RESIDENT + """
+        local stable=s.schedule_seed
+        for i=1,100 do M.random(s) end
+        assert(s.schedule_seed==stable and s.seed~=104729)
+        local legacy=M.new('world','uuid',100);legacy.schema=1;legacy.schedule_seed=nil
+        local eventSeed=legacy.seed;assert(M.migrate(legacy))
+        assert(legacy.schema==C.schema and legacy.schedule_seed==stable and legacy.seed==eventSeed)
+        assert(M.migrate(legacy));assert(legacy.schedule_seed==stable)
+        legacy.schema=999;assert(not M.migrate(legacy))
+    """)
+
+
+def test_car_ownership_does_not_remove_a_walker_from_population_budget(lua):
+    lua.execute(RESIDENT + """
+        r.materialized=true;r.has_vehicle=true;r.lifecycle='active'
+        s.vehicles.car={status='parked'}
+        local p,n,v=M.count(s);assert(p==1 and n==1 and v==0)
+        r.travel_state='boarding';p,n,v=M.count(s);assert(p==1 and n==1)
+        r.in_vehicle=true;r.travel_state='onboard';s.vehicles.car.status='driving'
+        p,n,v=M.count(s);assert(p==0 and n==1 and v==1)
+        s.vehicles.car.status='braking';p,n,v=M.count(s);assert(v==1)
+        r.travel_state='exiting';s.vehicles.car.status='parked'
+        p,n,v=M.count(s);assert(p==0 and n==1 and v==0)
+    """)
+
+
+def test_road_closures_expire_deduplicate_and_cannot_cross_navigation_identity(lua):
+    lua.execute(RESIDENT + """
+        local Road=require 'LofersScenario/RoadState'
+        assert(Road.bind(s,'map-a'))
+        assert(Road.block(s,'map-a',1,2,10,'car_in_path'))
+        assert(Road.block(s,'map-a',1,2,10.1,'car_in_path'))
+        assert(#Road.snapshot(s,10.2)==1)
+        assert(not Road.block(s,'map-b',1,2,10.2,'car_in_path'))
+        assert(#Road.snapshot(s,10.4)==0)
+        assert(not Road.block(s,'map-a',1,2,0/0,'bad_clock'))
+        Road.limit=1;assert(Road.block(s,'map-a',1,2,11,'blocked'))
+        assert(not Road.block(s,'map-a',2,3,11,'overflow'))
+        assert(Road.bind(s,'map-b') and #s.road_closures==0)
     """)

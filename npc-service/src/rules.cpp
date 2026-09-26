@@ -132,7 +132,10 @@ struct Rules::Impl {
         number(L, "world_hour", b.world_hour()); number(L, "scenario_hour", b.scenario_hour());
         number(L, "hour_of_day", std::fmod(b.world_hour(), 24.0));
         number(L, "variation", static_cast<double>((stable_hash(r.id()) ^ b.seed()) % 1000000));
-        boolean(L, "has_food", r.has_food()); boolean(L, "has_vehicle", r.has_vehicle());
+        boolean(L, "has_food", r.has_food());
+        boolean(L, "has_vehicle", r.has_vehicle());
+        boolean(L, "vehicle_available", r.has_vehicle()&&r.has_vehicle_observation()&&
+            r.vehicle_observation().available()&&r.vehicle_observation().id()==r.vehicle_id());
         boolean(L, "in_vehicle", r.in_vehicle());
         boolean(L, "home_safe", r.home_safe()); boolean(L, "work_available", r.work_available()); boolean(L, "threatened", r.threatened());
         point(L, "position", r.position());

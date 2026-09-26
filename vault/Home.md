@@ -12,6 +12,7 @@ Start with [[Experiments/Implementation Ledger]] for what exists and what has ac
 
 ## Design
 
+- [[Design/Implementation Roadmap]] — accepted continuation, complete commute and rollout gates.
 - [[Design/First Week]] — corrected civilian opening, C++/Lua service and replication contract.
 - [[Design/Architecture]] — services, authority and data flow.
 - [[Design/Navigation]] — precomputed terrain scores, vehicle clearance and live obstacle checks.

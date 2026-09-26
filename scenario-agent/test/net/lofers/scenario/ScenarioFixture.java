@@ -55,9 +55,18 @@ public final class ScenarioFixture {
         rejects(()->new PrimitiveCopy(cyclic).step(System.nanoTime()+100_000_000),"Cycle accepted");
         rejects(()->new PrimitiveCopy(lua("actor",new Object())).step(System.nanoTime()+100_000_000),"Game object copied");
         var plans=PlanBatch.newBuilder().setObservationRevision(9).addPlans(Plan.newBuilder().setResidentId("a").setGeneration(2)
-            .addActions(Action.newBuilder().setKind(ActionKind.DRIVE).setTarget(Point.newBuilder().setX(5)))).build();
+            .addActions(Action.newBuilder().setKind(ActionKind.DRIVE).setTarget(Point.newBuilder().setX(5))
+                .setNavigationId("nav-fixture").addRoadNodeIds(17).addRoadNodeIds(23))).build();
         Map<Object,Object> decoded=ProtocolCodec.decode("PlanBatch",plans);
         check(((PlanBatch)ProtocolCodec.encode("PlanBatch",decoded)).equals(plans),"Plan decode/encode");
+        var navigation=ObservationBatch.newBuilder().setNavigationId("nav-fixture")
+            .addRoadClosures(RoadClosure.newBuilder().setFrom(17).setTo(23).setExpiresWorldHour(12.25).setReason("obstruction"))
+            .addResidents(Resident.newBuilder().setId("a").setHasVehicle(true).setVehicleId("car-a")
+                .setVehicleObservation(VehicleObservation.newBuilder().setId("car-a").setAvailable(true)
+                    .setOccupancyRevision(4).setProfile("smallcar").setPosition(Point.newBuilder().setX(3))
+                    .setEntryPoint(Point.newBuilder().setX(4)))).build();
+        check(ProtocolCodec.encode("ObservationBatch",ProtocolCodec.decode("ObservationBatch",navigation)).equals(navigation),
+            "Navigation/vehicle observation roundtrip");
         Path dir=Files.createTempDirectory(Path.of("artifacts/scenario-agent"),"ipc-fixture-");Path socket=dir.resolve("npc.sock");
         try(ServerSocketChannel listener=ServerSocketChannel.open(StandardProtocolFamily.UNIX)){
             listener.bind(UnixDomainSocketAddress.of(socket));

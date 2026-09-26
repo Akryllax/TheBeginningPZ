@@ -71,6 +71,10 @@ def build(cache: Path, game_jar: Path, test: bool = False):
         tests_dir.mkdir(exist_ok=True)
         subprocess.run([str(jdk / "bin/javac"), "--release", "25", "-cp", f"{classes}:{cp}", "-d", str(tests_dir), *map(str, tests)], check=True)
         subprocess.run([str(jdk / "bin/java"), "-ea", "-cp", f"{tests_dir}:{classes}:{cp}", "net.lofers.scenario.ScenarioFixture", str(game_jar.resolve())], check=True)
+        subprocess.run([str(jdk / "bin/java"), "--enable-native-access=ALL-UNNAMED",
+                        f"-Djava.library.path={game_jar.resolve().parent.parent / 'linux64'}",
+                        "-cp", f"{tests_dir}:{cp}", "net.lofers.scenario.DriverAssetFixture",
+                        str(ROOT / "mods/LofersStoryteller/42/media/models_X/Lofers/SeatedDriver.x")], check=True)
         settings = out / "premain-fixture.properties"
         bandit = ROOT / "data/game-files/steamapps/workshop/content/108600/3268487204/mods/Bandits/42.20/media/lua/client/BanditUpdate.lua"
         settings.write_text(f"side=server\nscenario.enabled=true\nworld=LofersVehicleProbe_fixture\nsocket={out}/fixture-unused.sock\nbandits_update_file={bandit}\n")
