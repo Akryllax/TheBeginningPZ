@@ -11,6 +11,7 @@ These are proposed event families, not a list of enabled features. Record execut
 | Event family | Main phases | Eligibility and placement | Budget / lifecycle concerns | Initial rollout |
 | --- | --- | --- | --- | --- |
 | Distant conflict, screams, alarms | Outbreak, aftermath | Online group; believable distance; avoid repeated sound spam | Rate-limited ambient effect; expiry | Candidate after observation |
+| Traffic accidents and road incidents | Early epidemic | Visible impact after unseen staging, or off-screen sound with discoverable aftermath; see [[Traffic Incidents]] | All-player exclusion, two-car cap, persistent sound/wreck receipts, shared fleet budget | Accepted; native collision tests pending |
 | Radio progression | All | Dedicated channel/content; respect existing emergency broadcasts | Persist broadcast IDs; no repeated restart messages | Candidate |
 | Fleeing groups and patrols | Outbreak | Normal Bandits spawn path; outside player sight/base interiors | NPC reservation, movement ownership and cleanup | Requires two-client gate |
 | NPC–zombie skirmishes | Outbreak, aftermath | Valid separated participants; no forced spawn on player | Includes all spawned NPCs in global cap; resolve stale ownership | Requires two-client gate |

@@ -24,16 +24,37 @@ original seated model while onboard, ordinary Lua clients and server-only JVM in
    to navigation identities and vehicle profiles; keep expiring obstructions separate.
    Validate actual vehicle-to-road connectors and swept turns. Use successive plans
    when approaching a car would exceed the existing six-action limit.
+   The latest one-client turn exposed missing lane discipline and stop handling. Validate
+   a right-hand lane course, stop-line dwell and faster bounded cruise before adding traffic.
+   The corrected Bézier course now passes empty-server native runs at 15 km/h with a
+   two-second stop and the correct exit lane; the corresponding client test is pending.
 3. Extract managed native vehicle control from the disposable probe. Own only registered
    scenario bodies and reference-counted terrain; retain parked cars after completion.
    Use bounded loading ahead, local emergency braking and existing low-speed limits.
-4. Validate an original seated model on a parked car and the turning course. Add explicit
+4. Detailed seated-driver presentation is now low priority by user choice after the
+   first visible turn. Preserve the original model as an optional representation. Add explicit
    boarding/onboard/exiting/unresolved states, semantic driver-seat reservations, snapshot
    reconciliation and confirmed walking-actor retirement/recreation. Advance execution
    generations without replacing the logical resident identity.
 5. Validate human takeover, crash/damage/death, late joins and two-client state agreement
    before enabling normal ambient traffic. Uncertain transitions remain reserved and
    stopped. Then validate two cars, emergency trips and the four-moving-car limit.
+
+## Blockers and traffic incidents
+
+Add [[Traffic Incidents]] after the lane/stop controller. Normal driving retains local
+blocker forecasting and braking. Validate native two-car contacts in an empty world before
+staging a visible crash. Incidents reserve the complete hazard envelope and exclude every
+player and player-owned object, including likely approaches. Off-screen crashes emit one
+spatial sound and retain discoverable aftermath at that same recorded location. Preserve
+resident/wreck identity and bounded fleet resources across visibility and restart.
+
+Current control split: the C++ worker implements high-level GOAP-lite and road routing;
+Lua owns residents/scenario state; the server Java agent executes steering, speed and
+emergency braking through native Bullet physics. The current probe loads a reviewed
+route artifact directly and is not driven by the C++ worker. Connect worker routes to
+the managed executor after vehicle ownership and lifecycle extraction. Immediate collision
+avoidance must continue during worker/IPC outages.
 
 ## Living town and seven-day outbreak
 

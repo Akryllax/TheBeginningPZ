@@ -1,5 +1,6 @@
 -- Original, pure Lua domain state. No game objects or callbacks are persisted.
 local C=require "LofersScenario/Config"
+local Traffic=require "LofersScenario/TrafficIncidents"
 local M={}
 local first={"Alex","Morgan","Robin","Sam","Jamie","Casey","Taylor","Jordan","Drew","Jess","Lee","Pat"}
 local last={"Miller","Hayes","Carter","Brooks","Reed","Parker","Ellis","Bennett","Cooper","Davis","Foster","Ward"}
@@ -183,6 +184,9 @@ function M.count(s)
     for _,v in pairs(s.vehicles) do
         if v.status~="removed" and v.status~="parked" then vehicles=vehicles+1 end
     end
+    -- Uncertain incident work keeps its capacity. The future native adapter
+    -- must reconcile these reservations before transferring cars to the fleet.
+    local _,reserved=Traffic.reservations(s);vehicles=vehicles+reserved
     return pedestrians,physical,vehicles
 end
 return M

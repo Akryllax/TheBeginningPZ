@@ -122,3 +122,43 @@ def test_concurrent_start_and_route_change_cannot_replace_launch_configuration(p
         with pytest.raises(RuntimeError, match='Stop the vehicle probe'):
             configure.result(timeout=3)
     assert (target / 'scenario.properties').read_bytes() == before
+
+
+def test_lane_course_settings_are_explicit_and_reset_with_legacy_route(probe):
+    manager,target,route=probe
+    data=json.loads(route.read_text())
+    data.update(lane_mode=True,speed_kmh=15,stops=[{'progress':5,'hold_seconds':2}])
+    route.write_text(json.dumps(data))
+    ops.configure_route(manager,route)
+    settings=ops.properties(target/'scenario.properties')
+    assert settings['vehicle_probe.lane_mode']=='true'
+    assert float(settings['vehicle_probe.speed_kmh'])==15
+    assert settings['vehicle_probe.stops']=='5.00000000,2.00000000'
+    for key in ('lane_mode','speed_kmh','stops'):data.pop(key)
+    route.write_text(json.dumps(data))
+    ops.configure_route(manager,route)
+    settings=ops.properties(target/'scenario.properties')
+    assert settings['vehicle_probe.lane_mode']=='false'
+    assert float(settings['vehicle_probe.speed_kmh'])==4
+    assert settings['vehicle_probe.stops']==''
+
+
+def test_bezier_round_trip_and_legacy_reset(probe):
+    manager,target,route=probe
+    data={'waypoints':[{'x':100,'y':100},{'x':112,'y':100}], 'lane_mode':True,
+          'beziers':[[{'x':100,'y':100},{'x':104,'y':100},{'x':108,'y':100},{'x':112,'y':100}]]}
+    route.write_text(json.dumps(data));ops.configure_route(manager,route)
+    settings=ops.properties(target/'scenario.properties')
+    assert [float(v) for v in settings['vehicle_probe.beziers'].split(',')]==[100,100,104,100,108,100,112,100]
+    data.pop('beziers');data.pop('lane_mode');route.write_text(json.dumps(data))
+    ops.configure_route(manager,route)
+    assert ops.properties(target/'scenario.properties')['vehicle_probe.beziers']==''
+
+
+def test_mismatched_bezier_endpoints_do_not_write_config(probe):
+    manager,target,route=probe
+    data={'waypoints':[{'x':100,'y':100},{'x':112,'y':100}], 'lane_mode':True,
+          'beziers':[[{'x':100,'y':100},{'x':104,'y':100},{'x':108,'y':100},{'x':113,'y':100}]]}
+    before=(target/'scenario.properties').read_bytes();route.write_text(json.dumps(data))
+    with pytest.raises(ValueError,match='endpoints'):ops.configure_route(manager,route)
+    assert (target/'scenario.properties').read_bytes()==before

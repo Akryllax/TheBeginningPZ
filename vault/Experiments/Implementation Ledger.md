@@ -10,6 +10,74 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Bézier lanes, stop handling and traffic-incident foundations — 2026-09-26
+
+Implemented bounded cubic trajectories with arc-length lookup, analytic heading/curvature,
+signed deviation, velocity-scaled steering lookahead, longer speed preview and a one-second
+bicycle prediction. Added a source-verified Muldraugh lane course: eastbound Y=9861.5,
+northbound X=10820.5, 15 km/h cruise, and a two-second stop before the west-facing sign.
+Its 192-tile oriented swept footprint passes both source and loaded-world validation.
+The route is a reviewed artifact, not automatic map-wide lane/sign extraction.
+
+Early native attempts stopped on the 1 ms cooperative road-scan budget:
+`lane-stop-619eda16-3288-4131-a5d0-da69e8109fa2` and
+`bezier-56a9b965-670d-4f41-8b69-8a9a5d90ebf0` under `artifacts/scenario-agent/`.
+Deduplicated tile checks and replaced timeout failure with immediate braking until a new
+complete scan succeeds; persistent starvation still fails. The scan budget was not raised.
+Actual-body checks and the curved stopping corridor remain authoritative over static data.
+
+Two corrected empty-server native runs completed on the pinned B42.20.4 build. The final
+run includes the conservative moving-vehicle forecast adapter and uses agent SHA256
+`2dcc881de532d4cd9d95739756efd644041213049ef1183ed8417117b99847c4`:
+
+| Measurement | Final native run |
+| --- | --- |
+| Epoch | `0b40cd92-c5d2-4295-a10c-57ff6f2845b6` |
+| Finish | `complete`, `route_arrived`, one configured stop completed |
+| Maximum speed | 15.000 km/h |
+| Final centre | (10820.5, 9839.171875), correct northbound lane |
+| Largest sampled signed deviation magnitude | 0.3795 tiles; status sampled every 0.5 s |
+| Warm hook samples / p95 / p99 / max | 400 / <=0.7 ms / <=3.0 ms / 4.254 ms |
+| Cooperative scan-budget brake ticks | 10; acceleration resumed only after complete scans |
+| Cold vehicle creation / cleanup | 30.579 ms / 8.593 ms |
+| Native bodies after cleanup | 0 |
+
+Private evidence: `artifacts/scenario-agent/bezier-0b40cd92-c5d2-4295-a10c-57ff6f2845b6/`.
+The preceding successful run is `bezier-2bddac02-6508-4401-bdbe-a900228b9d9c/`.
+These timings measure the added Java hook, not total native physics/server frame cost.
+There were no clients or other moving cars in either run. Visible smoothness, moving-blocker
+behavior and two-client agreement remain untested; ten brief brake interventions may be
+visible and should be assessed in the next client trial.
+
+Continuous swept-circle fixtures cover crossing blockers between samples, stale data and
+invalid observations. The native adapter queries server-owned vehicle physics; unknown or
+client-owned nearby motion stops the probe. It does not yet support normal lane passing,
+moving pedestrian forecasts or general streamed traffic. Detached incident-admission tests
+also cover every supplied player's reachable area, incomplete audiences and protected scenes.
+
+Added the accepted [[Design/Traffic Incidents]] requirement: off-screen sound must have
+discoverable aftermath at the same persistent location. The Lua model stores IDs, poses,
+part conditions and fixed loot; accounts for reservations in the shared fleet; requires
+a durable intent revision and saved-world receipt before sound; and retains interrupted
+creation for reconciliation while suppressing uncertain audio replay. It is bound to the
+scenario ModData restore path. **No durable checkpoint writer, native aftermath/sound adapter,
+automatic crash scheduler or visible crash execution is enabled.** Table assignment and
+mock receipts do not establish crash-safe game persistence. The first adapter must save
+hidden wrecks before releasing sound. Native two-car contact/damage/audio is still pending.
+
+Validation: **163 project tests**, Java compatibility/premain/protocol/asset fixtures,
+analytic Bézier checks and nine detached stop-and-drive simulations passed. Evidence logs:
+`artifacts/traffic-project-tests.log`, `artifacts/traffic-agent-tests.log`.
+Lua tests exercise wrong/stale receipts, single-use dispatch, interrupted effects,
+unchanged loot on restore, cooldown/capacity and shared fleet accounting. These are model
+tests, not game-save restore or multiplayer tests.
+
+Control responsibility remains split: C++ provides high-level planning/road routes; the
+server Java agent executes the current probe's steering/braking through native physics;
+Lua manages scenario/resident state. The probe does not consume the C++ worker's routes yet.
+Only the disposable `.132:16281` probe was restarted. The playable `.132:16271` world and
+production `.160` were not changed; the new Lua incident foundation is source-only.
+
 ## First client driver-model run — 2026-09-26
 
 The single-client run was stopped after the user reported Error 13 and obscuring fog.
@@ -25,7 +93,17 @@ confirmation that the script loads remain required. The generic `stopweather` co
 was insufficient to clear the reported fog. Added a disposable-world-only server Lua
 fog override to the test package. After graceful restart, epoch
 `31591e9e-25f0-4287-9a6b-18df379dcf95` logged actual fog intensity zero and the probe armed.
-Fourteen targeted packaging/operations/visibility tests pass. A new client run is pending.
+Fourteen targeted packaging/operations/visibility tests pass.
+
+After the client rejoined, the next run completed with one client connected and no new
+client log errors during the monitored course. Travelled 53.888 tiles; final position
+(10818.5, 9839.1875), finish `route_arrived`. Evidence:
+`artifacts/scenario-agent/client-driver-20260926_210235/`. Separate startup checksum
+(`absPath:null`) and chunk CRC warnings remain recorded; no clean-startup claim is made.
+The user confirmed a visible turn and cleared fog, but reported excessively slow driving,
+a skipped stop sign and the wrong exit lane. Detailed seated-driver visibility is now low
+priority by user choice. This is a partial one-client result, not traffic or two-client
+acceptance; the next iteration addresses those specific failures.
 
 ## Commute foundations and original driver — 2026-09-26
 

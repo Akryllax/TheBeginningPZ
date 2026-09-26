@@ -86,8 +86,9 @@ Protobuf graph and generated server place index. The last two artifact commands 
 the prepared private waypoint request/route, which are excluded from Git. Requests use
 `waypoints: [{x, y}, ...]`: 2–16 points, ground level only, X/Y within [-20000,60000],
 segments 0.5–40 tiles and total length 2–60 tiles. Preparing an artifact does not deploy it
-or start a game server. The separate probe currently uses a six-point, 55.21-tile curved
-route whose 307-tile swept corridor passed the static checks.
+or start a game server. The earlier probe used a six-point, 55.21-tile polyline route
+whose 307-tile swept corridor passed the static checks. The corrected lane course below
+supersedes that particular driving test, not the graph bake.
 
 Final preprocessing measurements on this development machine on **2026-09-26**,
 navigation identity `f086062b762a6096d7d6123b33d43b36ad0d75061c5ef27f7aac36494f95b366`:
@@ -131,3 +132,54 @@ dataset. A disconnected graph must not fabricate an off-road driving connection.
 Game-derived outputs stay ignored and local; distribute original tooling rather than
 installed map data. Record runtime/steering and two-client results separately in
 [[Experiments/Implementation Ledger]] and [[Runbooks/Multiplayer Validation]].
+
+## Bézier driving and reviewed lane course
+
+`scripts/scenario_lanes.py` verifies the installed intersection's asphalt cross-sections
+and west-facing stop sign, then writes `artifacts/scenario-map/vehicle-lane-course.json`.
+Eastbound centre Y=9861.5 and northbound centre X=10820.5 put this particular car in the
+right-hand lanes. The stop centre is at path progress 24.75, before the intersection,
+with a two-second dwell below 0.25 km/h. This is one reviewed intersection, not automatic
+map-wide lane, sign or traffic-priority inference.
+
+The 57.426-tile trajectory has a straight cubic, a radius-six quarter-turn approximation
+and a straight cubic. Joins require matching position/tangent; no C2 continuity claim is
+made. Analytic derivatives provide heading/curvature, with a bounded arc-length table,
+progress-window projection and signed lateral error. Steering looks 2.3–4 tiles ahead;
+speed regulation previews 8–22 tiles across segment joins. A one-second bicycle rollout
+estimates deviation/heading under the current command. Cruise is capped at 15 km/h,
+with curvature and stopping envelopes slowing before bends and stops.
+
+The implementation uses original Java/Python mathematics, with no ROS dependency or
+copied controller code. Velocity-scaled lookahead, curvature regulation and forward
+collision projection are established approaches described in the
+[Nav2 regulated pure pursuit documentation](https://api.nav2.org/nav2-rolling/html/md_nav2_regulated_pure_pursuit_controller_README.html).
+
+The pinned SmallCar footprint uses an oriented rectangle with sampling margin, rather
+than the graph's larger direction-independent disk. Its 192 swept tiles pass both source
+and loaded-world checks. Current body placement and the nearby curved stopping corridor
+are rechecked on the server. A cooperative 1 ms scan deadline triggers immediate braking
+and a fresh retry; two seconds of continuous scan starvation fails the probe. No incomplete
+scan authorizes acceleration. Single native calls, JVM scheduling and GC can exceed that
+cooperative deadline; report measured hook latency separately.
+
+Moving-vehicle prediction performs bounded continuous swept-circle tests between samples
+using fresh server-native velocity; unknown/client-owned nearby vehicles stop the probe
+because packet freshness is not established. Circles are conservative and are not a
+production adjacent-lane passing policy. Current corridor checks also reject actors,
+construction and unloaded terrain. Moving pedestrian forecasts, full streaming-range
+coverage, waiting/replanning and native blocker trials remain pending. Forecasting contact
+does not simulate impact, prove damage or authorize deliberate contact.
+
+Reproduce the isolated course after building the agent and stopping the probe:
+
+```sh
+python3 scripts/scenario_lanes.py
+./dayone vehicle-probe-route artifacts/scenario-map/vehicle-lane-course.json
+./dayone vehicle-probe-start
+./dayone vehicle-probe-control start
+```
+
+Runtime driving currently belongs to the server Java probe; the C++ worker is not connected
+to this reviewed test course. See [[Implementation Roadmap]] for the intended planner /
+executor split and [[Traffic Incidents]] for the separate crash lifecycle.

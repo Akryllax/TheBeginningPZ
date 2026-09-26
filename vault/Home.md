@@ -15,6 +15,7 @@ Start with [[Experiments/Implementation Ledger]] for what exists and what has ac
 - [[Design/Implementation Roadmap]] — accepted continuation, complete commute and rollout gates.
 - [[Design/First Week]] — corrected civilian opening, C++/Lua service and replication contract.
 - [[Design/Architecture]] — services, authority and data flow.
+- [[Design/Traffic Incidents]] — visible accidents, off-screen sound and persistent aftermath.
 - [[Design/Navigation]] — precomputed terrain scores, vehicle clearance and live obstacle checks.
 - [[Design/Storyteller]] — world phases, pressure, recovery and lifecycle.
 - [[Design/Storyteller Implementation]] — source-level implementation and limitations.

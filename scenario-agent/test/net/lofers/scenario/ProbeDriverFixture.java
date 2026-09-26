@@ -10,6 +10,7 @@ final class ProbeDriverFixture {
         return driver.step(x,y,Math.sin(yaw),Math.cos(yaw),speed,dt,"");
     }
     static void run() throws Exception {
+        BezierFixture.run();
         ProbeRoute course=ProbeRoute.parse(COURSE);
         check(Math.abs(course.length-55.211657)<0.00001,"Course length changed");
         check(course.points.size()==6&&course.tiles.size()==307,"Swept asphalt corridor changed");
@@ -48,24 +49,42 @@ final class ProbeDriverFixture {
         for(double x=10783.5;x<=10813.5;x+=.25)corner=observe(curved,x,9860.5,Math.PI/2,4,.2);
         check(corner.targetSpeed()<=2.2&&corner.steering()>0&&corner.brake()>0,"Turn does not anticipate steering/slowdown");
         simulateCourse(course);
+        var lanePoints=new java.util.ArrayList<ProbeRoute.Point>();
+        lanePoints.add(new ProbeRoute.Point(10783.5,9861.5));lanePoints.add(new ProbeRoute.Point(10814.5,9861.5));
+        for(int degrees=75;degrees>=0;degrees-=15){double angle=Math.toRadians(degrees);lanePoints.add(new ProbeRoute.Point(10814.5+6*Math.cos(angle),9855.5+6*Math.sin(angle)));}
+        lanePoints.add(new ProbeRoute.Point(10820.5,9838.5));
+        ProbeRoute lane=new ProbeRoute(lanePoints,true);
+        check(lane.tiles.size()==192,"Lane sweep differs from independent Python baker");
+        check(ProbeFootprint.touches(10821,9845,10820.5,9845.5,0,-1),"Lane footprint missed occupied tile");
+        check(!ProbeFootprint.touches(10822,9845,10820.5,9845.5,0,-1),"Lane footprint includes curb");
+        simulateCourse(lane,15,java.util.List.of(new ProbeDriver.Stop(24.75,2)));
+        ScenarioFixture.rejects(()->new ProbeDriver(lane,16,2),"Excess speed accepted");
+        ScenarioFixture.rejects(()->new ProbeDriver(lane,15,2,java.util.List.of(new ProbeDriver.Stop(Double.NaN,2))),"Nonfinite stop accepted");
+        ScenarioFixture.rejects(()->new ProbeDriver(lane,15,2,java.util.List.of(new ProbeDriver.Stop(12,2),new ProbeDriver.Stop(10,2))),"Unordered stops accepted");
         ProbeTiming timing=new ProbeTiming();for(int i=0;i<98;i++)timing.add(100_000);timing.add(2_100_000);timing.add(7_000_000);
         check(timing.count==100&&timing.over2==2&&timing.over5==1&&timing.percentile(.95)==.2&&timing.percentile(.99)==2.2,"Fixed-space timing accounting incorrect");
         System.out.println("Vehicle route/controller fixtures passed: corridor bounds, heading/wrap, turn slowdown, departure, emergency stop, stale observation, stall, arrival, kinematic course, latency histogram");
     }
-    private static void simulateCourse(ProbeRoute route){
+    private static void simulateCourse(ProbeRoute route){simulateCourse(route,4,java.util.List.of());}
+    private static void simulateCourse(ProbeRoute route,double speedLimit,java.util.List<ProbeDriver.Stop> stops){
         // Independent bicycle integration checks controller geometry/sign and
         // convergence. Native traction, collisions and replication remain live tests.
         double x=route.points.getFirst().x(),y=route.points.getFirst().y(),yaw=route.heading(),speed=0,maxCross=0;
-        double dt=.05,wheelbase=2.5;ProbeDriver driver=new ProbeDriver(route,4,wheelbase);boolean arrived=false;
+        double dt=.05,wheelbase=2.5;ProbeDriver driver=new ProbeDriver(route,speedLimit,wheelbase,stops);boolean arrived=false;
+        double measuredHold=0,maxSpeed=0;
         for(int i=0;i<2400;i++){
             var output=observe(driver,x,y,yaw,speed*3.6,dt);
             check(output.stopReason().isEmpty(),"Kinematic route aborted: "+output.stopReason());
-            maxCross=Math.max(maxCross,output.crossTrack());if(output.arrived()){arrived=true;break;}
+            maxCross=Math.max(maxCross,output.crossTrack());maxSpeed=Math.max(maxSpeed,speed*3.6);
+            if(driver.stopHoldSeconds()>0&&speed*3.6<.25)measuredHold+=dt;
+            if(output.arrived()){arrived=true;break;}
             double acceleration=output.engineForce()/1000-output.brake()/80.0-.03*speed;
             speed=Math.max(0,speed+acceleration*dt);yaw+=speed/wheelbase*Math.tan(output.steering())*dt;
             x+=speed*Math.sin(yaw)*dt;y+=speed*Math.cos(yaw)*dt;
         }
         check(arrived,"Kinematic course failed to arrive within120seconds");
+        check(driver.completedStops()==stops.size(),"Not all required stops were served");
+        if(!stops.isEmpty())check(measuredHold>=1.9&&maxSpeed>7,"Stop dwell or faster cruise missing");
         check(maxCross<.75,"Kinematic turn cuts course beyond clearance allowance");
         System.out.println("Controller-only course simulation: max_cross_track="+maxCross+"; native steering/collision proof still required");
     }

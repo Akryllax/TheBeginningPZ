@@ -4,6 +4,7 @@ local M=require "LofersScenario/Model"
 local W=require "LofersScenario/World"
 local N=require "LofersScenario/Native"
 local Road=require "LofersScenario/RoadState"
+local Traffic=require "LofersScenario/TrafficIncidents"
 local hasIndex,mapIndex=pcall(require,"LofersScenario/MapIndex")
 local R={players={},clients={},lastTick=0,lastDiscovery=0,lastPublish=0,lastReplica=0,lastProbe=0,lastRegional=0,
     lastTelemetry=0,timings={},leaseChanges=0,planRejections=0,dirty=false,
@@ -39,6 +40,8 @@ local function initialize()
     local migrated,why=M.migrate(R.root.state)
     if not migrated then R.lastError=why;return end
     R.state=R.root.state;R.epoch=R.state.world_id..":"..getRandomUUID();R.state.last_hour=worldHour()
+    local trafficReady,trafficWhy=Traffic.bind(R.state,true)
+    if not trafficReady then R.state=nil;R.lastError=trafficWhy;return end
     Road.bind(R.state,hasIndex and mapIndex.navigation_id or "")
     R.workerMinimum=R.state.revision+1;R.workerAt=nil;R.workerReady=false
     -- Restore invalidates pending transport replies and every previous executor lease.

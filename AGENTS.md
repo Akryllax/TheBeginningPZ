@@ -36,8 +36,11 @@ The current architecture investigation targets server-owned vehicle physics and 
 replication with ordinary Lua clients. The user explicitly permits JVM injection on the
 controlled server. Do not require a client Java agent for this revised architecture;
 the isolated straight-line physics probe passed and one ordinary client reported smooth
-movement. A separate empty-server asphalt turn passed; normal-world road following, NPC
-occupants and two-client consistency remain unvalidated;
+movement. A separate empty-server asphalt turn passed, followed by a one-client turn with clear
+visibility but incorrect lane choice, no stop-sign handling and deliberately low speed.
+Detailed seated-driver visibility is low priority by user choice. A corrected Bézier lane
+course, stop-sign dwell and 15 km/h cruise have passed empty-server native runs. Their
+client appearance, NPC boarding continuity and two-client consistency remain unvalidated;
 see the implementation ledger for the exact evidence and limitations.
 
 See `SKILLS.md` for task-specific workflows. Existing user authorization applies to

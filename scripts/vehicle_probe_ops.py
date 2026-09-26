@@ -208,6 +208,24 @@ def route_points(payload):
     return normalized
 
 
+def traffic_settings(payload, points):
+    lane=payload.get('lane_mode',False)
+    speed=payload.get('speed_kmh',4)
+    if type(lane) is not bool or type(speed) not in (int,float) or not math.isfinite(speed) or not 1<=speed<=(15 if lane else 5):
+        raise ValueError('Invalid lane mode or bounded speed')
+    rows=payload.get('stops',[])
+    if not isinstance(rows,list) or len(rows)>4:raise ValueError('At most four stops')
+    length=sum(math.dist(a,b) for a,b in zip(points,points[1:]))
+    stops=[];previous=0
+    for row in rows:
+        if not isinstance(row,dict):raise ValueError('Invalid stop')
+        progress,hold=row.get('progress'),row.get('hold_seconds')
+        if any(type(n) not in (int,float) or not math.isfinite(n) for n in (progress,hold)) or not 2<=progress<=length-3 or progress<=previous or not 1<=hold<=5:
+            raise ValueError('Invalid stop progress or hold')
+        stops.append((progress,hold));previous=progress
+    return lane,speed,stops
+
+
 @serialized
 def configure_route(m, source):
     receipt, target = current(m)
@@ -221,10 +239,25 @@ def configure_route(m, source):
         data = stream.read(65537)
     if len(data) > 65536:
         raise ValueError('Probe route artifact exceeds 64 KiB')
-    points = route_points(json.loads(data))
+    payload = json.loads(data)
+    points = route_points(payload)
+    lane, speed, stops = traffic_settings(payload, points)
+    curves=payload.get('beziers',[])
+    curve_text=''
+    if curves:
+        if not lane:raise ValueError('Bezier path requires lane mode')
+        from scenario_lanes import bezier_samples
+        samples=list(bezier_samples(curves))
+        if math.dist(samples[0][:2],points[0])>.001 or math.dist(samples[-1][:2],points[-1])>.001:
+            raise ValueError('Bezier endpoints differ from route')
+        curve_text=';'.join(','.join(f'{p[k]:.10f}' for p in curve for k in ('x','y')) for curve in curves)
     dx, dy = points[1][0] - points[0][0], points[1][1] - points[0][1]
     changes = {'vehicle_probe.x': points[0][0], 'vehicle_probe.y': points[0][1],
                'vehicle_probe.heading_degrees': math.degrees(math.atan2(dx, dy)) % 360,
+               'vehicle_probe.lane_mode': str(lane).lower(),
+               'vehicle_probe.beziers': curve_text,
+               'vehicle_probe.speed_kmh': speed,
+               'vehicle_probe.stops': ';'.join(f'{p:.8f},{h:.8f}' for p,h in stops),
                'vehicle_probe.waypoints': ';'.join(f'{x:.8f},{y:.8f}' for x, y in points)}
     config = target / 'scenario.properties'
     before = config.read_text()
