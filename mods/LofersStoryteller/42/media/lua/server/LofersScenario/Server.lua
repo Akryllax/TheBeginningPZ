@@ -7,7 +7,8 @@ local hasIndex,mapIndex=pcall(require,"LofersScenario/MapIndex")
 local R={players={},clients={},lastTick=0,lastDiscovery=0,lastPublish=0,lastReplica=0,lastProbe=0,lastRegional=0,
     lastTelemetry=0,timings={},leaseChanges=0,planRejections=0,dirty=false,
     cursor=1,spawnCursor=1,snapshotCursor=1,indexCursor=1,assignmentCursor=1,pending=nil,nextProbe=1,
-    contacts={},contactOrder={},contactLimits={},lastPlans=-1,lastError="initializing"}
+    contacts={},contactOrder={},contactLimits={},lastPlans=-1,lastError="initializing",
+    workerReady=false,workerReason="awaiting_planner_reply",workerRevision=-1,workerMinimum=1}
 LofersScenarioServer=R
 local function seconds() return getTimestampMs()/1000 end
 local function worldHour() return getGameTime():getWorldAgeHours() end
@@ -24,8 +25,10 @@ local function status()
     end
     return {world=s.world,world_id=s.world_id,epoch=R.epoch,status=s.status,phase=s.phase,
         elapsed_hours=s.elapsed_hours,revision=s.control_revision or 0,world_revision=s.revision,online=#R.players,residents=#s.order,
-        materialized=n,pedestrians=p,vehicles=v,bridge_health=(R.root.bridgeIn or {}).health or "waiting",
-        last_error=R.lastError,resident_rows=rows}
+        materialized=n,pedestrians=p,vehicles=v,bridge_health=R.workerReady and "ready" or R.workerReason,
+        bridge_reported_health=(R.root.bridgeIn or {}).health or "waiting",
+        last_error=not R.workerReady and R.workerReason or R.lastError,resident_rows=rows,planning_paused=not R.workerReady,
+        planner_reason=R.workerReason,planner_reply_age=R.workerAt and math.max(0,seconds()-R.workerAt) or nil}
 end
 R.status=status
 local function initialize()
@@ -34,6 +37,7 @@ local function initialize()
     if not R.root.state then R.root.state=M.new(getServerName(),getRandomUUID(),worldHour()) end
     if R.root.state.schema~=C.schema then R.lastError="unsupported_state_schema";return end
     R.state=R.root.state;R.epoch=R.state.world_id..":"..getRandomUUID();R.state.last_hour=worldHour()
+    R.workerMinimum=R.state.revision+1;R.workerAt=nil;R.workerReady=false
     -- Restore invalidates pending transport replies and every previous executor lease.
     R.root.bridgeIn={health="waiting",guard_ready=false};R.root.bridgeOut=nil
     for _,id in ipairs(R.state.order) do local r=R.state.residents[id]
@@ -49,9 +53,42 @@ local function players()
         if p and not p:isDead() then R.players[#R.players+1]=p end
     end
 end
+local function plannerReady()
+    local b=R.root.bridgeIn or {};local now=seconds();local ready=false;local reason
+    local revision=b.observation_revision
+    if b.server_epoch~=R.epoch or b.guard_ready~=true or not N.ready() then
+        reason="native_bridge_not_ready"
+    elseif b.health~="ready" then reason="planner_unavailable"
+    elseif type(revision)=="number" and revision>=R.workerMinimum and revision>R.workerRevision and
+        revision<=R.state.revision then
+        -- Only an advancing completed observation proves worker progress. A
+        -- repeated ready status/handshake cannot refresh an old reply forever.
+        R.workerRevision=revision;R.workerAt=now;ready=true
+    elseif R.workerAt and now-R.workerAt<=C.workerTimeoutSeconds and R.workerRevision>=R.workerMinimum then
+        ready=true
+    else reason=R.workerAt and "planner_reply_stale" or "awaiting_planner_reply" end
+    if not ready then R.workerMinimum=math.max(R.workerMinimum,R.workerRevision+1) end
+    if ready~=R.workerReady then
+        R.workerReady=ready;R.dirty=true;R.pending=nil
+        R.state.last_hour=worldHour()
+        if not ready then
+            -- Recovery must acknowledge an observation published after this
+            -- hold, rather than a delayed in-flight reply from before it.
+            R.workerMinimum=math.max(R.workerMinimum,R.state.revision+1)
+            -- Uncommitted actions are abandoned, so late receipts and elapsed
+            -- client timers cannot produce a burst of effects after recovery.
+            for _,id in ipairs(R.state.order) do local r=R.state.residents[id]
+                r.actions={};r.action_index=1;r.current_action="WAIT";r.action_started=nil
+                r.action_deadline=nil;r.abstract_progress=0;r.revision=r.revision+1
+            end
+        end
+        M.event(R.state,"planner",ready and "recovered_fresh_reply" or reason)
+    end
+    R.workerReason=ready and "ready" or reason
+    return ready,R.workerReason
+end
 local function guarded()
-    local b=R.root.bridgeIn or {}
-    if b.health~="ready" or b.guard_ready~=true or not N.ready() then return false,"native_bridge_not_ready" end
+    local ok,why=plannerReady();if not ok then return false,why end
     if #R.players>C.maxPlayers then return false,"observer_capacity" end
     for _,p in ipairs(R.players) do
         local c=R.clients[p:getOnlineID()]
@@ -72,7 +109,8 @@ local function sendResidents(player)
         if r.materialized and #out<C.maxPhysical then out[#out+1]=replica(r) end
     end
     local msg={epoch=R.epoch,world=R.state.world,revision=R.state.revision,server_seconds=seconds(),
-        world_hour=worldHour(),phase=R.state.phase,paused=R.state.status=="paused",residents=out}
+        world_hour=worldHour(),phase=R.state.phase,paused=R.state.status=="paused",
+        planning_paused=not R.workerReady,planner_reason=R.workerReason,residents=out}
     if player then reply(player,"residents",msg) else broadcast("residents",msg) end
 end
 local function observation(r)
@@ -104,12 +142,13 @@ local function publish()
     s.revision=s.revision+1
     R.root.bridgeOut={world=s.world,server_epoch=R.epoch,revision=s.revision,
         world_hour=math.floor(worldHour()/24)*24+getGameTime():getTimeOfDay(),
-        scenario_hour=s.elapsed_hours,phase=s.phase,paused=s.status=="paused",seed=s.seed,
+        scenario_hour=s.elapsed_hours,phase=s.phase,paused=s.status=="paused" or not R.workerReady,seed=s.seed,
         residents=rs,places=ps,road_nodes=ns,road_edges=hasIndex and {} or s.edges,online_players=#R.players}
 end
 local function plans()
+    if not R.workerReady then return end
     local b=R.root.bridgeIn or {};local batch=b
-    if batch.observation_revision and batch.observation_revision~=R.lastPlans then
+    if batch.observation_revision==R.workerRevision and batch.observation_revision~=R.lastPlans then
         R.lastPlans=batch.observation_revision
         for i,p in ipairs(batch.plans or {}) do
             if i>C.maxPlans then break end
@@ -177,6 +216,7 @@ local function beginRetirement()
 end
 local function finishProbe()
     local p=R.pending;if not p then return end
+    if not plannerReady() then R.pending=nil;return end
     if seconds()>p.expires then R.pending=nil;R.lastError="visibility_timeout";return end
     for _,player in ipairs(R.players) do if not p.required[player:getOnlineID()] then R.pending=nil;return end end
     for id in pairs(p.required) do
@@ -201,9 +241,15 @@ local function finishProbe()
     if ok then r.spawned_at=seconds() end
     R.lastError=ok and "" or why;sendResidents()
 end
-local function advanceResident(r,dt)
+local function advanceResident(r,dt,progress)
     if seconds()>(r.threat_until or 0) then r.threatened=false end
-    local s=R.state;M.advanceResident(s,r,dt)
+    local s=R.state
+    if progress then
+        if r.pending_contact_exposure then
+            M.expose(s,r,"deferred_confirmed_zombie_contact");r.pending_contact_exposure=nil
+        end
+        M.advanceResident(s,r,dt)
+    end
     if r.materialized then
         local z,state=N.reconcile(r)
         if state=="dead" then
@@ -215,7 +261,7 @@ local function advanceResident(r,dt)
             r.lifecycle="unresolved";return
         end
         r.lifecycle="active"
-        if r.infection=="turning" then
+        if progress and r.infection=="turning" then
             if N.turn(s,r) then broadcast("terminal",replica(r)) end
             return
         end
@@ -226,8 +272,8 @@ local function advanceResident(r,dt)
         M.lease(r,owner,seconds());LofersNative.lease(z,r.lease_epoch,owner)
         if owner~=oldOwner then R.dirty=true;R.leaseChanges=R.leaseChanges+1 end
         local a=M.action(r)
-        if a and not r.action_started then r.action_started=worldHour();r.action_deadline=seconds()+120;R.dirty=true end
-    elseif r.lifecycle=="abstract" then
+        if progress and a and not r.action_started then r.action_started=worldHour();r.action_deadline=seconds()+120;R.dirty=true end
+    elseif progress and r.lifecycle=="abstract" then
         -- Coarse unseen routines conserve identity; physical members never use this path.
         local a=M.action(r)
         if a then
@@ -259,11 +305,13 @@ local function update()
     if type(nativeEpoch)=="string" and nativeEpoch~="" and nativeEpoch~=R.epoch then
         R.epoch=nativeEpoch;R.lastPlans=-1;R.pending=nil
         R.contacts={};R.contactOrder={};R.contactLimits={}
+        R.workerMinimum=R.state.revision+1;R.workerAt=nil;R.workerRevision=-1
         for _,id in ipairs(R.state.order) do local r=R.state.residents[id]
             r.owner_id=-1;r.lease_epoch=r.lease_epoch+1;r.action_started=nil
         end
     end
-    players();local dt=M.clock(R.state,worldHour(),#R.players)
+    players();local progress=plannerReady()
+    local dt=M.clock(R.state,worldHour(),progress and #R.players or 0)
     if now-R.lastDiscovery>1 then
         local places=hasIndex and mapIndex.places or {}
         for _=1,8 do local p=places[R.indexCursor];if not p then break end
@@ -287,10 +335,10 @@ local function update()
         -- At most eight residents per 100ms slice, with fair round-robin maintenance.
         local n=#R.state.order
         for _=1,math.min(8,n) do R.cursor=(R.cursor-1)%n+1
-            advanceResident(R.state.residents[R.state.order[R.cursor]],dt*math.max(1,n/8));R.cursor=R.cursor+1
+            advanceResident(R.state.residents[R.state.order[R.cursor]],dt*math.max(1,n/8),progress);R.cursor=R.cursor+1
         end
-        regional();finishProbe()
-        if now-R.lastProbe>2 then
+        if progress then regional();finishProbe() end
+        if progress and now-R.lastProbe>2 then
             if not beginRetirement() then beginProbe() end
             R.lastProbe=now
         end
@@ -306,6 +354,7 @@ local function update()
     end
 end
 local function receipt(player,args)
+    if R.state.status=="paused" or not plannerReady() then return end
     local r=R.state.residents[args.resident_id]
     if not r or not r.materialized or args.epoch~=R.epoch or seconds()>r.lease_until then return end
     local z=N.actors[r.id];if not z or LofersNative.ownerId(z)~=player:getOnlineID() then return end
@@ -361,7 +410,10 @@ local function contact(player,args)
     if N.health(r,health-6) then
         r.revision=r.revision+1;r.threatened=true;r.threat_until=now+8;r.fear=math.max(r.fear,0.8)
         r.actions={};r.action_index=1;r.current_action="WAIT"
-        M.expose(R.state,r,"confirmed_zombie_contact")
+        -- Immediate physical injury/defense remains authoritative during an
+        -- outage; the paused outbreak cannot introduce new infection decisions.
+        if plannerReady() then M.expose(R.state,r,"confirmed_zombie_contact")
+        elseif R.state.started_hour and r.infection=="healthy" then r.pending_contact_exposure=true end
         M.event(R.state,"contact","native_owner_geometry_validated",r.id);R.dirty=true
     end
 end
@@ -413,12 +465,14 @@ local function command(module,cmd,player,args)
     elseif cmd=="pause" then s.paused_from=s.status;s.status="paused";R.pending=nil
     elseif cmd=="resume" then s.status=s.started_hour and "running" or "calm";s.last_hour=worldHour()
     elseif cmd=="step" then
-        if s.status~="paused" then ok=false;why="pause_before_step"
+        if not plannerReady() then ok=false;why=R.workerReason
+        elseif s.status~="paused" then ok=false;why="pause_before_step"
         else local h=math.max(0,math.min(24,tonumber(args.hours) or 1));s.elapsed_hours=s.elapsed_hours+h;s.phase=M.phase(s) end
     elseif cmd=="advance" then
         local stages={initial_cases=0,first_cases=0,response=48,emergency=48,disruption=72,collapse=120,survival=168}
         local h=stages[args.phase]
-        if not h or not s.started_hour then ok=false;why="start_and_choose_valid_phase"
+        if not plannerReady() then ok=false;why=R.workerReason
+        elseif not h or not s.started_hour then ok=false;why="start_and_choose_valid_phase"
         else s.elapsed_hours=math.max(s.elapsed_hours,h);s.phase=M.phase(s) end
     elseif cmd=="inspect" then
         local r=s.residents[args.id]

@@ -167,6 +167,8 @@ function hello(p) cmd(p,'hello',{helper=true,version=C.version,integration='lua-
  manifest=C.clientManifest,callback_ready=true,target_shield=true}) end
 hello(admin);hello(guest)
 tick()
+root.bridgeIn.observation_revision=root.bridgeOut.revision;root.bridgeIn.plans={}
+tick()
 """
 
 
@@ -210,7 +212,8 @@ def test_flattened_plan_batch_is_consumed_once(lua):
     lua.execute(SERVER + """
         root.bridgeIn.plans={{resident_id=r.id,based_on_revision=r.revision,generation=r.generation,
           plan_revision=1,goal='go_home',actions={{id='unique',kind=1,target=r.home,duration_hours=0.5}}}}
-        root.bridgeIn.observation_revision=5
+        clock=clock+1.1;tick()
+        root.bridgeIn.observation_revision=root.bridgeOut.revision
         tick();assert(r.plan_revision==1 and M.action(r).id=='unique')
         local events=#s.events;tick();assert(#s.events==events)
     """)
@@ -552,4 +555,129 @@ def test_native_death_confirmation_survives_entity_square_removal(lua):
         local actual,state=N.reconcile(r)
         assert(actual==z and state=='dead')
         N.dead(r);assert(N.actors[r.id]==nil and clusters[42][42]==nil and removed==0)
+    """)
+
+
+def test_stale_ready_batch_holds_clock_infection_and_pending_materialization(lua):
+    lua.execute(SERVER + """
+        cmd(admin,'start');Server.pending=nil
+        r.infection='exposed';r.exposed_hour=0;s.elapsed_hours=7.99
+        r.actions={{id='old',kind='WORK',target=r.home,duration_hours=1}};r.action_index=1
+        cmd(admin,'test_spawn',{role='worker'});local probe=Server.pending;assert(probe)
+        cmd(admin,'visibility',{epoch=Server.epoch,id=probe.id,safe=true})
+        cmd(guest,'visibility',{epoch=Server.epoch,id=probe.id,safe=true})
+        local elapsed=s.elapsed_hours;local hunger=r.hunger;local rev=r.revision
+        clock=clock+C.workerTimeoutSeconds+0.1;hour=hour+12;tick()
+        assert(root.bridgeIn.health=='ready' and not Server.workerReady)
+        assert(s.status=='running' and s.elapsed_hours==elapsed and r.hunger==hunger)
+        assert(r.infection=='exposed' and not Server.pending and spawned==0)
+        assert(not M.action(r) and r.revision>rev)
+        assert(root.bridgeOut.paused and Server.status().planning_paused)
+        assert(Server.status().planner_reason=='planner_reply_stale')
+        assert(Server.status().bridge_health=='planner_reply_stale' and Server.status().bridge_reported_health=='ready')
+        assert(Server.status().last_error=='planner_reply_stale')
+        assert(root.telemetry.planning_paused and root.telemetry.planner_reason=='planner_reply_stale')
+    """)
+
+
+def test_paused_empty_observations_recover_without_clock_catchup(lua):
+    lua.execute(SERVER + """
+        cmd(admin,'start');Server.pending=nil
+        s.residents={};s.order={};root.bridgeIn.health='planner_unavailable'
+        local before=s.elapsed_hours
+        clock=clock+2;hour=hour+20;tick()
+        assert(not Server.workerReady and s.elapsed_hours==before)
+        assert(root.bridgeOut.paused and #root.bridgeOut.residents==0)
+        local fresh=root.bridgeOut.revision
+        -- Merely changing the old health string must not resume.
+        root.bridgeIn.health='ready';tick();assert(not Server.workerReady)
+        root.bridgeIn.observation_revision=fresh;root.bridgeIn.plans={}
+        hour=hour+100;tick()
+        assert(Server.workerReady and s.elapsed_hours==before and s.status=='running')
+        tick();assert(s.elapsed_hours>before and s.elapsed_hours-before<0.002)
+    """)
+
+
+def test_explicit_missing_health_holds_before_timeout_and_manual_pause_survives_recovery(lua):
+    lua.execute(SERVER + """
+        cmd(admin,'start');cmd(admin,'pause');local before=s.elapsed_hours
+        root.bridgeIn.health=nil;tick()
+        assert(not Server.workerReady and Server.workerReason=='planner_unavailable')
+        cmd(admin,'step',{hours=2});assert(s.elapsed_hours==before)
+        cmd(admin,'advance',{phase='survival'});assert(s.elapsed_hours==before)
+        clock=clock+2;tick();local revision=root.bridgeOut.revision
+        root.bridgeIn.health='ready';root.bridgeIn.observation_revision=revision
+        tick();assert(Server.workerReady and s.status=='paused' and s.elapsed_hours==before)
+    """)
+
+
+def test_outage_keeps_native_reconciliation_and_defensive_lease_alive(lua):
+    lua.execute(SERVER + """
+        cmd(admin,'start');Server.pending=nil
+        r.materialized=true;r.lifecycle='active';r.owner_id=10
+        local renewed=0;local reconciled=0
+        package.loaded['LofersScenario/Native'].reconcile=function(resident)
+          reconciled=reconciled+1;resident.position={x=111,y=100,z=0};return {},'active'
+        end
+        LofersNative.ownerId=function() return 10 end
+        LofersNative.lease=function() renewed=renewed+1;return true end
+        root.bridgeIn.health='planner_unavailable'
+        local hunger=r.hunger;tick()
+        assert(not Server.workerReady and reconciled>0 and renewed>0)
+        assert(r.position.x==111 and r.lease_until>clock and r.hunger==hunger)
+    """)
+
+
+def test_client_planning_hold_blocks_routines_but_keeps_immediate_escape(lua):
+    lua.execute(CLIENT + """
+        remote=false;L.planningPaused=true
+        tick();assert(#sent==0 and walks==0)
+        L.runs[r.id].escapeUntil=clock+2
+        L.runs[r.id].escape={x=105,y=100,z=0}
+        tick();assert(walks==1 and #sent==0)
+    """)
+
+
+def test_late_pre_outage_reply_cannot_recover_until_post_hold_observation(lua):
+    lua.execute(SERVER + """
+        cmd(admin,'start');Server.pending=nil
+        clock=clock+1.1;tick();local oldInFlight=root.bridgeOut.revision
+        root.bridgeIn.health='planner_unavailable';tick()
+        assert(not Server.workerReady and Server.workerMinimum>oldInFlight)
+        root.bridgeIn.health='ready';root.bridgeIn.observation_revision=oldInFlight
+        tick();assert(not Server.workerReady)
+        clock=clock+1.1;tick();local newPaused=root.bridgeOut.revision
+        assert(newPaused>oldInFlight and root.bridgeOut.paused)
+        root.bridgeIn.observation_revision=newPaused;root.bridgeIn.plans={}
+        tick();assert(Server.workerReady)
+    """)
+
+
+def test_outage_contact_keeps_damage_and_defers_confirmed_infection_until_recovery(lua):
+    lua.execute(SERVER + """
+        cmd(admin,'start');Server.pending=nil
+        r.materialized=true;r.lifecycle='active';r.max_native_health=1;r.health=100
+        local square={isSomethingTo=function() return false end};local health=1
+        local victim={isDead=function() return false end,getX=function() return 100 end,
+          getY=function() return 100 end,getZ=function() return 0 end,getHealth=function() return health end,
+          getSquare=function() return square end,getVehicle=function() return nil end}
+        local attacker={isDead=function() return false end,getX=function() return 100.5 end,
+          getY=function() return 100 end,getZ=function() return 0 end,getOnlineID=function() return 50 end,
+          getSquare=function() return square end,getVariableBoolean=function() return false end,
+          getOwnerPlayer=function() return admin end,isFacingObject=function() return true end}
+        local n=package.loaded['LofersScenario/Native'];n.actors[r.id]=victim
+        n.health=function(r,h) r.health=h;health=h/100;return true end
+        n.reconcile=function() return victim,'active' end
+        LofersNative.ownerId=function() return 10 end;LofersNative.lease=function() return true end
+        package.loaded['LofersScenario/World'].find=function(outfit) if outfit==500 then return attacker end end
+        root.bridgeIn.health='planner_unavailable';tick()
+        local frozen=s.elapsed_hours
+        cmd(admin,'contact',{epoch=Server.epoch,resident_id=r.id,generation=r.generation,
+          lease_epoch=r.lease_epoch,attacker_id=50,attacker_outfit=500,sequence=1})
+        assert(r.health==94 and r.infection=='healthy' and r.pending_contact_exposure)
+        clock=clock+1.1;hour=hour+50;tick();assert(s.elapsed_hours==frozen)
+        root.bridgeIn.health='ready';root.bridgeIn.observation_revision=root.bridgeOut.revision
+        tick()
+        assert(Server.workerReady and s.elapsed_hours==frozen)
+        assert(r.infection=='exposed' and r.exposed_hour==frozen and not r.pending_contact_exposure)
     """)

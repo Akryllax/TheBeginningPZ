@@ -1,7 +1,7 @@
 local C=require "LofersScenario/Config"
 local M=require "LofersScenario/Model"
 local G=require "LofersScenario/ClientGate"
-local L={residents={},outfits={},actors={},runs={},epoch=nil,lastHello=0,offset=0,paused=false}
+local L={residents={},outfits={},actors={},runs={},epoch=nil,lastHello=0,offset=0,paused=false,planningPaused=true}
 LofersScenarioClient=L
 local function now() return getTimestampMs()/1000 end
 local function wh() return getGameTime():getWorldAgeHours() end
@@ -130,6 +130,7 @@ local function updateActor(z)
     contacts(z,r,run)
     if run.escapeUntil and now()<run.escapeUntil then walk(z,run.escape,run);return end
     if run.escapeUntil then run.escapeUntil=nil;run.pathAt=nil;run.pathAttempts=0 end
+    if L.planningPaused then stop(z,r);return end
     local a=r.action
     if not a then stop(z,r);return end
     if a.kind=="DRIVE" or a.kind=="PARK" or a.kind=="ENTER_VEHICLE" or a.kind=="EXIT_VEHICLE" then
@@ -187,6 +188,7 @@ local function command(module,cmd,args)
             L.residents={};L.outfits={};L.runs={};L.actors={}
         end
         L.epoch=args.epoch;L.offset=args.server_seconds-now();L.paused=args.paused==true
+        L.planningPaused=args.planning_paused==true
         local included={};for _,r in ipairs(args.residents or {}) do included[r.id]=true end
         local removed={};for id,r in pairs(L.residents) do if not included[id] then removed[#removed+1]=r end end
         for _,r in ipairs(removed) do terminal(r) end
