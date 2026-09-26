@@ -7,6 +7,7 @@ final class TrafficSafetyFixture {
     static void run(){
         nativeSnapshots();
         TrafficPassFixture.run();
+        TrafficBypassFixture.run();
         var budget=new ProbeSafetyWork();
         for(int i=0;i<256;i++)check(budget.tile(),"Valid tile budget rejected");
         check(!budget.tile(),"Unbounded tile scan accepted");

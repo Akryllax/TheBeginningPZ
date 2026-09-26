@@ -26,8 +26,10 @@ for a safe way around. Drivers differ, and avoidance must coexist with imperfect
 driving and occasional crashes. Do not make every car honk together, pick a new personality
 each frame, or repeatedly alternate between the same conflicting paths.
 
-Use a stable resident seed for patience, horn tendency/delay/duration, stopped spacing and
-replan interval. An obstruction episode chooses whether to honk once. Count patience while
+Use a stable resident seed for patience, horn tendency/delay/duration, stopped spacing,
+off-road willingness and replan interval. An obstruction episode chooses whether to honk
+and whether to consider leaving the road once; retries cannot repeatedly reroll a cautious
+driver into a reckless one. Count patience while
 actually waiting, not while approaching. Retain the car and its route while blocked; removal
 of the obstruction resumes the original trip. Horns use the stock server vehicle sound
 state, including its normal world-sound consequences and native replication.
@@ -37,10 +39,16 @@ rejoining`. The high-level service can choose a different road when a persistent
 makes a local maneuver impossible. The server must retain immediate braking without IPC.
 For a local pass, consider at most two bounded candidates on known drivable road, including
 a short use of the opposite lane only when the full maneuver, oncoming gap and rejoin are
-freshly verified. No sidewalk/grass shortcut, blind junction entry or reversing near a
-player. Check the swept oriented vehicle footprint, steering/turn radius and braking
-capability; the current conservative circular forecast is insufficient to approve
-side-by-side passing in adjacent lanes. A route proposal alone cannot execute a pass.
+freshly verified. The user's subsequent clarification explicitly allows a driver to attempt
+off-road avoidance according to temperament. Prefer a clear road candidate; a willing driver
+can then consider a short dirt/grass shoulder or paved edge. Ground support, height, walls,
+fences, vegetation collisions, actors, vehicles and a usable rejoin still apply. Water,
+unclassified surfaces, blind junction entry and reversing near a player remain outside the
+initial adapter. Reduce speed and planning grip assumptions for a shoulder, while keeping
+native mass, engine, steering and physical traction authoritative. A failed attempt waits
+or requests a different road; do not push through an obstacle or teleport back to the lane.
+Check the swept oriented vehicle footprint, steering/turn radius and braking capability.
+A route proposal alone cannot execute a pass.
 
 Reserve the maneuver's complete inflated swept corridor, including entry and rejoin, on
 the authoritative server. Opposing/overlapping requests are decided in one bounded batch:
@@ -63,14 +71,30 @@ execution can still produce contact; do not add ghosting, invulnerability or pos
 snaps. Higher-risk staged mistakes remain named incident actions under the all-player
 exclusion rules below. Do not randomly disable the safety scan to manufacture crashes.
 
-Current step: gradual parked-car approach, persistent wait/resume and temperament-based
-honking are connected to the disposable server probe. Bounded bypass requests are emitted
-after patience expires. `TrafficPassReservations` has detached conflict, stale-occupancy,
-priority and generation tests; it is **not yet connected to a managed multi-car executor**.
-Live bypass execution stays disabled until a candidate's full road footprint and dynamic
-clearance are verified. Required follow-up evidence: stationary bypass, opposing contenders,
-new obstacle during a pass, blocked rejoin, stale-owner recovery, native contact and two
-ordinary clients. None of those are established by a single-car stopping test.
+Current step: the opt-in straight-road probe now generates up to two bounded cubic bypasses
+on a detached thread. It leaves extra maneuvering room, waits according to temperament,
+validates loaded surfaces incrementally, rechecks all observed vehicles and reserves the
+entry/pass/rejoin corridor before applying native controls. A parked SmallCar is tested as
+an oriented rectangle with conservative sweep margins; moving or uncertain traffic still
+stops this initial adapter. Two empty-server road bypasses passed and released the
+reservation only after the car's footprint cleared the reserved corridor. A subsequent
+ordinary-client trial confirmed a smooth pass and lane return, with an audible honk.
+That trial waited 20.60 seconds and produced no new client error lines; see the ledger.
+
+Optional shoulders are implemented as a second surface-validation tier, after road
+candidates fail, using one stable episode choice. Supported soft surfaces are the installed
+grass and dirt materials; ordinary paved surfaces permit transitions. Missing material,
+water, sand, clay and burnt surfaces are rejected initially. A shoulder attempt uses a
+6–8 km/h ceiling and 60% of the ordinary planning braking/lateral preferences; these are
+conservative preferences, not calibrated native terrain coefficients. Existing wall,
+occupancy, physics-loading and road-rejoin checks remain mandatory. Passing through grass
+has not been established by the road test.
+
+`TrafficPassReservations` now gates the single probe's maneuver and has detached conflict,
+stale-occupancy, priority and generation tests. It is **not yet connected to a managed
+multi-car executor**. Required follow-up evidence: real shoulder attempt/denial,
+opposing contenders, new obstacle during a pass, blocked rejoin, stale-owner
+recovery, native contact and two ordinary clients. A single-car test does not prove those.
 
 An incident is a separately authorized server-owned action with named participants,
 reserved route/impact/aftermath areas and a stable event ID. Never switch off collision

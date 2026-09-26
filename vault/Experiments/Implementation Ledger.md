@@ -10,6 +10,67 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Parked-car passing, audible horn and optional shoulders — 2026-09-27
+
+The user requested temperament-dependent passing, then clarified that willing drivers may
+attempt off-road avoidance while respecting physical obstacles. The opt-in straight-road
+probe now proposes two bounded cubic detours on the private worker thread. It validates
+loaded surfaces incrementally, rejects stale observations, checks oriented vehicle
+footprints and reserves the entry/pass/rejoin corridor before applying native controls.
+Release requires the actual padded footprint to clear the reserved corridor. The static
+obstacle remains in place for the whole maneuver; the original destination is preserved.
+Road passing is capped at 15 km/h and retains vehicle capability constraints. Geometry work
+is separate from the game thread. The probe seeds personality with its command identity,
+avoiding reuse of a recycled native vehicle ID; residents still need durable resident seeds.
+
+The separate 44-tile course runs east along Y=9861.5 from X=10666.5 to 10710.5. The offline
+reader checked both lanes across 294 tiles. An earlier site had unknown decorative crack
+definitions and was rejected without weakening the reader. The parked fixture spawns at
+command (10689,9862,0), actual centre approximately (10688,9861.8984). The observer stood at
+(10688.5,9864.5); the first artifact's 9866.5 suggestion was behind a fence and has been
+corrected in the baker. Original evidence artifacts retain their original hashes/metadata.
+
+Automated checks passed: **168 project tests** plus Java compatibility, premain, protocol,
+native-asset, route/controller, reservation and new bypass fixtures. New coverage includes
+oriented clearance, denial when both sides are blocked, independent physical approach/rejoin
+simulation, terrain rejection, stable off-road choices and invalid route flag rejection.
+Private logs: `artifacts/traffic-bypass-project-tests.log` and
+`artifacts/traffic-bypass-tests.log`.
+
+Empty-server evidence: `artifacts/scenario-agent/native-parked-bypass-20260926_232324/`
+passed with agent `6f91bc76051a77ab00565610235974b404ad9e0dab7cdbf3e03ae07292c4e08f`:
+27.90 seconds waiting, left pass, lane return and arrival. The following run,
+`native-parked-bypass-20260926_233003/`, used the final deployed agent
+`7969caf6661ea2e458dcb878b5aba476bcd19178d3834241fd8076e8c9dbe545` and epoch
+`61e2a134-7e55-42b2-8c52-b8c6f562a1ed`. It waited 18.50 seconds, passed on asphalt,
+rejoined and arrived; peak 18.33 km/h. Detached geometry took 10.89 ms. Warm hook
+p95 <=0.6 ms, p99 <=1.3 ms, max 3.716 ms. Native bodies returned to zero and the exact
+parked fixture was removed. These runs had no clients.
+
+One-client evidence: `artifacts/scenario-agent/client-parked-bypass-20260926_233245/`,
+same final agent and epoch, akr connected. The user confirmed **smooth pass and lane return;
+heard a honk**. The car waited 20.60 seconds at (10679.2422,9861.5), passed on the left
+to a minimum Y=9858.3984, rejoined, and arrived at (10709.8359,9861.5). Peak 16.56 km/h
+on the complete course. All 83 waiting and 37 passing snapshots retained body, world,
+registry and chunk membership. Three sampled snapshots had native horn state enabled;
+audibility is established by the separate user report. There were **zero new client error
+lines** in the captured console interval. Detached geometry took 15.40 ms; warm hook
+p95 <=0.4 ms, p99 <=0.9 ms, max 4.485 ms. Cold hook max was 14.491 ms, dominated by
+vehicle creation; these are added probe hook measurements, not total server tick timings.
+One bypass completed, its reservation cleared and native body count returned to zero.
+The exact parked fixture (native 245, persistent row 20) was removed through the game's
+method with identity/rest/occupancy guards and verified absent from the database. The
+temporary server Lua extension was restored byte-for-byte. No playable or production world
+was changed. The disposable server remains available, with no active test car.
+
+Shoulder fallback is implemented and fixture-tested but **not natively demonstrated**.
+Road candidates are preferred; one stable episode roll can admit known dirt/grass/paved
+edges at 6–8 km/h with 60% planning braking/lateral preferences. These are conservative
+preferences, not measured terrain friction. Walls, actors, vehicles, supported ground and
+a lane rejoin remain mandatory. Next gates are native shoulder success/denial, managed
+multi-car arbitration, changing obstacles/rejoin blockage, native impact/damage, resident
+commutes and two-client agreement. The C++ planner still does not drive this probe.
+
 ## Planned stopping, queue persistence and traffic personality — 2026-09-27
 
 The longer-held obstacle trial still failed the user's visual acceptance: the car accelerated

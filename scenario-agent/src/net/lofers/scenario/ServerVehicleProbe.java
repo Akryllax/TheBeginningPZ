@@ -19,7 +19,20 @@ final class ServerVehicleProbe {
     private final ProbeControl io;
     private final String world,epoch;
     private final ProbeRoute route;
+    private ProbeRoute driveRoute;
     private final Vector3f forward=new Vector3f();
+    private final Vector3f otherForward=new Vector3f();
+    private final ArrayList<TrafficFootprint> parkedShapes=new ArrayList<>();
+    private final TrafficPassReservations passReservations=new TrafficPassReservations();
+    private TrafficPassReservations.Grant passGrant;
+    private TrafficPassReservations.Request passRequest;
+    private TrafficBypass.Job bypassJob;
+    private TrafficBypass.Candidate bypassCandidate;
+    private List<TrafficBypass.Candidate> bypassCandidates=List.of();
+    private int bypassCandidateIndex,bypassTileCursor,bypassesCompleted;
+    private long bypassRevision,bypassRequestedAt;
+    private boolean bypassUsed,nearbyTrafficStatic,validationShoulder,bypassOffroad;
+    private String bypassStatus="disabled";
     private final NativeVehicleSamples nativeSamples=new NativeVehicleSamples();
     private final NativeVehicleSamples.Source nativeSource=new NativeVehicleSamples.Source(){
         public int count(){return Bullet.getVehicleCount();}
@@ -57,7 +70,7 @@ final class ServerVehicleProbe {
     private long stepMaxNanos;
     private boolean readyServer,readyName,readyCell,readyMeta,readyMap,nativeWorldReady;
     ServerVehicleProbe(ProbeControl.Config config,String world,String epoch)throws Exception {
-        this.config=config;route=config.route();this.world=world;this.epoch=epoch;io=new ProbeControl(config,epoch);
+        this.config=config;route=config.route();driveRoute=route;this.world=world;this.epoch=epoch;io=new ProbeControl(config,epoch);
         publish();Thread thread=new Thread(io,"lofers-vehicle-probe-files");thread.setDaemon(true);thread.start();
     }
     private void phase(String next){phase=next;phaseAt=System.nanoTime();System.out.println("[LofersVehicleProbe] "+next+" command="+commandId+(error.isEmpty()?"":" error="+error));}
@@ -79,6 +92,8 @@ final class ServerVehicleProbe {
                     warmTiming=new ProbeTiming();coldTiming=new ProbeTiming();coldOperations.clear();stepMaxNanos=0;applied=null;carLimits=null;
                     safetyScanNanos=safetyScanMaxNanos=safetyScanOver1ms=0;safetyStatus="";
                     waitingNanos=0;parkedStop=Double.POSITIVE_INFINITY;parkedBlocker=-1;bypassRequests=0;blockageDecision=null;
+                    driveRoute=route;bypassUsed=false;validationShoulder=false;bypassOffroad=false;bypassesCompleted=0;bypassCandidate=null;bypassJob=null;bypassCandidates=List.of();bypassCandidateIndex=bypassTileCursor=0;
+                    bypassStatus=config.bypass()?"ready":"disabled";io.bypassJob.set(null);io.bypassResult.set(null);
                     stopDistance=0;displacement=0;goalDistance=route.length;lastX=config.x();lastY=config.y();lastZ=0;
                     nativeBefore=-1;nativeAfter=-1;started=System.nanoTime();phase("loading");
                 }
@@ -159,7 +174,7 @@ final class ServerVehicleProbe {
             goalDistance=Math.hypot(lastX-route.points.getLast().x(),lastY-route.points.getLast().y());
             if(!Double.isFinite(speed)||!Double.isFinite(distance)||!Double.isFinite(lastZ)){fail("nonfinite_physics");return;}
             if(lastZ<-0.5||lastZ>4){fail("invalid_physics_height");return;}
-            if(speed>Math.max(8,config.speed()+3)||distance>config.distance()+5){fail("motion_limit_exceeded");return;}
+            if(speed>Math.max(8,config.speed()+3)||distance>config.distance()+(bypassUsed?10:5)){fail("motion_limit_exceeded");return;}
             long now=System.nanoTime();
             if(phase.equals("waiting_obstacle"))waitingNanos+=Math.max(0,now-lastControlAt);
             if(now-bodyStarted-waitingNanos>config.deadlineSeconds()*1_000_000_000L){fail("absolute_deadline");return;}
@@ -168,10 +183,14 @@ final class ServerVehicleProbe {
             float force=0,brake=80,steering=0;
             if(phase.equals("driving")||phase.equals("waiting_obstacle")){
                 if(route.trajectory!=null){
-                    carLimits=NativeProbeControls.limits(vehicle,speed);driver.limits(carLimits);
+                    carLimits=NativeProbeControls.limits(vehicle,speed);if(bypassOffroad)carLimits=BypassTerrain.cautious(carLimits);driver.limits(carLimits);
                     if(nativeMass!=vehicle.getMass()){nativeMass=vehicle.getMass();Bullet.setVehicleMass(vehicleId,nativeMass);}
                 }
                 String danger=config.roadMode()?warmSafety():"";
+                if(passGrant!=null&&danger.isEmpty()){
+                    passReservations.resolve(List.of(passRequest),now/1e9);
+                    if(!passReservations.mayProceed(passGrant,now/1e9))danger="passing_reservation_lost";
+                }
                 safetyStatus=danger;
                 control=driver.step(lastX,lastY,forward.x,forward.z,speed,delta,danger,parkedStop);
                 if(!control.stopReason().isEmpty()){error=control.stopReason();finishReason=error;phase("braking");}
@@ -184,6 +203,10 @@ final class ServerVehicleProbe {
                 if(control.stopReason().isEmpty()&&!control.arrived()){
                     blockageDecision=blockage.step(parkedBlocker,driver.waitingForObstacle(),delta);
                     if(blockageDecision.requestBypass())bypassRequests++;
+                    if(config.bypass()&&!bypassUsed&&phase.equals("waiting_obstacle"))advanceBypass(now);
+                    if(passGrant!=null&&control!=null&&control.progress()>bypassCandidate.rejoinProgress()&&outsidePassingCorridor()){
+                        if(passReservations.release(passGrant,true,now/1e9)){passGrant=null;passRequest=null;bypassesCompleted++;bypassStatus="rejoined";}
+                    }
                 }
             }
             boolean horn=phase.equals("waiting_obstacle")&&blockageDecision!=null&&blockageDecision.horn();
@@ -222,14 +245,17 @@ final class ServerVehicleProbe {
         for(ProbeRoute.Tile c:route.chunks) {IsoChunk chunk=ServerMap.instance.getChunk(c.x(),c.y());if(chunk==null||!chunk.loaded)return false;}return true;
     }
     private String tileProblem(int x,int y,boolean requireRoad,boolean actors){
+        return tileProblem(x,y,requireRoad,actors,false);
+    }
+    private String tileProblem(int x,int y,boolean requireRoad,boolean actors,boolean shoulder){
         IsoGridSquare square=ServerMap.instance.getGridSquare(x,y,0);
         if(square==null||square.getFloor()==null||!square.TreatAsSolidFloor()||!square.isOutside()||!square.isFree(false)||square.HasStairs())return "road_not_clear";
-        if(requireRoad){
-            if(!"Road_06".equals(square.getFloor().getProperties().get("FloorMaterial")))return "not_asphalt_road";
+        if(requireRoad||shoulder){
+            if(!BypassTerrain.allows(square.getFloor().getProperties().get("FloorMaterial"),shoulder))return shoulder?"unsuitable_shoulder_surface":"not_asphalt_road";
             var objects=square.getObjects();if(objects.size()>32)return "road_object_limit";
             for(int i=0;i<objects.size();i++){
                 var properties=objects.get(i).getProperties();String material=properties==null?null:properties.get("FloorMaterial");
-                if(material!=null&&material.startsWith("Road_")&&!material.equals("Road_06"))return "sidewalk_or_conflicting_overlay";
+                if(material!=null&&!BypassTerrain.allows(material,shoulder))return "conflicting_surface_overlay";
             }
             IsoGridSquare west=ServerMap.instance.getGridSquare(x-1,y,0),north=ServerMap.instance.getGridSquare(x,y-1,0);
             if(west==null||north==null||square.isBlockedTo(west)||square.isBlockedTo(north))return "road_wall_edge";
@@ -245,7 +271,7 @@ final class ServerVehicleProbe {
         if(dx<0||dx>=128||dy<0||dy>=128)return "road_check_extent";
         int row=dy*2+(dx>>>6);long bit=1L<<(dx&63);if((checkedRoadTiles[row]&bit)!=0)return "";
         if(!safetyWork.tile())return "road_check_capacity";
-        checkedRoadTiles[row]|=bit;return tileProblem(x,y,true,true);
+        checkedRoadTiles[row]|=bit;return tileProblem(x,y,!bypassOffroad,true,bypassOffroad);
     }
     private String warmSafety(){
         long begin=System.nanoTime();safetyWork.reset();
@@ -258,6 +284,7 @@ final class ServerVehicleProbe {
     private String scanSafety(){
         forecastContact=Double.POSITIVE_INFINITY;forecastBlocker=-1;
         parkedStop=Double.POSITIVE_INFINITY;parkedBlocker=-1;
+        parkedShapes.clear();nearbyTrafficStatic=true;
         Arrays.fill(checkedRoadTiles,0L);checkOriginX=(int)Math.floor(lastX)-64;checkOriginY=(int)Math.floor(lastY)-64;
         // The current body footprint, plus conservative stopping-space samples,
         // must remain asphalt and clear. This checks actual native pose, not
@@ -274,7 +301,7 @@ final class ServerVehicleProbe {
             // straight ray would falsely leave asphalt while approaching a turn.
             // The distance bound includes the braking path plus front overhang.
             double radius=stopping+3;
-            for(var tile:route.tiles){
+            for(var tile:driveRoute.tiles){
                 double dx=tile.x()+.5-lastX,dy=tile.y()+.5-lastY;
                 if(dx*dx+dy*dy>radius*radius)continue;
                 String problem=checkRoadOnce(tile.x(),tile.y());if(!problem.isEmpty())return problem;
@@ -285,7 +312,7 @@ final class ServerVehicleProbe {
         }
         double progress=control==null?0:control.progress();
         double horizon=Math.min(12,2+speed/3.6/deceleration);
-        var predicted=CollisionForecast.following(route,progress,lastX,lastY,speed/3.6,horizon);
+        var predicted=CollisionForecast.following(driveRoute,progress,lastX,lastY,speed/3.6,horizon);
         String snapshotProblem=nativeSamples.refresh(nativeSource);if(!snapshotProblem.isEmpty())return snapshotProblem;
         if(nativeSamples.get(vehicleId)==null)return "own_native_vehicle_missing";
         // Include the loaded curve and its margin, not just the current 3x3
@@ -304,17 +331,80 @@ final class ServerVehicleProbe {
                 else if(!Float.isFinite(other.getCurrentSpeedKmHour())||Math.abs(other.getCurrentSpeedKmHour())>.1)return "vehicle_motion_unavailable";
                 VehicleScript otherScript=other.getScript();if(otherScript==null)return "vehicle_shape_unavailable";
                 double radius=Math.hypot(otherScript.getExtents().x(),otherScript.getExtents().z())/2;
+                boolean parked=Math.hypot(vx,vy)<=.03&&Float.isFinite(other.getCurrentSpeedKmHour())&&Math.abs(other.getCurrentSpeedKmHour())<=.1;
+                if(parked){
+                    TrafficFootprint shape=shape(other);parkedShapes.add(shape);
+                    if(bypassUsed){
+                        if(!TrafficFootprint.pathClear(driveRoute,progress,Math.min(60,stopping+3),shape(vehicle),shape))return "bypass_vehicle_clearance_lost";
+                        continue;
+                    }
+                }else{nearbyTrafficStatic=false;if(bypassUsed)return "moving_vehicle_during_bypass";}
                 var obstacle=new CollisionForecast.Obstacle(other.getX(),other.getY(),vx,vy,radius,0);
                 double contact=CollisionForecast.firstContact(predicted,bodyRadius+.65,obstacle);
                 if(contact<forecastContact){forecastContact=contact;forecastBlocker=other.getId();}
                 if(contact==0)return "immediate_vehicle_contact";
-                if(Math.hypot(vx,vy)<=.03&&Float.isFinite(other.getCurrentSpeedKmHour())&&Math.abs(other.getCurrentSpeedKmHour())<=.1){
-                    double stop=ParkedObstacle.stopProgress(route,progress,lastX,lastY,bodyRadius+.65,obstacle,temperament.stoppedGap());
+                if(parked){
+                    double stop=ParkedObstacle.stopProgress(driveRoute,progress,lastX,lastY,bodyRadius+.65,obstacle,config.bypass()?4:temperament.stoppedGap());
                     if(stop<parkedStop){parkedStop=stop;parkedBlocker=other.getId();}
                 }else if(Double.isFinite(contact))return "predicted_vehicle_contact";
             }
         }
         return "";
+    }
+    private TrafficFootprint shape(BaseVehicle car){
+        car.getForwardVector(otherForward);var extents=car.getScript().getExtents();
+        return new TrafficFootprint(car.getId(),car.getX(),car.getY(),Math.atan2(otherForward.x,otherForward.z),extents.x()/2,extents.z()/2);
+    }
+    private boolean outsidePassingCorridor(){
+        for(var tile:bypassCandidate.corridor())if(ProbeFootprint.touches(tile.x(),tile.y(),lastX,lastY,forward.x,forward.z))return false;
+        return true;
+    }
+    private void advanceBypass(long now){
+        TrafficFootprint blocker=null;
+        for(var shape:parkedShapes)if(shape.id()==parkedBlocker)blocker=shape;
+        if(blocker==null||!nearbyTrafficStatic){bypassStatus="waiting_for_stable_observations";return;}
+        if(bypassJob!=null&&(bypassJob.blocker().id()!=blocker.id()||Math.hypot(bypassJob.blocker().x()-blocker.x(),bypassJob.blocker().y()-blocker.y())>.1||
+           Math.abs(ProbeRoute.wrap(bypassJob.blocker().heading()-blocker.heading()))>.03||
+           Math.hypot(bypassJob.ego().x()-lastX,bypassJob.ego().y()-lastY)>.1||now-bypassRequestedAt>3_000_000_000L)){
+            bypassJob=null;bypassCandidates=List.of();bypassStatus="candidate_observation_expired";
+        }
+        if(blockageDecision.requestBypass()&&bypassJob==null){
+            bypassJob=new TrafficBypass.Job(commandId,++bypassRevision,route,control.progress(),shape(vehicle),blocker,List.copyOf(parkedShapes));
+            bypassRequestedAt=now;io.bypassJob.set(bypassJob);bypassStatus="planning";
+        }
+        var result=io.bypassResult.getAndSet(null);
+        if(result!=null&&bypassJob!=null&&result.job().command()==commandId&&result.job().revision()==bypassJob.revision()){
+            bypassCandidates=result.candidates();bypassCandidateIndex=0;bypassTileCursor=0;validationShoulder=false;bypassStatus=result.reason();
+            if(bypassCandidates.isEmpty()){bypassJob=null;return;}
+        }
+        if(bypassJob==null||bypassCandidates.isEmpty())return;
+        var candidate=bypassCandidates.get(bypassCandidateIndex);
+        long deadline=System.nanoTime()+500_000;int checked=0;
+        while(bypassTileCursor<candidate.route().tiles.size()&&checked++<24&&System.nanoTime()<deadline){
+            var tile=candidate.route().tiles.get(bypassTileCursor++);String reason=tileProblem(tile.x(),tile.y(),!validationShoulder,true,validationShoulder);
+            if(!reason.isEmpty()){
+                bypassStatus="candidate_"+reason;bypassTileCursor=0;bypassCandidateIndex++;
+                if(bypassCandidateIndex>=bypassCandidates.size()){
+                    if(!validationShoulder&&config.shoulder()&&blockageDecision.tryOffroad()){validationShoulder=true;bypassCandidateIndex=0;bypassStatus="considering_shoulder";}
+                    else{bypassJob=null;bypassCandidates=List.of();}
+                }
+                return;
+            }
+        }
+        if(bypassTileCursor<candidate.route().tiles.size()){bypassStatus="validating_road";return;}
+        for(var shape:parkedShapes)if(!TrafficFootprint.pathClear(candidate.route(),0,candidate.route().length,shape(vehicle),shape)){
+            bypassJob=null;bypassCandidates=List.of();bypassStatus="candidate_vehicle_clearance_lost";return;
+        }
+        var owner=new TrafficPassReservations.Owner(vehicleId,commandId);
+        var request=new TrafficPassReservations.Request(owner,now/1e9-blockageDecision.waited(),candidate.corridor(),true);
+        var grants=passReservations.resolve(List.of(request),now/1e9);
+        if(grants.isEmpty()){bypassStatus="yielding_reserved_corridor";return;}
+        var grant=grants.getFirst();if(!passReservations.enter(grant,now/1e9)){bypassStatus="reservation_expired";return;}
+        passRequest=request;passGrant=grant;bypassCandidate=candidate;bypassUsed=true;bypassOffroad=validationShoulder;driveRoute=candidate.route();
+        driver=new ProbeDriver(driveRoute,Math.min(bypassOffroad?6+2*temperament.offroadWillingness():15,config.speed()),wheelbase);
+        if(bypassOffroad)carLimits=BypassTerrain.cautious(carLimits);driver.limits(carLimits);control=null;
+        bypassJob=null;bypassCandidates=List.of();parkedStop=Double.POSITIVE_INFINITY;parkedBlocker=-1;
+        bypassStatus="passing_"+candidate.side()+(bypassOffroad?"_shoulder":"_road");phase("driving");
     }
     private void create(){
         if(!loadedCorridor())throw new IllegalStateException("route_chunks_unloaded_before_spawn");
@@ -342,7 +432,7 @@ final class ServerVehicleProbe {
         if(!IsoChunk.doSpawnedVehiclesInInvalidPosition(vehicle))throw new IllegalStateException("engine_rejected_spawn_position");
         vehicle.setSquare(square);vehicle.chunk=square.chunk;vehicle.chunk.vehicles.add(vehicle);
         worldAdded=true;vehicle.addToWorld();vehicleId=vehicle.getId();
-        temperament=TrafficTemperament.forResident(vehicleId);blockage=new TrafficBlockage(vehicleId,temperament);
+        temperament=TrafficTemperament.forResident(commandId);blockage=new TrafficBlockage(commandId,temperament);
         if(vehicleId<0||vehicle.getController()==null)throw new IllegalStateException("vehicle_creation_incomplete");
         vehicle.setNetPlayerAuthorization(BaseVehicle.Authorization.Server,-1);
         // Constructor does not add server bodies. Coordinates match the native
@@ -382,6 +472,7 @@ final class ServerVehicleProbe {
             else if(worldAdded)throw new IllegalStateException("occupied_probe_car_left_in_world");
             else if(vehicle.chunk!=null)vehicle.chunk.vehicles.remove(vehicle);
             if(vehicleId>=0&&VehicleManager.instance.getVehicleByID((short)vehicleId)==vehicle)VehicleManager.instance.unregisterVehicle(vehicle);
+            if(passGrant!=null&&vehicle.isRemovedFromWorld()){passReservations.release(passGrant,true,System.nanoTime()/1e9);passGrant=null;passRequest=null;}
             nativeAfter=Bullet.getVehicleCount();
             if(nativeBefore>=0&&nativeAfter!=nativeBefore)error="native_body_count_not_restored";
         }catch(Throwable t){error="world_cleanup_failed:"+t.getClass().getSimpleName();}
@@ -405,10 +496,14 @@ final class ServerVehicleProbe {
         s.put("registry_present",Boolean.toString(vehicle!=null&&registryPresent));s.put("chunk_present",Boolean.toString(vehicle!=null&&chunkPresent));
         s.put("parked_stop_progress",Double.toString(parkedStop));s.put("parked_blocker",Integer.toString(parkedBlocker));
         s.put("obstacle_wait_seconds",Double.toString(waitingNanos/1_000_000_000.0));s.put("bypass_requests",Integer.toString(bypassRequests));
-        s.put("bypass_execution","disabled_pending_reviewed_corridor");
+        s.put("bypass_execution",bypassStatus);s.put("bypasses_completed",Integer.toString(bypassesCompleted));
+        s.put("bypass_terrain",bypassOffroad?"shoulder":"road");
+        s.put("bypass_road_tiles_checked",Integer.toString(bypassTileCursor));s.put("bypass_worker_ms",Double.toString(io.bypassPlanningNanos/1e6));
+        s.put("bypass_reservation_active",Boolean.toString(passGrant!=null));s.put("drive_route_length",Double.toString(driveRoute.length));
+        s.put("driver_seed",Long.toString(commandId));
         s.put("horn_on",Boolean.toString(vehicle!=null&&vehicle.soundHornOn));
         if(blockageDecision!=null)s.put("blockage_state",blockageDecision.state());
-        if(temperament!=null){s.put("driver_patience_seconds",Double.toString(temperament.patienceSeconds()));s.put("driver_horn_chance",Double.toString(temperament.hornChance()));}
+        if(temperament!=null){s.put("driver_patience_seconds",Double.toString(temperament.patienceSeconds()));s.put("driver_horn_chance",Double.toString(temperament.hornChance()));s.put("driver_offroad_chance",Double.toString(temperament.offroadWillingness()));}
         s.put("x",Double.toString(lastX));s.put("y",Double.toString(lastY));s.put("physics_z",Double.toString(lastZ));
         s.put("speed_kmh",Double.toString(speed));s.put("max_speed_kmh",Double.toString(maxSpeed));s.put("distance",Double.toString(distance));s.put("stop_distance",Double.toString(stopDistance));
         s.put("route_mode",config.roadMode()?"validated_waypoints":"legacy_straight");s.put("route_length",Double.toString(route.length));

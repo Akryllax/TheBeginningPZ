@@ -119,21 +119,42 @@ def muldraugh_lane_course(surface):
                 'scope':'reviewed intersection only; no automatic traffic priority inference'}}
 
 
+def muldraugh_bypass_course(surface):
+    """Review both lanes on a straight block, away from the previous junction."""
+    points=[(10666.5,9861.5),(10688.5,9861.5),(10710.5,9861.5)]
+    # Both directions and the parked-car maneuver fit inside this strip. A
+    # changed/missing tile rejects the artifact rather than inventing a bypass.
+    bad=[(x,y) for x in range(10664,10713) for y in range(9857,9863) if not surface.asphalt(x,y)]
+    if bad:raise ValueError(f'Reviewed passing strip is not clear asphalt: {bad[:8]}')
+    def line(a,b):return [{'x':a[0]+(b[0]-a[0])*t,'y':a[1]+(b[1]-a[1])*t} for t in (0,1/3,2/3,1)]
+    curves=[line(a,b) for a,b in zip(points,points[1:])]
+    return {'waypoints':[{'x':x,'y':y} for x,y in points], 'lane_mode':True,'beziers':curves,
+            'speed_kmh':40,'stops':[],'bypass':True,'shoulder':True,
+            'traffic_evidence':{'scope':'reviewed straight two-lane passing test only',
+                'reviewed_road_bounds':[10664,9857,10713,9863], 'verified_road_tiles':49*6,
+                'suggested_fixture_command':[10689,9862,0], 'expected_fixture_xy':[10688,9861.9],
+                'observer_xy':[10688.5,9864.5], 'passing_limit_kmh':15,
+                'shoulder_scope':'personality-dependent fallback; native ground/wall/actor checks mandatory; not offline-approved grass driving'}}
+
+
 if __name__=='__main__':
+    import argparse
     import hashlib
     import json
     from pathlib import Path
     from scenario_roads import RoadSurface
     from scenario_navigation import source_identity
     root=Path(__file__).resolve().parents[1]
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--bypass',action='store_true');args=parser.parse_args()
     source=root/'data/game-files/media/maps/Muldraugh, KY'
     definitions=root/'data/game-files/media/newtiledefinitions.tiles.txt'
-    identity,_=source_identity(source,definitions,(10780,9835,10828,9870))
+    bounds=(10664,9855,10713,9866) if args.bypass else (10780,9835,10828,9870)
+    identity,_=source_identity(source,definitions,bounds)
     surface=RoadSurface(source,root/'.tooling/scenario-roads'/identity,definitions)
-    result=muldraugh_lane_course(surface)
+    result=muldraugh_bypass_course(surface) if args.bypass else muldraugh_lane_course(surface)
     result['source_identity']=identity
     result['baker_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
-    output=root/'artifacts/scenario-map/vehicle-lane-course.json'
+    output=root/'artifacts/scenario-map'/('vehicle-bypass-course.json' if args.bypass else 'vehicle-lane-course.json')
     output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps(result,indent=2)+'\n')
     print(output)

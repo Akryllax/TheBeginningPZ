@@ -252,11 +252,23 @@ def configure_route(m, source):
         if math.dist(samples[0][:2],points[0])>.001 or math.dist(samples[-1][:2],points[-1])>.001:
             raise ValueError('Bezier endpoints differ from route')
         curve_text=';'.join(','.join(f'{p[k]:.10f}' for p in curve for k in ('x','y')) for curve in curves)
+    bypass=payload.get('bypass',False)
+    if type(bypass) is not bool:raise ValueError('Bypass must be a boolean')
+    shoulder=payload.get('shoulder',False)
+    if type(shoulder) is not bool or shoulder and not bypass:raise ValueError('Shoulder choice requires a bypass route')
+    if bypass:
+        if not lane or not curves or stops:raise ValueError('Bypass requires a reviewed straight curved lane route without stops')
+        dx,dy=points[-1][0]-points[0][0],points[-1][1]-points[0][1]
+        span=math.hypot(dx,dy)
+        if any(abs((p['x']-points[0][0])*dy-(p['y']-points[0][1])*dx)>span*.001 for curve in curves for p in curve):
+            raise ValueError('Bypass requires a straight road')
     dx, dy = points[1][0] - points[0][0], points[1][1] - points[0][1]
     changes = {'vehicle_probe.x': points[0][0], 'vehicle_probe.y': points[0][1],
                'vehicle_probe.heading_degrees': math.degrees(math.atan2(dx, dy)) % 360,
                'vehicle_probe.lane_mode': str(lane).lower(),
                'vehicle_probe.beziers': curve_text,
+               'vehicle_probe.bypass': str(bypass).lower(),
+               'vehicle_probe.shoulder': str(shoulder).lower(),
                'vehicle_probe.speed_kmh': speed,
                'vehicle_probe.stops': ';'.join(f'{p:.8f},{h:.8f}' for p,h in stops),
                'vehicle_probe.waypoints': ';'.join(f'{x:.8f},{y:.8f}' for x, y in points)}

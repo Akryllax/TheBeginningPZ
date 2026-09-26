@@ -17,6 +17,9 @@ final class ProbeFixture {
         ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",false),"Probe accepted client");
         ProbeControl.Config config=ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true);
         ScenarioFixture.check(!config.driverModel(),"Default car unexpectedly has driver model");
+        p.setProperty("vehicle_probe.bypass","true");
+        ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true),"Legacy probe admitted passing");
+        p.setProperty("vehicle_probe.bypass","false");
         p.setProperty("vehicle_probe.script","Base.LofersSmallCar");
         ScenarioFixture.check(ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true).driverModel(),"Original driver variant rejected");
         p.setProperty("vehicle_probe.script","Base.UnreviewedCar");
@@ -50,6 +53,11 @@ final class ProbeFixture {
             ScenarioFixture.check(io.command.get()!=null&&io.command.get().id()==2,"Private-file command not delivered");
             Properties status=new Properties();try(var r=Files.newBufferedReader(dir.resolve("status.properties"))){status.load(r);}
             ScenarioFixture.check("armed".equals(status.getProperty("phase")),"Detached status not published");
+            var ego=new TrafficFootprint(1,0,0,Math.PI/2,.69,1.68);var blocker=new TrafficFootprint(2,8.45,.4,0,.69,1.68);
+            io.bypassJob.set(new TrafficBypass.Job(2,1,TrafficBypassFixture.line(),18.5,ego,blocker,List.of(blocker)));
+            deadline=System.nanoTime()+3_000_000_000L;
+            while(io.bypassResult.get()==null&&System.nanoTime()<deadline)Thread.sleep(5);
+            ScenarioFixture.check(io.bypassResult.get()!=null&&!io.bypassResult.get().candidates().isEmpty(),"Detached bypass worker did not return geometry");
             thread.interrupt();thread.join(2000);
         }finally {try(var paths=Files.list(dir)){for(Path file:paths.toList())Files.deleteIfExists(file);}Files.deleteIfExists(dir);}
         System.out.println("Vehicle probe fixtures passed: disabled/client/world gates, command epoch/replay/size bounds, detached operator I/O");

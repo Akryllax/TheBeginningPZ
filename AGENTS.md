@@ -47,11 +47,15 @@ One client subsequently accepted the faster run (24.1 km/h peak, about 13 km/h t
 bend). The early abrupt parked-car stop and disappearance were rejected even after a longer
 cleanup delay. Parked cars now produce a planned stopping point and persistent wait/resume;
 one client confirmed a smooth stop and continued visibility during a 66-second wait. The
-server resumed and completed the original trip after exact fixture removal. Temperament
-selects optional honking; that observed driver chose silence, so audible horn playback is
-still pending. Passing reservations have detached conflict/expiry tests, but safe bypass
-execution, managed multi-car traffic, NPC boarding and two-client consistency remain
-unvalidated; see the implementation ledger and traffic design for limits and next gates.
+server resumed and completed the original trip after exact fixture removal. A separate
+straight-road bypass passed two empty-server runs and one ordinary-client observation:
+the user confirmed a smooth pass, return to lane and audible honk after about 21 seconds
+waiting. Candidate geometry runs off the game thread; loaded clearance and a reserved
+entry/pass/rejoin corridor gate execution. Temperament can admit a slow dirt/grass shoulder
+fallback after road candidates fail, but native shoulder driving remains untested.
+Passing reservations have detached conflict/expiry tests; managed multi-car traffic,
+NPC boarding and two-client consistency remain unvalidated. See the implementation ledger
+and traffic design for evidence, limits and next gates.
 
 See `SKILLS.md` for task-specific workflows. Existing user authorization applies to
 routine implementation and validation; do not add repeated approval prompts.

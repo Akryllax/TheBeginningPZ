@@ -146,13 +146,26 @@ def test_lane_course_settings_are_explicit_and_reset_with_legacy_route(probe):
 def test_bezier_round_trip_and_legacy_reset(probe):
     manager,target,route=probe
     data={'waypoints':[{'x':100,'y':100},{'x':112,'y':100}], 'lane_mode':True,
-          'beziers':[[{'x':100,'y':100},{'x':104,'y':100},{'x':108,'y':100},{'x':112,'y':100}]]}
+          'beziers':[[{'x':100,'y':100},{'x':104,'y':100},{'x':108,'y':100},{'x':112,'y':100}]],'bypass':True,'shoulder':True}
     route.write_text(json.dumps(data));ops.configure_route(manager,route)
     settings=ops.properties(target/'scenario.properties')
     assert [float(v) for v in settings['vehicle_probe.beziers'].split(',')]==[100,100,104,100,108,100,112,100]
-    data.pop('beziers');data.pop('lane_mode');route.write_text(json.dumps(data))
+    assert settings['vehicle_probe.bypass']=='true'
+    assert settings['vehicle_probe.shoulder']=='true'
+    data.pop('beziers');data.pop('lane_mode');data.pop('bypass');data.pop('shoulder');route.write_text(json.dumps(data))
     ops.configure_route(manager,route)
     assert ops.properties(target/'scenario.properties')['vehicle_probe.beziers']==''
+    assert ops.properties(target/'scenario.properties')['vehicle_probe.bypass']=='false'
+    assert ops.properties(target/'scenario.properties')['vehicle_probe.shoulder']=='false'
+
+
+@pytest.mark.parametrize('options',[{'bypass':'true'},{'shoulder':True},{'bypass':True,'shoulder':'true'},
+                                   {'bypass':True,'lane_mode':True,'stops':[{'progress':5,'hold_seconds':2}]}])
+def test_ineligible_passing_configuration_does_not_write(probe,options):
+    manager,target,route=probe;data=json.loads(route.read_text());data.update(options)
+    before=(target/'scenario.properties').read_bytes();route.write_text(json.dumps(data))
+    with pytest.raises(ValueError):ops.configure_route(manager,route)
+    assert (target/'scenario.properties').read_bytes()==before
 
 
 def test_mismatched_bezier_endpoints_do_not_write_config(probe):

@@ -34,8 +34,8 @@ original seated model while onboard, ordinary Lua clients and server-only JVM in
    about 13 km/h through the bend). Record parked/moving blocker results separately.
    Parked approach/wait now passes one-client visual acceptance: the car remained visible
    during a 66-second queue, and the server resumed the route after fixture removal.
-   Optional horn timing is connected; the observed driver selected silence, so sound
-   playback is still unverified. Moving blockers remain a separate gate.
+   A subsequent one-client straight-road trial confirmed a smooth parked-car pass,
+   return to lane and audible horn. Moving blockers remain a separate gate.
 3. Extract managed native vehicle control from the disposable probe. Own only registered
    scenario bodies and reference-counted terrain; retain parked cars after completion.
    Use bounded loading ahead, local emergency braking and road/vehicle speed envelopes.
@@ -53,8 +53,11 @@ original seated model while onboard, ordinary Lua clients and server-only JVM in
 Add [[Traffic Incidents]] after the lane/stop controller. Normal driving retains local
 blocker forecasting and braking. Extend persistent queues with temperament-dependent
 honking and patience, bounded attempts to find a drivable bypass, and authoritative
-reservations when two cars want the same gap. The detached reservation arbiter exists;
-native candidate clearance, passing/rejoin control and managed multi-car wiring are next.
+reservations when two cars want the same gap. The single-car straight-road bypass now uses
+detached candidate generation, live oriented clearance and an entry/pass/rejoin reservation;
+two empty-server runs and one ordinary-client observation passed. Shoulder maneuvers
+and managed multi-car wiring are next. Temperament may admit short off-road attempts after
+road options fail, with slower motion and the same physical obstacle checks.
 Allow bounded imperfect driving through normal physics, without disabling actor checks
 or manufacturing ordinary crashes by random emergency-brake failures. Validate native
 two-car contacts in an empty world before

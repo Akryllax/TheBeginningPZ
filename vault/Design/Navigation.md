@@ -184,14 +184,42 @@ using a complete, bounded native velocity snapshot; a parked car without a nativ
 handled as static only when server-owned, unoccupied and reporting zero motion. Missing
 snapshot entries and failed/incomplete snapshots are distinct: the latter stop the probe.
 Unknown/client-owned nearby vehicles also stop it because packet freshness is not established.
-The forecast is capped at 12 seconds and 65 poses. Circles are conservative and are not a
-production adjacent-lane passing policy. Current corridor checks also reject actors,
-construction and unloaded terrain. Moving pedestrian forecasts, full streaming-range
-coverage and waiting/replanning remain pending. One native parked-car trial now demonstrates
-conservative braking before contact; moving-blocker trials remain pending. Forecasting
-contact does not simulate impact, prove damage or authorize deliberate contact.
+The forecast is capped at 12 seconds and 65 poses. Current corridor checks reject actors,
+construction and unloaded terrain. Planned parked-car stopping and waiting have passed
+one-client observation; moving-blocker and moving-pedestrian trials remain pending.
+Forecasting contact does not simulate impact, prove damage or authorize deliberate contact.
 
-Reproduce the isolated course after building the agent and stopping the probe:
+## Bounded blockage bypass
+
+`scripts/scenario_lanes.py --bypass` prepares a separate 44-tile straight-road course at
+X=10666.5–10710.5, Y=9861.5. Both lanes across 294 source tiles are checked. This is an
+explicit reviewed test area, not automatic classification of a safe passing zone.
+The earlier candidate site was rejected for unknown decorative crack definitions; the
+reader's unknown-surface rejection was preserved and a fully classified strip selected.
+
+The probe leaves a four-tile margin behind the conservative parked-car contact envelope
+to preserve steering room. After waiting, a detached thread proposes left/right three-part
+cubic maneuvers and a continuation to the original destination, bounded to retained native
+chunks and 256 candidate road tiles. It neither reads live game objects nor controls physics.
+The game thread validates at most 24 candidate tiles per update with a 0.5 ms cooperative
+budget, rejects stale generation/position evidence, rechecks parked rectangles and obtains
+a corridor reservation before switching the control trajectory. Road passing is capped at
+15 km/h; steering and acceleration still use the car's observed capabilities.
+
+The footprint check uses four separating axes and bounded arc samples with displacement
+and rotation padding. It distinguishes a clear adjacent lane from the overlap of two
+conservative circles. Current native pose, ground and live obstacles are rechecked while
+driving; moving/untracked traffic aborts this first single-car adapter. Physical motion is
+never replaced with pose/velocity writes. Queued route generation and admission timings
+are recorded separately from control work.
+
+An optional second tier considers known dirt/grass and paved edges according to a stable
+driver/episode choice after road candidates fail. It keeps the same actors, walls, floor
+support and loaded-chunk checks, requires a rejoin, and lowers speed and planning grip
+preferences. It does not treat every non-road tile as traversable. The initial native proof
+covers asphalt passing only; off-road behavior and moving traffic need their own receipts.
+
+Reproduce the original isolated turn course after building the agent and stopping the probe:
 
 ```sh
 python3 scripts/scenario_lanes.py
@@ -199,6 +227,12 @@ python3 scripts/scenario_lanes.py
 ./dayone vehicle-probe-start
 ./dayone vehicle-probe-control start
 ```
+
+For the passing course instead, bake with `--bypass` and configure
+`artifacts/scenario-map/vehicle-bypass-course.json` while stopped. Its observer point is
+(10688.5, 9864.5), in front of the fence. Record and remove only the exact spawned fixture.
+Two empty-server runs and one client now demonstrate passing on asphalt, including audible
+horn playback in the client trial; see [[Experiments/Implementation Ledger]] for receipts.
 
 Runtime driving currently belongs to the server Java probe; the C++ worker is not connected
 to this reviewed test course. See [[Implementation Roadmap]] for the intended planner /

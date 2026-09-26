@@ -104,7 +104,17 @@ safety stop. A known static parked obstacle now creates a planned stopping point
 `waiting_obstacle`: the car stays present until it clears, the operator stops the experiment,
 or five minutes of total queue waiting elapse. Queue time is excluded from the driving
 deadline. It may honk based on its test identity's temperament, then requests bounded bypass
-planning; bypass execution is currently disabled pending a reviewed clearance adapter.
+planning. Passing is opt-in for a reviewed straight lane course without junction stops.
+Prepare the separate artifact with `.tooling/venv/bin/python scripts/scenario_lanes.py --bypass`,
+then configure `artifacts/scenario-map/vehicle-bypass-course.json` while the probe is stopped.
+The artifact's `bypass` flag enables detached left/right candidate generation, live clearance,
+a reserved corridor and a 15 km/h passing ceiling. Its optional `shoulder` flag permits a
+temperament-dependent dirt/grass or paved-edge fallback after road options fail; that path
+uses a lower speed and conservative planning grip preferences. It still rejects obstacles,
+unsupported ground and uncertain observations. Native shoulder driving is not yet validated.
+Omitting the flags resets both features to disabled when configuring a different route.
+Current scope is one parked obstacle on a short straight block; nearby moving traffic
+still stops the experiment. This does not enable bypasses on the earlier junction course.
 The probe's native-body, world, registry and chunk-membership fields distinguish server
 presence from a client visibility report. These are diagnostics, not measured packets.
 Moving/unknown hazards may still terminate with `predicted_vehicle_contact`; assess the

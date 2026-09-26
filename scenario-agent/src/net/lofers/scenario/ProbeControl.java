@@ -5,10 +5,10 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Private operator files and detached diagnostics only; this thread sees no game objects. */
+/** Private operator files, detached diagnostics and bounded route geometry; no game objects. */
 final class ProbeControl implements Runnable {
-    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode,boolean driverModel,List<ProbeDriver.Stop> stops) {
-        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false,false,List.of());}
+    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode,boolean driverModel,List<ProbeDriver.Stop> stops,boolean bypass,boolean shoulder) {
+        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false,false,List.of(),false,false);}
         double deadlineSeconds(){return roadMode?120:30;}
         static Config read(Properties p,String world,boolean server) {
             if(!Boolean.parseBoolean(p.getProperty("vehicle_probe.enabled","false")))return null;
@@ -36,7 +36,11 @@ final class ProbeControl implements Runnable {
                 stops.add(new ProbeDriver.Stop(Double.parseDouble(pair[0]),Double.parseDouble(pair[1])));
             }
             new ProbeDriver(route,speed,2,stops); // Validate bounded stop contract before startup.
-            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),List.copyOf(stops));
+            boolean bypass=Boolean.parseBoolean(p.getProperty("vehicle_probe.bypass","false"));
+            if(bypass&&(!roadMode||!laneMode||!stops.isEmpty()||!TrafficBypass.straight(route)))throw new IllegalArgumentException("Bypass requires a reviewed straight road without junction stops");
+            boolean shoulder=Boolean.parseBoolean(p.getProperty("vehicle_probe.shoulder","false"));
+            if(shoulder&&!bypass)throw new IllegalArgumentException("Shoulder choice requires a reviewed bypass route");
+            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),List.copyOf(stops),bypass,shoulder);
         }
         private static double bounded(Properties p,String name,double fallback,double min,double max) {
             double n=Double.parseDouble(p.getProperty("vehicle_probe."+name,Double.toString(fallback)));
@@ -46,6 +50,9 @@ final class ProbeControl implements Runnable {
     record Command(long id,String action) {}
     final AtomicReference<Command> command=new AtomicReference<>();
     final AtomicReference<Map<String,String>> status=new AtomicReference<>();
+    final AtomicReference<TrafficBypass.Job> bypassJob=new AtomicReference<>();
+    final AtomicReference<TrafficBypass.Result> bypassResult=new AtomicReference<>();
+    volatile long bypassPlanningNanos;
     volatile String ioError="";
     private final Path directory;
     private final String epoch;
@@ -65,6 +72,13 @@ final class ProbeControl implements Runnable {
     }
     public void run() {
         while(!Thread.currentThread().isInterrupted()) {
+            TrafficBypass.Job job=bypassJob.getAndSet(null);
+            if(job!=null){
+                long begin=System.nanoTime();
+                try{bypassResult.set(TrafficBypass.plan(job));}
+                catch(RuntimeException e){bypassResult.set(new TrafficBypass.Result(job,List.of(),"candidate_geometry_rejected"));}
+                finally{bypassPlanningNanos=System.nanoTime()-begin;}
+            }
             try {
                 Path input=directory.resolve("control.properties");
                 if(Files.isRegularFile(input,LinkOption.NOFOLLOW_LINKS)) {
