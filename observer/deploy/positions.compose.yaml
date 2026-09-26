@@ -1,0 +1,16 @@
+# Optional Observer overlay. Paths resolve against the main project directory.
+# docker compose -f compose.yaml -f deploy/positions.compose.yaml up -d --build app
+services:
+  app:
+    environment:
+      OBSERVER_POSITION_TOKEN_FILE: /run/secrets/observer-positions-token
+    volumes:
+      - ./secrets/positions.token:/run/secrets/observer-positions-token:ro
+    networks:
+      default:
+      positions:
+        aliases: [observer-positions]
+networks:
+  positions:
+    name: zomboid-observer-positions
+    internal: true

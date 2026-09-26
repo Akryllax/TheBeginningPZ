@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package lofers.observer.v1;
+option java_package = "net.lofers.observer.protocol";
+option java_outer_classname = "Positions";
+
+// A complete, current online-player list. Empty means nobody is online.
+// No movement history, inventories, Steam IDs, or game commands.
+message PositionSnapshot {
+  uint32 protocol_version = 1;
+  string world = 2;
+  string server_session = 3;
+  uint64 session_started_at_ms = 4;
+  uint64 sequence = 5;
+  uint64 captured_at_ms = 6;
+  repeated PlayerPosition players = 7;
+}
+
+message PlayerPosition {
+  string username = 1;
+  string character = 2;
+  double x = 3;
+  double y = 4;
+  double z = 5;
+  bool dead = 6;
+  // Ephemeral identity of this connection/player object, not a persistent ID.
+  // A reconnect or replacement requires checkpoint tracking to be resumed.
+  string connection_id = 7;
+}
+
+// Independent, read-only exploration feed. Each listed player has a COMPLETE
+// current mask; unlisted players keep their last mask. Empty is a heartbeat.
+// Sent separately so compression/upload never holds up position delivery.
+message ExplorationSnapshot {
+  uint32 protocol_version = 1;
+  string world = 2;
+  string server_session = 3;
+  uint64 session_started_at_ms = 4;
+  uint64 sequence = 5;
+  uint64 captured_at_ms = 6;
+  repeated PlayerExploration players = 7;
+}
+
+message PlayerExploration {
+  string username = 1;
+  sint32 min_cell_x = 2;
+  sint32 min_cell_y = 3;
+  sint32 max_cell_x = 4;
+  sint32 max_cell_y = 5;
+  uint32 world_version = 6;
+  // zlib-compressed B42 two-bit visited/known flags, without a save-file header.
+  // Rows contain eight 32-square units per 256-square cell, four units per byte.
+  bytes visited_zlib = 7;
+}
+
+// Optional, local-only diagnostics from the storyteller's detached Lua table.
+// Complete bounded preview, not a world scan, command channel or player history.
+message StorytellerSnapshot {
+  uint32 protocol_version = 1;
+  string world = 2;
+  string server_session = 3;
+  uint64 session_started_at_ms = 4;
+  uint64 sequence = 5;
+  uint64 captured_at_ms = 6;
+  uint64 published_tick = 7;
+  double world_age_hours = 8;
+  string phase = 9;
+  string mode = 10;
+  double pressure = 11;
+  double budget = 12;
+  uint32 online_players = 13;
+  sint32 npc_count = 14; // -1 means unknown; never infer zero from missing data.
+  StorytellerTimings timings_ms = 15;
+  repeated StorytellerCell cells = 16;
+  repeated StorytellerDecision decisions = 17;
+  uint32 cell_count = 18;
+  uint32 scan_queue = 19;
+  uint32 dropped_cells = 20;
+  string health = 21;
+  bool truncated = 22;
+  double capture_ms = 23;
+  FirstWeekDiagnostics scenario = 24; // Optional; absent on ordinary worlds.
+}
+
+message FirstWeekDiagnostics {
+  string status = 1;
+  string phase = 2;
+  double elapsed_hours = 3;
+  uint32 residents = 4;
+  uint32 materialized = 5;
+  uint32 pedestrians = 6;
+  uint32 vehicles = 7;
+  string worker_health = 8;
+  double worker_compute_ms = 9;
+  uint32 plan_rejections = 10;
+  uint32 lease_changes = 11;
+  double last_step_ms = 12;
+  double p95_step_ms = 13;
+  double p99_step_ms = 14;
+  sint32 worker_queue = 15; // -1 means not measured.
+}
+
+message StorytellerTimings {
+  double last = 1;
+  double p95 = 2;
+  double p99 = 3;
+  double max = 4;
+}
+
+message StorytellerCell {
+  sint32 x = 1; // World tile origin of a 32 by 32 tile cell, not a cell index.
+  sint32 y = 2;
+  sint32 z = 3;
+  double dwell = 4;
+  double wealth = 5;
+  double confidence = 6;
+  double age_hours = 7;
+}
+
+message StorytellerDecision {
+  string id = 1;
+  string event = 2;
+  string outcome = 3;
+  string reason = 4;
+  double at_hour = 5;
+}

@@ -1,0 +1,16 @@
+{
+  "PauseEmpty": "true",
+  "DefaultPort": "16271",
+  "UDPPort": "16272",
+  "Mods": "WanderingZombies;StarvingZombies;survivingthroughseasons;SurvivingTheStorm;B42Survival;LimitedPropaneSupply;PropaneExchangeCabinet;VehicleRepairOverhaul;VehicleSalvageOverhaulB42;VanillaExpandedSpawns;Bandits2;LofersStoryteller",
+  "Map": "Muldraugh, KY",
+  "Public": "false",
+  "PublicName": "Lofers Living World (Test)",
+  "MaxPlayers": "4",
+  "SaveWorldEveryMinutes": "10",
+  "RCONPort": "27025",
+  "SleepAllowed": "true",
+  "SleepNeeded": "false",
+  "WorkshopItems": "2983905789;3396867685;2753086629;2971021306;3402516345;3774499542;3763470184;2757712197;3703597953;3268487204",
+  "UPnP": "false"
+}

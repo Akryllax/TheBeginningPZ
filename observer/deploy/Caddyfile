@@ -1,0 +1,32 @@
+{
+    auto_https disable_redirects
+    servers {
+        protocols h1 h2
+    }
+}
+
+https://{$OBSERVER_HOST}:8443 {
+    tls {
+        resolvers 1.1.1.1 8.8.8.8
+        propagation_timeout 10m
+        dns porkbun {
+            api_key {$PORKBUN_API_KEY}
+            api_secret_key {$PORKBUN_API_SECRET_KEY}
+        }
+    }
+    encode zstd gzip
+    @private path /internal /internal/*
+    respond @private 404
+    reverse_proxy app:8000 {
+        flush_interval -1
+    }
+}
+
+http://:8080 {
+    encode zstd gzip
+    @private path /internal /internal/*
+    respond @private 404
+    reverse_proxy app:8000 {
+        flush_interval -1
+    }
+}

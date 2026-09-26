@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PZ_PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+exec python3 "$PZ_PROJECT_ROOT/scripts/manage.py" "$@"

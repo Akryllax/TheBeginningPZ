@@ -1,0 +1,4 @@
+name=Zomboid Observer
+id=ZomboidObserver
+description=Records visible world observations for the independent Zomboid Observer web viewer. Publishes online player positions and explicitly inspected world containers. Never publishes personal inventories or private annotations.
+versionMin=42.20

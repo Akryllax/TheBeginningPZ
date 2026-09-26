@@ -1,0 +1,17 @@
+{
+  "node-v24.18.0-linux-x64.tar.xz": {
+    "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-linux-x64.tar.xz",
+    "sha256": "55aa7153f9d88f28d765fcdad5ae6945b5c0f98a36881703817e4c450fa76742",
+    "checksum_url": "https://nodejs.org/dist/v24.18.0/SHASUMS256.txt"
+  },
+  "uv-x86_64-unknown-linux-gnu.tar.gz": {
+    "url": "https://github.com/astral-sh/uv/releases/download/0.11.16/uv-x86_64-unknown-linux-gnu.tar.gz",
+    "sha256": "74947fe2c03315cf07e82ab3acc703eddef01aba4d5232a98e4c6825ec116131",
+    "checksum_url": "https://github.com/astral-sh/uv/releases/download/0.11.16/uv-x86_64-unknown-linux-gnu.tar.gz.sha256"
+  },
+  "steamcmd_linux.tar.gz": {
+    "url": "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz",
+    "sha256": "cebf0046bfd08cf45da6bc094ae47aa39ebf4155e5ede41373b579b8f1071e7c",
+    "provenance": "Steam rolling installer snapshot fetched 2026-09-26; digest recorded locally, not a publisher signature."
+  }
+}

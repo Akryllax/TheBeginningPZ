@@ -1,0 +1,103 @@
+name: zomboid-dayone
+services:
+  game:
+    build:
+      context: game
+      args: {PZ_UID: "1000", PZ_GID: "1000"}
+    restart: "on-failure:3"
+    userns_mode: keep-id
+    mem_limit: 9g
+    cpus: 6
+    stop_grace_period: 180s
+    environment:
+      JAVA_TOOL_OPTIONS: -javaagent:/opt/observer/observer-position-agent.jar=/opt/observer/positions.properties ${LOFERS_SCENARIO_AGENT_OPTIONS:-}
+    ports:
+      - "192.168.1.132:16271:16271/udp"
+      - "192.168.1.132:16272:16272/udp"
+      - "127.0.0.1:27025:27025/tcp"
+    volumes:
+      - ./data/game-files:/pzserver:z
+      - ./data/Zomboid:/home/pzuser/Zomboid:z
+      - ./artifacts/agent:/opt/observer:ro,z
+      - ./artifacts/scenario-agent:/opt/scenario:ro,z
+      - ./data/npc-ipc:/run/lofers:z
+      - ./secrets/positions.token:/run/secrets/observer-positions-token:ro,z
+      - ./secrets/admin-password:/run/secrets/admin-password:ro,z
+    networks: [default, telemetry]
+    logging:
+      driver: k8s-file
+      options: {max-size: 10m}
+  npc:
+    profiles: [scenario]
+    build:
+      context: .
+      dockerfile: npc-service/Dockerfile
+    user: "1000:1000"
+    userns_mode: keep-id
+    restart: "on-failure:3"
+    mem_limit: 512m
+    cpus: 2
+    read_only: true
+    network_mode: none
+    command: ["--socket", "/run/lofers/npc.sock", "--world", "AKR_DayOne", "--rules", "/opt/lofers/rules", "--workers", "2", "--map-index", "/opt/lofers/map/map-index.pb"]
+    volumes:
+      - ./data/npc-ipc:/run/lofers:z
+      - ./artifacts/scenario-map:/opt/lofers/map:ro,z
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: k8s-file
+      options: {max-size: 10m}
+  observer:
+    build: observer
+    user: "1000:1000"
+    userns_mode: keep-id
+    restart: "on-failure:3"
+    mem_limit: 1g
+    cpus: 1.5
+    environment:
+      OBSERVER_MODE: saved_map
+      OBSERVER_WORLD: AKR_DayOne
+      OBSERVER_MAPS: /game/media/maps/Muldraugh, KY
+      OBSERVER_DATA: /data
+      OBSERVER_SAVE: /save
+      OBSERVER_LOGS: /logs
+      OBSERVER_POSITION_TOKEN_FILE: /run/secrets/observer-positions-token
+      OBSERVER_STORYTELLER_DEBUG: "1"
+    ports:
+      - "127.0.0.1:8098:8000/tcp"
+    volumes:
+      - ./data/observer:/data:z
+      - ./data/game-files:/game:ro,z
+      - ./data/Zomboid/Saves/Multiplayer/AKR_DayOne:/save:ro,z
+      - ./data/Zomboid/Logs:/logs:ro,z
+      - ./secrets/positions.token:/run/secrets/observer-positions-token:ro,z
+    networks:
+      default: {}
+      telemetry:
+        aliases: [observer-positions]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: k8s-file
+      options: {max-size: 10m}
+  gateway:
+    build:
+      context: gateway
+    restart: "on-failure:3"
+    mem_limit: 256m
+    cpus: 0.5
+    env_file: secrets/porkbun.env
+    ports:
+      - "192.168.1.132:8453:8453/tcp"
+      - "192.168.1.132:8099:8080/tcp"
+    volumes:
+      - ./gateway:/etc/caddy:ro,z
+      - ./data/caddy:/data:Z
+    logging:
+      driver: k8s-file
+      options: {max-size: 10m}
+networks:
+  default: {}
+  telemetry:
+    internal: true

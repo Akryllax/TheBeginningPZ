@@ -1,0 +1,6 @@
+**
+!npc-service/
+!npc-service/Dockerfile
+!artifacts/
+!artifacts/npc-service-runtime/
+!artifacts/npc-service-runtime/**

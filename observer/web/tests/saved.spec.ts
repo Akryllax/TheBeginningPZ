@@ -1,0 +1,34 @@
+import {test,expect} from '@playwright/test';
+const base=process.env.SAVED_MAP_URL||'http://127.0.0.1:8766';
+test('saved map terrain, search, focus, masking and no mod requirement',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(base);
+ await expect(page.locator('#known-count')).toContainText('known blocks');
+ await expect(page.locator('.leaflet-tile-loaded').first()).toBeVisible();
+ await expect(page.locator('#survivors')).toContainText('akryllax');
+ await expect(page.getByText('Download observer mod')).toHaveCount(0);
+ await page.locator('[data-query="builder"]').click();
+ await expect(page.locator('.place-result').first()).toBeVisible();
+ await page.locator('.place-result').first().click();
+ await expect(page.locator('.leaflet-popup')).toContainText('Building type from installed map');
+ await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector('.leaflet-popup')!).opacity)===1);
+ await page.screenshot({path:'../artifacts/saved-map-desktop.png',fullPage:true});
+ await page.locator('#coverage-source').selectOption('miki');
+ await expect(page.locator('#known-count')).toContainText('known blocks');
+ await page.locator('#coordinates').fill('bad input');
+ await page.locator('#coordinate-search button').click();
+ await expect(page.locator('#coordinate-error')).toContainText('Enter X, Y');
+ expect((await page.request.get(base+'/downloads/ZomboidObserver.zip')).status()).toBe(404);
+ expect((await page.request.get(base+'/api/v1/elements/vehicle:2')).status()).toBe(404);
+ expect(errors).toEqual([]);
+});
+test('mobile map controls and place search',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto(base);
+ await page.getByRole('button',{name:'Toggle map controls'}).click();
+ await expect(page.locator('#controls')).toBeVisible();
+ await page.locator('[data-query="garage"]').click();
+ await expect(page.locator('.place-result').first()).toBeVisible();
+ await page.locator('.place-result').first().click();
+ await expect(page.locator('#controls')).not.toBeVisible();
+ await page.screenshot({path:'../artifacts/saved-map-mobile.png',fullPage:true});
+});

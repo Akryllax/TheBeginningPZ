@@ -1,0 +1,17 @@
+# Add this overlay to the GAME project's docker-compose.yml only at rollout.
+# OBSERVER_INSTALL is the absolute Observer project path on the host.
+# The original game Mods/WorkshopItems/checksum settings remain untouched.
+services:
+  pzserver:
+    environment:
+      JAVA_TOOL_OPTIONS: -javaagent:/opt/observer/observer-position-agent.jar=/opt/observer/positions.properties
+    volumes:
+      - ${OBSERVER_INSTALL:?Set the Observer project path}/server-agent/release:/opt/observer:ro
+      - ${OBSERVER_INSTALL:?Set the Observer project path}/secrets/positions.token:/run/secrets/observer-positions-token:ro
+    networks:
+      default:
+      positions:
+networks:
+  positions:
+    external: true
+    name: zomboid-observer-positions

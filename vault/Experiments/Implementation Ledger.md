@@ -1,0 +1,126 @@
+---
+type: experiment-ledger
+status: first-week-implementation-in-progress
+updated: 2026-09-26
+---
+
+# Implementation ledger
+
+This ledger separates requested design from measured implementation evidence. The deployed
+0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
+development; it is not a complete or multiplayer-validated release.
+
+## First Week iteration — 2026-09-26
+
+- The accepted target is [[Design/First Week]]: calm civilians, manual outbreak, seven-day
+  progression, real civilian/emergency driving and persistent survival behavior.
+- The user selected [[Decisions/0004 Server Runtime Extensions]]: server JVM injection is
+  allowed, clients use ordinary Lua, installed core game files remain unchanged. The client
+  Java prototype was never installed or launched and is superseded.
+- The C++20/Lua planner, bounded Protobuf IPC, server bridge, admin UI, map-index generator
+  and initial resident/action model are implemented. The worker passes core and Unix-wire
+  tests and an independent Java round trip. Real-map batches of 32 driving residents measured
+  42.65 ms median / 44.90 ms maximum IPC roundtrip in the recorded synthetic benchmark.
+- A six-step native planner → actual Lua `Model.acceptPlan`/`Server.receipt` fixture passed
+  for road parking followed by walking to a building 25 tiles from the road. This checks
+  acceptance semantics, not actual vehicle movement.
+- The guarded JVM fixtures pass, including the real bundled pzexe launcher-discovery stage.
+  The initial disposable boot exposed and led to fixing that startup-stage distinction.
+- Added private First Week fields to Observer diagnostics. Five focused Python tests,
+  frontend build and Java/Python fixtures for five exporter failure modes passed. New output
+  is built locally; the playable world's mounted exporter has not been replaced.
+- Installed pinned Vineflower 1.12.0 and added [[Runbooks/Java Inspection]], a focused skill,
+  reusable decompile command, exact `javap` output and per-run provenance. Vehicle classes
+  decompiled without warnings; game-derived output is ignored and excluded from distribution.
+- Prepared and booted the disposable `LofersVehicleProbe_20260926_185224_d59d95` world.
+  RCON responds with zero players. It has no game mods or client agent requirement, and
+  core game files are mounted read-only. Initial probe readiness is under investigation;
+  no native driving or client replication result has been recorded yet.
+- Connected the workspace to `Akryllax/TheBeginningPZ`, retaining remote main commit
+  `7b528a3` and its GPL-3.0 license. Read-only candidate audit found no actual credential
+  matches or game/decompiled binary payloads. Raw live baseline configuration and generated
+  map-index Lua are now ignored. No source push is recorded yet.
+- Added project skills for native planning, NPC replication, scenario acceptance and Java
+  inspection. Each new skill passed its structural validator.
+- The ordinary-Lua pedestrian rewrite is implemented: verified callback capture, scoped
+  target-effect isolation, native owner/lease checks, bounded contact reports and server
+  validation. Client Runtime has no Java-helper calls. Native Kahlua compilation verified
+  all ten scenario Lua files and the four callback signatures. Contact animation/armor
+  behavior still needs real gameplay validation; vehicle actions are explicitly rejected
+  pending the separate server physics experiment.
+- Final automated project run for this checkpoint: **61 project tests, 116 Observer tests,
+  and the frontend build passed**. Java bridge/premain/control-file fixtures also passed.
+  The probe exposed missing empty-world physics initialization and missing native-library
+  initialization; fixes use the shipped `Bullet.init()` and `WorldSimulation.create()` on
+  explicit probe start. No game file replacement or client injection was used.
+
+Outstanding gates include real-world ordinary-Lua effect isolation, resident lifecycle,
+treatment/contact correctness, infected corpses, complete regional/adaptive progression,
+worker-outage clock handling, real server vehicle physics and collisions, NPC occupancy,
+and two-client convergence. The private `artifacts/scenario-tests/integration-audit.md`
+records specific implementation gaps. The prototype has not been reset or archived for release.
+
+The following sections preserve evidence for the earlier observation-only deployment.
+
+## Project bootstrap evidence
+
+- Project created under `/var/home/akr/Documents/Projects/ZomboidDayOne`; isolated source, data, secrets, artifact and tooling paths established.
+- Observer source copied independently; `references/observer-source.json` records file hashes. The original source repository had no HEAD commit.
+- Live baseline config copied read-only; new world/port identity and credentials created separately. No old world save is used as this world's starting state.
+- Root/scoped agent guidance, five focused skills and this Markdown vault created. Skill/link validation results are recorded below when run.
+- All five `.agents/skills/*/SKILL.md` files passed the local skill-creator `quick_validate.py` validator on 2026-09-26. This validates frontmatter/naming/scaffold structure; it does not prove in-game behavior.
+- Root README/SKILLS Markdown links resolve, and `./dayone --help` matches the documented command list. Final vault validation checked 22 Markdown files and 76 wikilinks: no missing/ambiguous targets, no missing local Markdown links and valid design-page frontmatter.
+- Deployment work reports the baseline dedicated server reached RCON readiness and completed a graceful quit. The full companion mod subsequently initialized in observation mode on the dedicated server without Lua errors; Linux animation case aliases resolved the identified Bandits animation-node errors. This is startup evidence, not a real-client NPC test.
+
+## Validation status
+
+| Gate | Status | Evidence / limit |
+| --- | --- | --- |
+| Project skills | Passed structural validation | All five skill-creator validators passed, 2026-09-26 |
+| Vault links/frontmatter | Passed | 22 Markdown files, 76 resolved unambiguous wikilinks, all local Markdown links present |
+| Local tool bootstrap | Prepared | Project-local Python 3.12.12, pinned Node/uv archives, dependencies and browser assets; tool/image manifests under `references/` |
+| Configuration and container build | Built and restarted | Final game/Observer/gateway recreation completed; game had zero restarts/OOM events and RCON reported zero players |
+| Fresh baseline server boot | Passed startup/RCON/shutdown | No real client evidence |
+| Companion dedicated-server initialization | Passed startup observation | Final companion initialized in observation mode without storyteller Lua errors; real clients not tested. Upstream warnings remain, listed below |
+| Observer automated tests | Passed | 114 Python tests, two browser tests and Java/Python cross-language validation; fixture covered five failure modes |
+| Observer debug browser | Passed | Actual loopback debug page loaded without JavaScript errors; screenshot and fixture log under `observer/artifacts/` |
+| Project/Lua automated tests | Passed | 19 Lua 5.1 tests via `lupa.lua51`, plus Ruff checks; see implementation page for coverage |
+| Operations automated tests | Passed | Four checks: Observer SQLite backup/restore round trip, interrupted archive write, retention of completed backups only, and failed graceful stop preventing backup |
+| Bandits source/API audit | Completed for observation release | Current V2 and old Week One MP interfaces differ; no active spawn/cleanup adapter claimed. See [[Research/Bandits Compatibility]] |
+| Storyteller Lua implementation | Observation release implemented | Field/scanner, inference, persistent state, decision previews, recovery/limits, native schedule suppression and telemetry; see [[Design/Storyteller Implementation]] |
+| Actual telemetry delivery | Passed with empty server | Real Lua → Java → protobuf → Observer reached tick 185 after the high-resolution-clock build, mode `observe`, phase `outbreak`, zero players, health `observing_native_spawns_disabled`. `PauseEmpty` was briefly disabled for each check and restored to true |
+| Gateway boundary | Passed local/LAN checks | Observer LAN returned HTTP 200 from `.160`; loopback debug returned 200, LAN debug returned 404 |
+| HTTPS certificate/routing on LAN | Passed | `map.lofers.net:8453` resolved explicitly to `.132` returned HTTP 200 with a valid certificate; this does not test WAN forwarding |
+| Two-client NPC ownership/persistence | **Not tested** | Requires [[Runbooks/Multiplayer Validation]] |
+| Empty-server timing | Measured, limited | High-resolution sample at tick 185: Lua last 0.042 ms, p95 0.377 ms, p99/max 1.125 ms; Java capture 0.194 ms. No online-player/storage/NPC load in this sample |
+| Java bounded-capture fixture | Measured, synthetic | 200 warmed samples in each of five modes with 70 cells/40 decisions: p95 0.083–0.115 ms, p99 0.298–0.434 ms, max 0.404–0.769 ms. Combined-hook cold initialization reached 12–13 ms |
+| Field inference and latency under player load | **Not measured** | Empty-server timing does not validate [[Design/Performance Budget]] scenarios |
+| Consistent backup / automated restore | Passed | Final archive checksum and isolated SQLite checks passed; exact artifacts below |
+| Playable isolated restore | **Not tested** | Archive/SQLite validation is a separate lesser check |
+| WAN/router connectivity | **Not tested** | Requires direct forwarding and an external connection |
+| Private companion package | Built and checksummed | Original `LofersStoryteller` 0.1.0 ZIP; checksum below |
+
+Observer test procedure, fixture limits and evidence paths are documented in [the telemetry validation note](../../observer/docs/storyteller-debug.md). The fixture log is `observer/artifacts/storyteller-agent-test.txt`; the live debug screenshot is `observer/artifacts/storyteller-live.png`. These checks do not establish NPC multiplayer behavior or loaded-base scan performance.
+
+## Deployment artifacts
+
+- Runtime feed evidence: `artifacts/runtime-storyteller.json`.
+- Final profile-enabled guard check: `artifacts/final-guard-smoke.json`; fresh mode `observe`, health `observing_native_spawns_disabled`, `PauseEmpty=true` restored, followed by an acknowledged RCON world save.
+- Deployment state, test results and remaining gates: `artifacts/deployment-status.json`.
+- Endpoint boundary evidence: `artifacts/endpoint-boundaries.json`.
+- Installed original-mod hashes: `artifacts/installed-mod.json`.
+- Verified private backup: `backups/AKR_DayOne-20260926-145311-827862265.tar.gz` plus its SHA256 sidecar. It includes secrets and must remain private; it precedes the final built-in-clan availability adjustment below.
+- Isolated restored files: `artifacts/restore-tests/20260926-145333/`.
+- Client package: `artifacts/LofersStoryteller-0.1.0.zip`, SHA256 `dbb456278426e186c6bf00ff2c48a4c4880124939f8218596ec8785031545f00`.
+
+## Startup warnings retained for review
+
+The final startup still reports upstream FluidLargeBucket/FuelPump sanitization, missing fence `ThumpSound`, mannequin-zone, duplicate basement ID and `map_meta` invalid-room skip warnings. These were not resolved by this deployment and should not be described as a completely clean log. The identified Bandits animation-parser errors and this project's missing-directory errors are gone. No storyteller Lua errors were seen during the empty-server smoke check; real-client behavior remains untested.
+
+## Known rollout limits
+
+The original companion must be installed on clients as well as the server; the Java Observer exporter is server-only. Hostile storyteller events remain gated on real integration evidence, and native Bandits scheduling is disabled during observation. The plan includes candidate event families beyond the initial executable implementation; consult implementation notes for actual support. Observer debug is read-only and local. Travel replay remains outside this task.
+
+For the manual two-client trial, `General_OriginalBandits=true` makes built-in clan profiles available in the admin UI. The companion still sets their native scheduling chances to zero; this flag does not enable automatic encounters. See [[Research/Bandits Compatibility#Concrete next two-client trial|the prepared Clan Karate trial]]. The configuration adjustment was applied by a graceful restart; RCON reported zero players and the companion initialized successfully again.
+
+For new evidence, add the command/scenario, date, exact build, result, artifact path and remaining limits here or link an experiment created from [[Templates/Experiment]].

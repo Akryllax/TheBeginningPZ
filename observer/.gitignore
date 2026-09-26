@@ -1,0 +1,15 @@
+.venv/
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.env
+secrets/
+data/
+artifacts/
+*.egg-info/
+test-results/
+playwright-report/
+server-agent/release/
+compose.override.yaml

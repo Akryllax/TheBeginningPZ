@@ -1,0 +1,326 @@
+[
+    {
+        "Id": "0d7b4adaf840b85a749c2265313905128a15472dab93d9838c967c6fc84e0288",
+        "ParentId": "5ad2db537547ff54ebf7b0f8a1643cea58e3ef1c733431048b9362a3a3cdf6e0",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/zomboid-dayone_game@sha256:55593b3da29e0fcadd6886bae41b65ed13337728a86e9a87ef4f6e99311f8696"
+        ],
+        "Size": 135724642,
+        "SharedSize": 0,
+        "VirtualSize": 135724642,
+        "Labels": {
+            "io.buildah.version": "1.43.4"
+        },
+        "Containers": 1,
+        "Digest": "sha256:55593b3da29e0fcadd6886bae41b65ed13337728a86e9a87ef4f6e99311f8696",
+        "History": [
+            "localhost/zomboid-dayone_game:latest"
+        ],
+        "Names": [
+            "localhost/zomboid-dayone_game:latest"
+        ],
+        "Created": 1790434358,
+        "CreatedAt": "2026-09-26T14:52:38Z"
+    },
+    {
+        "Id": "7939e0dde7025ab3d7fbb15973a06a6e3b11c5c250e17d1a9e662ba9cab295bc",
+        "ParentId": "cbe88f4ebe7384d722222c49f245620f9c0f8522d60ec29cfadf550d7ed96823",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 135720034,
+        "SharedSize": 0,
+        "VirtualSize": 135720034,
+        "Labels": {
+            "io.buildah.version": "1.43.4"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:71b5e92c3d11f6f4914b44a110dfaf3fb8e0fd5baee9d6f5192bf66ac6f2bab4",
+        "History": [
+            "localhost/zomboid-dayone_game:latest"
+        ],
+        "Created": 1790434169,
+        "CreatedAt": "2026-09-26T14:49:29Z"
+    },
+    {
+        "Id": "506484f5edf78a03a907fd9266c7f4b08f5ab6f339a6eb8c76aabe7de34735b2",
+        "ParentId": "97f9d87debd5d2b8c38dea94d48f31e845c326971869fe5a2ad5a375f474b0ea",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/zomboid-dayone_observer@sha256:23d5aa371e1dc7c493bdfab702efcc7e22d64069d5fd2857e7f70dcd5cf1b2b3"
+        ],
+        "Size": 172544949,
+        "SharedSize": 0,
+        "VirtualSize": 172544949,
+        "Labels": {
+            "io.buildah.version": "1.43.4"
+        },
+        "Containers": 1,
+        "Digest": "sha256:23d5aa371e1dc7c493bdfab702efcc7e22d64069d5fd2857e7f70dcd5cf1b2b3",
+        "History": [
+            "localhost/zomboid-dayone_observer:latest"
+        ],
+        "Names": [
+            "localhost/zomboid-dayone_observer:latest"
+        ],
+        "Created": 1790433934,
+        "CreatedAt": "2026-09-26T14:45:34Z"
+    },
+    {
+        "Id": "f01439bc2e9f0e06bef5372fd8274bf5b192cb138eef6e67ba6e1e8aaae16a7f",
+        "ParentId": "6f6aab013deb99dd7bc44418c4b84522cb1b5486dfedcae0f9e4abf76cf84c68",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 340846987,
+        "SharedSize": 0,
+        "VirtualSize": 340846987,
+        "Labels": {
+            "io.buildah.version": "1.43.4"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:9c265edd96d3abad9380ae5ed25ea16e1a3576d5860996d16dd3d8eda63e9f48",
+        "History": [
+            "docker.io/library/a76c26cb08b94ff15ef3abce485d9c008ade592ab78e24452c3f508606c4ec74-tmp:latest"
+        ],
+        "Created": 1790433918,
+        "CreatedAt": "2026-09-26T14:45:18Z"
+    },
+    {
+        "Id": "e09ba4b0bc7f1e9126ae7773c2f82bdd78e3a2afd15a6d11161fcb17923c2584",
+        "ParentId": "6f03f04e09371a93f681e66779ab95366a3031c7395fb591bfc8fba2999294a1",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1954400565,
+        "SharedSize": 0,
+        "VirtualSize": 1954400565,
+        "Labels": {
+            "io.buildah.version": "1.43.4"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:2f516b555610b6fa7cf43b483b8a346614d70a140a0b42867e0396bb19aaa602",
+        "History": [
+            "docker.io/library/368563e6f8aa0d32bdf3fa8b48f871a84bfeffde99177f4c065fe0dd8b0f0900-tmp:latest"
+        ],
+        "Created": 1790433817,
+        "CreatedAt": "2026-09-26T14:43:37Z"
+    },
+    {
+        "Id": "f5285999aae915c9a08f24487311bfb19498a0ae72b39df49f6294d7526839bc",
+        "ParentId": "d31edec47bcfd763e48cc27ebcdfd742d05b72209c0830c432f671fc6287c4fb",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 133290557,
+        "SharedSize": 0,
+        "VirtualSize": 133290557,
+        "Labels": {
+            "io.buildah.version": "1.43.4"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:d6be2a53911319dd920dd8a72b346e75e9e81cfd86f72394c865c656300ea477",
+        "History": [
+            "localhost/zomboid-dayone_game:latest"
+        ],
+        "Created": 1790433757,
+        "CreatedAt": "2026-09-26T14:42:37Z"
+    },
+    {
+        "Id": "71717d346292f214aded8cd1a253a14d49b08e4111c4d5e8d94d9da6c205f326",
+        "ParentId": "2d8b1708bf8008935c0e2a9b6564f7f080cf9a73af3b27718f286230449b7101",
+        "RepoTags": null,
+        "RepoDigests": [
+            "localhost/zomboid-dayone_gateway@sha256:7b6c25cfeaa3d611a66887c95318f952825d916f6224a1885154c6b37bf8d31a"
+        ],
+        "Size": 111751315,
+        "SharedSize": 0,
+        "VirtualSize": 111751315,
+        "Labels": {
+            "io.buildah.version": "1.43.4",
+            "org.opencontainers.image.description": "a powerful, enterprise-ready, open source web server with automatic HTTPS written in Go",
+            "org.opencontainers.image.documentation": "https://caddyserver.com/docs",
+            "org.opencontainers.image.licenses": "Apache-2.0",
+            "org.opencontainers.image.source": "https://github.com/caddyserver/caddy-docker",
+            "org.opencontainers.image.title": "Caddy",
+            "org.opencontainers.image.url": "https://caddyserver.com",
+            "org.opencontainers.image.vendor": "Light Code Labs",
+            "org.opencontainers.image.version": "v2.11.4"
+        },
+        "Containers": 1,
+        "Digest": "sha256:7b6c25cfeaa3d611a66887c95318f952825d916f6224a1885154c6b37bf8d31a",
+        "History": [
+            "localhost/zomboid-dayone_gateway:latest"
+        ],
+        "Names": [
+            "localhost/zomboid-dayone_gateway:latest"
+        ],
+        "Created": 1790433706,
+        "CreatedAt": "2026-09-26T14:41:46Z"
+    },
+    {
+        "Id": "0e8d810ba7d22839b97dd58fe33f9f5c4702ce5819d05791201a3f4cbd0892e3",
+        "ParentId": "6f03f04e09371a93f681e66779ab95366a3031c7395fb591bfc8fba2999294a1",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 1954400550,
+        "SharedSize": 0,
+        "VirtualSize": 1954400550,
+        "Labels": {
+            "io.buildah.version": "1.43.4"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:32fb924ccf17ca02a2986a0155e6f6091f42572725951b1e6d7d00b94936b122",
+        "History": [
+            "docker.io/library/6cca36caf33e14effd70cba5aeca945500b63a338aa71aa25b04248cddafc1d8-tmp:latest"
+        ],
+        "Created": 1790433631,
+        "CreatedAt": "2026-09-26T14:40:31Z"
+    },
+    {
+        "Id": "ed07d3d1360c8a96310dca10f4128722e703fda4ca203b4a839f8bfc996c377d",
+        "ParentId": "57951adc2a1ddc85bb15df64b5cd5617d0926d4c4714e3c13820a1e97b3f1c56",
+        "RepoTags": null,
+        "RepoDigests": [],
+        "Size": 133290559,
+        "SharedSize": 0,
+        "VirtualSize": 133290559,
+        "Labels": {
+            "io.buildah.version": "1.43.4"
+        },
+        "Containers": 0,
+        "Dangling": true,
+        "Digest": "sha256:40760d03ba26aa4ab55a821617a0ca0de9e512cae92d395a1273ed6aeaed30f6",
+        "History": [
+            "localhost/zomboid-dayone_game:latest"
+        ],
+        "Created": 1790433350,
+        "CreatedAt": "2026-09-26T14:35:50Z"
+    },
+    {
+        "Id": "9e87977b867847e186d066f531ef783b006d582a985c341c269446088d90f2c4",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/library/python@sha256:44ff437bba879d4941b710a369a8f19266aea34b29002807f0c487fabc9eec9b",
+            "docker.io/library/python@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f"
+        ],
+        "Size": 123525693,
+        "SharedSize": 0,
+        "VirtualSize": 123525693,
+        "Labels": null,
+        "Containers": 0,
+        "Digest": "sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+        "History": [
+            "docker.io/library/python:3.12-slim"
+        ],
+        "Names": [
+            "docker.io/library/python:3.12-slim"
+        ],
+        "Created": 1789780031,
+        "CreatedAt": "2026-09-19T01:07:11Z"
+    },
+    {
+        "Id": "db9f02c6bde9fa90cc8074c92754b2b046947392f1a857726e77f041febb7b82",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/library/debian@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251",
+            "docker.io/library/debian@sha256:f3034a6ec3c1205360777c4aae76234998866ad18806ae62b63a3f84ccad782b"
+        ],
+        "Size": 77914066,
+        "SharedSize": 0,
+        "VirtualSize": 77914066,
+        "Labels": null,
+        "Containers": 0,
+        "Digest": "sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251",
+        "History": [
+            "docker.io/library/debian:bookworm-slim"
+        ],
+        "Names": [
+            "docker.io/library/debian:bookworm-slim"
+        ],
+        "Created": 1789689600,
+        "CreatedAt": "2026-09-18T00:00:00Z"
+    },
+    {
+        "Id": "6f03f04e09371a93f681e66779ab95366a3031c7395fb591bfc8fba2999294a1",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/library/caddy@sha256:369218c81ca6d6af249981221b3a5c764d886dd5b058f51d144066de13f2418d",
+            "docker.io/library/caddy@sha256:7a05631b5e68fa24cfda0d4392b9c8577715c855b9b9da84b1b59be87e535405"
+        ],
+        "Size": 272171584,
+        "SharedSize": 0,
+        "VirtualSize": 272171584,
+        "Labels": null,
+        "Containers": 0,
+        "Digest": "sha256:369218c81ca6d6af249981221b3a5c764d886dd5b058f51d144066de13f2418d",
+        "History": [
+            "docker.io/library/caddy:2-builder"
+        ],
+        "Names": [
+            "docker.io/library/caddy:2-builder"
+        ],
+        "Created": 1789684433,
+        "CreatedAt": "2026-09-17T22:33:53Z"
+    },
+    {
+        "Id": "2d8b1708bf8008935c0e2a9b6564f7f080cf9a73af3b27718f286230449b7101",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/library/caddy@sha256:040e9f7480b80b6d4a7e5013a21159b950a63dcbdb956e38abe2387fb28d9ec0",
+            "docker.io/library/caddy@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52"
+        ],
+        "Size": 63464907,
+        "SharedSize": 0,
+        "VirtualSize": 63464907,
+        "Labels": {
+            "org.opencontainers.image.description": "a powerful, enterprise-ready, open source web server with automatic HTTPS written in Go",
+            "org.opencontainers.image.documentation": "https://caddyserver.com/docs",
+            "org.opencontainers.image.licenses": "Apache-2.0",
+            "org.opencontainers.image.source": "https://github.com/caddyserver/caddy-docker",
+            "org.opencontainers.image.title": "Caddy",
+            "org.opencontainers.image.url": "https://caddyserver.com",
+            "org.opencontainers.image.vendor": "Light Code Labs",
+            "org.opencontainers.image.version": "v2.11.4"
+        },
+        "Containers": 0,
+        "Digest": "sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52",
+        "History": [
+            "docker.io/library/caddy:2"
+        ],
+        "Names": [
+            "docker.io/library/caddy:2"
+        ],
+        "Created": 1789682294,
+        "CreatedAt": "2026-09-17T21:58:14Z"
+    },
+    {
+        "Id": "c10884952bb8c37122fcc3fe6f97af3ab0a80e5eb02ee5df707406b4e11a7e3e",
+        "ParentId": "",
+        "RepoTags": null,
+        "RepoDigests": [
+            "docker.io/library/node@sha256:83f1c388c31fb2e51f7cbd4dea949b96260798c98f206e8e4696bc93bd964e3a",
+            "docker.io/library/node@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1"
+        ],
+        "Size": 173288368,
+        "SharedSize": 0,
+        "VirtualSize": 173288368,
+        "Labels": null,
+        "Containers": 0,
+        "Digest": "sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1",
+        "History": [
+            "docker.io/library/node:24-alpine"
+        ],
+        "Names": [
+            "docker.io/library/node:24-alpine"
+        ],
+        "Created": 1789681647,
+        "CreatedAt": "2026-09-17T21:47:27Z"
+    }
+]

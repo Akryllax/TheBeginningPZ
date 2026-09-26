@@ -1,0 +1,19 @@
+{
+  "recorded_utc": "2026-09-26T14:54:31Z",
+  "python": "Python 3.12.12",
+  "node": "v24.18.0",
+  "uv": "uv 0.11.16 (x86_64-unknown-linux-gnu)",
+  "sha256": {
+    ".tooling/bin/uv": "1a8423f7d6af28f66920210b05a780665178c0f5650c940b95c4b085a4f284b9",
+    ".tooling/node/bin/node": "41a74efb34cbde5c7632cdac0cf8bd1a14d0b8d73dc1e82755014d9a9ce70f5c",
+    "data/game-files/java/projectzomboid.jar": "80e405a4bfc42f6072e75b3735f458a6514143da011d3226007ded305a442f44",
+    ".tooling/agent/jdk25.tar.gz": "dbb698396d478e7fa2b1e50f4103324b2a99b90569ee27c33f2261f9215cf41e",
+    ".tooling/agent/protoc-36.1-linux-x86_64.zip": "c4bc672d9d49214dc8cafdceadf4df92182d6ca8e3ec65a56b2d7de5602669b4",
+    ".tooling/agent/protobuf-javalite-4.36.1.jar": "91d3dba2521322103230c509d41a017da3a5e6766610adcb10c5bb127cbb26c5"
+  },
+  "origins": {
+    "game": "Read-only copy of validated .160 dedicated server, B42.20.4",
+    "uv_node": "Copied installed local toolchains; hashes lock this workspace",
+    "java_protobuf": "URLs and SHA256 pinned in observer/scripts/build_position_agent.py"
+  }
+}

@@ -1,0 +1,13 @@
+.git
+.venv
+**/node_modules
+**/dist
+**/__pycache__
+data
+artifacts
+secrets
+.env
+web/test-results
+web/playwright-report
+server-agent/release
+compose.override.yaml

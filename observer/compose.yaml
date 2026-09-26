@@ -1,0 +1,59 @@
+name: zomboid-observer
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: "${OBSERVER_UID:-1001}:${OBSERVER_GID:-1001}"
+    environment:
+      OBSERVER_MODE: saved_map
+      OBSERVER_MAPS: /game/media/maps/Muldraugh, KY
+      OBSERVER_WORLD: "${OBSERVER_WORLD:-AKR_Exploratory}"
+      OBSERVER_DATA: /data
+      OBSERVER_SPOOL: /spool
+      OBSERVER_SAVE: /save
+      OBSERVER_LOGS: /logs
+    volumes:
+      - ./data:/data
+      - game_files:/game:ro
+      - ${ZOMBOID_DATA:-/home/akr/projects/zomboid/data/Zomboid}/Saves/Multiplayer/AKR_Exploratory:/save:ro
+      - ${ZOMBOID_DATA:-/home/akr/projects/zomboid/data/Zomboid}/Logs:/logs:ro
+    mem_limit: 1g
+    cpus: 1.5
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    logging:
+      options: {max-size: 10m, max-file: "3"}
+  gateway:
+    build:
+      context: deploy
+      dockerfile: Dockerfile.caddy
+    restart: unless-stopped
+    depends_on:
+      app: {condition: service_healthy}
+    environment:
+      OBSERVER_HOST: "${OBSERVER_HOST:-map.lofers.net}"
+    env_file: ./secrets/porkbun.env
+    ports:
+      - "8443:8443/tcp"
+      - "${OBSERVER_LAN_ADDRESS:-127.0.0.1}:8089:8080/tcp"
+    volumes:
+      # A directory mount sees atomic file replacements during deployment.
+      - ./deploy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 256m
+    cpus: 0.5
+    logging:
+      options: {max-size: 10m, max-file: "3"}
+volumes:
+  game_files:
+    external: true
+    name: zomboid_pz-server-files
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PZ_PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+exec /usr/bin/podman --root "$PZ_PROJECT_ROOT/.tooling/containers" --runroot "/run/user/$(id -u)/zomboid-dayone" "$@"

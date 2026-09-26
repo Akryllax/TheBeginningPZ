@@ -1,0 +1,30 @@
+{
+	auto_https disable_redirects
+	servers {
+		protocols h1 h2
+	}
+}
+https://map.lofers.net:8453 {
+	tls {
+		resolvers 1.1.1.1 8.8.8.8
+		propagation_timeout 10m
+		dns porkbun {
+			api_key {$PORKBUN_API_KEY}
+			api_secret_key {$PORKBUN_API_SECRET_KEY}
+		}
+	}
+	@private path /internal /internal/* /debug /debug/*
+	respond @private 404
+	encode zstd gzip
+	reverse_proxy observer:8000 {
+		flush_interval -1
+	}
+}
+http://:8080 {
+	@private path /internal /internal/* /debug /debug/*
+	respond @private 404
+	encode zstd gzip
+	reverse_proxy observer:8000 {
+		flush_interval -1
+	}
+}

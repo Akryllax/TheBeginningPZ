@@ -1,0 +1,6 @@
+-r observer/requirements.lock
+pytest==8.4.2
+httpx==0.28.1
+lupa==2.5
+ruff==0.13.0
+PyYAML==6.0.2
