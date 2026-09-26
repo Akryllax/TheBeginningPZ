@@ -19,9 +19,11 @@ Observer diagnostics. Planner, protocol, Lua domain and JVM fixtures have been e
 Those results do not establish visible NPC behavior, safe driving, or two-client consistency.
 
 The current integration work targets ordinary Lua clients and **server-only JVM injection**.
-One real empty vehicle is being prepared for testing in a disposable server using native
-vehicle replication. Server physics lifecycle, collision ownership, NPC seating, unloaded
-resident reconciliation, and the full outbreak/adaptive event progression remain incomplete.
+An isolated empty-vehicle test passed native movement, braking and cleanup: the car traveled
+10.05 tiles using server physics. This required explicit native server terrain cells.
+Integration with normal gameplay, collision ownership, NPC seating, unloaded resident
+reconciliation, and the full outbreak/adaptive event progression remain incomplete. Native
+vehicle packets still need observation from two real clients.
 The earlier client Java launcher under `client/` is an experimental prototype and is not the
 deployment target. See the [implementation ledger](vault/Experiments/Implementation%20Ledger.md)
 and [accepted scenario](vault/Design/First%20Week.md) for requirements and evidence boundaries.

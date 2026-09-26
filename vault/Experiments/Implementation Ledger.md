@@ -34,12 +34,31 @@ development; it is not a complete or multiplayer-validated release.
   decompiled without warnings; game-derived output is ignored and excluded from distribution.
 - Prepared and booted the disposable `LofersVehicleProbe_20260926_185224_d59d95` world.
   RCON responds with zero players. It has no game mods or client agent requirement, and
-  core game files are mounted read-only. Initial probe readiness is under investigation;
-  no native driving or client replication result has been recorded yet.
+  core game files are mounted read-only. The first explicit attempt initialized the native
+  library/world and registered a body, but the car fell below the terrain before driving.
+  The height guard stopped the attempt and restored the native body count to zero.
+  A second attempt explicitly activated the road's native chunk map and uploaded 20 chunks;
+  it also fell below the terrain (physics Z −0.767), with no horizontal travel. Cleanup
+  again restored zero native bodies. Native inspection then established that server physics
+  reads a separate list of cells, each five game chunks wide, instead of client chunk maps.
+  Creating the two required native server cells resolved the ground-contact failure.
+- **The bounded server-only motion probe passed** with agent SHA-256
+  `106c3f900cb80a89e755ab881a9f9a81ae61b0d6980cca1f79198c09d97599b3`:
+  settled → drove → braked → stopped → cleaned up. The car traveled 10.0547 tiles along X,
+  reached 4.8211 km/h, stopped at 0.05275 km/h and retained physical Z 0.13951.
+  Native vehicle bodies returned from one to the zero baseline, and both owned native
+  terrain cells were removed. The probe recorded 175 active physics frames and 176 dirty
+  position publications; these are not packet measurements. It used the normal physics
+  update path, with no extra simulation step, fake players or coordinate-driven movement.
+  No client was connected. See `scenario-agent/VEHICLE_PROBE.md` for the exact pinned native
+  library and evidence paths; normal-world integration, collision ownership and NPC seats
+  are separate unpassed gates.
 - Connected the workspace to `Akryllax/TheBeginningPZ`, retaining remote main commit
   `7b528a3` and its GPL-3.0 license. Read-only candidate audit found no actual credential
   matches or game/decompiled binary payloads. Raw live baseline configuration and generated
-  map-index Lua are now ignored. No source push is recorded yet.
+  map-index Lua are now ignored. Initial source commit `6cd5045` was pushed to
+  `work/first-week-server-runtime`; remote main remains unchanged. The GitHub connector
+  returned HTTP 403 when creating a draft PR, so no PR was created.
 - Added project skills for native planning, NPC replication, scenario acceptance and Java
   inspection. Each new skill passed its structural validator.
 - The ordinary-Lua pedestrian rewrite is implemented: verified callback capture, scoped
@@ -53,10 +72,19 @@ development; it is not a complete or multiplayer-validated release.
   The probe exposed missing empty-world physics initialization and missing native-library
   initialization; fixes use the shipped `Bullet.init()` and `WorldSimulation.create()` on
   explicit probe start. No game file replacement or client injection was used.
+- Follow-up worker-outage fix: an advancing completed observation must renew a five-second
+  freshness window. Missing/stale replies hold scenario time, disease/regional decisions,
+  unfinished routines and materialization. Recovery requires an observation published after
+  the hold; paused empty observations continue, so recovery does not depend on pending work.
+  Native reconciliation, leases, defensive reactions and validated physical damage continue.
+  Confirmed contact exposure is retained until recovery at the frozen scenario time. Manual
+  pause remains independent, and Observer's existing worker-health field reports the hold
+  reason. **68 project tests passed**, including seven new regressions; peer review passed.
+  This has not been deployed or exercised with real multiplayer clients.
 
 Outstanding gates include real-world ordinary-Lua effect isolation, resident lifecycle,
 treatment/contact correctness, infected corpses, complete regional/adaptive progression,
-worker-outage clock handling, real server vehicle physics and collisions, NPC occupancy,
+live worker-outage behavior, normal-world vehicle physics integration and collisions, NPC occupancy,
 and two-client convergence. The private `artifacts/scenario-tests/integration-audit.md`
 records specific implementation gaps. The prototype has not been reset or archived for release.
 

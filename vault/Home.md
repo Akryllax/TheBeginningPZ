@@ -4,7 +4,7 @@ status: active
 updated: 2026-09-26
 ---
 
-# Lofers Living World
+# The Beginning
 
 A fresh multiplayer world on the workstation, with an adaptive storyteller and an independent Observer map. The existing `.160` game remains separate. Open this `vault/` directory as an Obsidian vault; plain Markdown readers also work.
 

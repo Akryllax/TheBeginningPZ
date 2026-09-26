@@ -16,7 +16,10 @@ final class ServerVehicleProbe {
     private final ProbeControl io;
     private final String world,epoch;
     private BaseVehicle vehicle;
-    private boolean nativeBody,worldAdded;
+    private boolean nativeBody,worldAdded,nativeTerrain,ownsNativeWorld;
+    private int terrainMinX,terrainMinY;
+    private int terrainCreated,terrainRemoved;
+    private final ArrayList<int[]> nativeCells=new ArrayList<>();
     private int nativeBefore=-1,nativeAfter=-1,vehicleId=-1,chunkCursor;
     private long commandId,ticks,publications,started,bodyStarted,phaseAt,nextStatus,physicsFrameStart,physicsFrames;
     private String phase="waiting_for_world",error="",finishReason="";
@@ -41,15 +44,15 @@ final class ServerVehicleProbe {
             ProbeControl.Command command=io.command.getAndSet(null);
             if(command!=null){
                 commandId=command.id();
-                if(command.action().equals("stop")){finishReason="operator_stop";if(vehicle!=null)phase("braking");else phase("stopped");}
+                if(command.action().equals("stop")){finishReason="operator_stop";if(vehicle!=null)phase("braking");else{cleanup();phase("stopped");}}
                 else if(vehicle==null&&!Set.of("loading","preparing_physics").contains(phase)) {
-                    error="";finishReason="";distance=0;maxSpeed=0;publications=0;physicsChunks.clear();chunkCursor=0;
+                    error="";finishReason="";distance=0;maxSpeed=0;publications=0;physicsFrames=0;physicsChunks.clear();chunkCursor=0;
                     nativeBefore=-1;nativeAfter=-1;started=System.nanoTime();phase("loading");
                 }
             }
             boolean ready=readyCell&&readyMeta&&readyMap;
             if(!ready){if(vehicle!=null)fail("world_became_unavailable");return;}
-            physicsFrames=WorldSimulation.instance.getBulletFrameNo()-physicsFrameStart;
+            if(nativeBody)physicsFrames=WorldSimulation.instance.getBulletFrameNo()-physicsFrameStart;
             if(phase.equals("waiting_for_world"))phase("armed");
             if(Set.of("loading","preparing_physics","settling","driving","braking","stopped_visible").contains(phase)) {
                 // cellMap is allocated after ServerMap.grid is assigned: never call the
@@ -65,10 +68,26 @@ final class ServerVehicleProbe {
                     if(Bullet.cmdBuf==null)Bullet.init();
                     WorldSimulation.instance.create();nativeWorldReady=WorldSimulation.instance.created;
                     if(!nativeWorldReady||!Bullet.isWorldInit())throw new IllegalStateException("native_world_initialization_failed");
+                    ownsNativeWorld=true;
                     System.out.println("[LofersVehicleProbe] native_world_initialized");
                 }
                 if(!loadedCorridor())return;
-                validateCorridor();prepareChunks();phase("preparing_physics");
+                validateCorridor();
+                // Pinned headless native server mode ignores client chunk maps.
+                // Its ServerCell owns 5x5 eight-tile chunks (not Java's 64-tile
+                // ServerMap cells). Own a fresh native world before using this
+                // lifecycle, so cleanup cannot remove another caller's cells.
+                if(!ownsNativeWorld||Bullet.getVehicleCount()!=0||!nativeCells.isEmpty())
+                    throw new IllegalStateException("probe_requires_owned_empty_native_world");
+                prepareChunks();terrainCreated=0;terrainRemoved=0;
+                LinkedHashMap<String,int[]> cells=new LinkedHashMap<>();
+                for(int[] xy:physicsChunks){int cx=Math.floorDiv(xy[0],5),cy=Math.floorDiv(xy[1],5);cells.put(cx+":"+cy,new int[]{cx,cy});}
+                if(cells.size()>9)throw new IllegalStateException("native_terrain_cell_limit");
+                for(int[] xy:cells.values()){Bullet.createServerCell(xy[0],xy[1]);nativeCells.add(xy);nativeTerrain=true;terrainCreated++;}
+                terrainMinX=physicsChunks.stream().mapToInt(xy->xy[0]).min().orElseThrow();
+                terrainMinY=physicsChunks.stream().mapToInt(xy->xy[1]).min().orElseThrow();
+                System.out.println("[LofersVehicleProbe] native_server_cells_created count="+terrainCreated);
+                phase("preparing_physics");
             }
             if(phase.equals("preparing_physics")) {
                 if(chunkCursor<physicsChunks.size()) {
@@ -148,13 +167,14 @@ final class ServerVehicleProbe {
         vehicle.setSquare(square);vehicle.chunk=square.chunk;vehicle.chunk.vehicles.add(vehicle);
         worldAdded=true;vehicle.addToWorld();vehicleId=vehicle.getId();
         if(vehicleId<0||vehicle.getController()==null)throw new IllegalStateException("vehicle_creation_incomplete");
-        vehicle.repair();vehicle.setGeneralPartCondition(1.3f,10);vehicle.setHotwired(true);
-        VehiclePart tank=vehicle.getPartById("GasTank");if(tank!=null)tank.setContainerContentAmount(20);
-        vehicle.engineDoRunning();vehicle.setNetPlayerAuthorization(BaseVehicle.Authorization.Server,-1);
+        vehicle.setNetPlayerAuthorization(BaseVehicle.Authorization.Server,-1);
         // Constructor does not add server bodies. Coordinates match the native
         // client's constructor contract; physical height was computed by it.
         Bullet.addVehicle(vehicleId,vehicle.getX(),vehicle.getY(),vehicle.jniTransform.origin.y,
             vehicle.savedRot.x,vehicle.savedRot.y,vehicle.savedRot.z,vehicle.savedRot.w,script.getFullName());nativeBody=true;
+        vehicle.repair();vehicle.setGeneralPartCondition(1.3f,10);vehicle.setHotwired(true);
+        VehiclePart tank=vehicle.getPartById("GasTank");if(tank!=null)tank.setContainerContentAmount(20);
+        vehicle.engineDoRunning();
         vehicle.updateBulletStats();Bullet.setVehicleStatic(vehicle,false);Bullet.setVehicleActive(vehicle,true);
         float[] nativeState=new float[27];
         if(Bullet.getOwnVehiclePhysics(vehicleId,nativeState)!=0||Bullet.getVehicleCount()!=nativeBefore+1)throw new IllegalStateException("native_body_registration_failed");
@@ -167,7 +187,7 @@ final class ServerVehicleProbe {
         cleanup();phase("failed");
     }
     private void cleanup(){
-        if(vehicle==null)return;
+        if(vehicle==null){releaseTerrain();return;}
         try{if(nativeBody){Bullet.controlVehicle(vehicleId,0,100,0);Bullet.setVehicleActive(vehicle,false);Bullet.removeVehicle(vehicleId);nativeBody=false;}}
         catch(Throwable t){error="native_cleanup_failed:"+t.getClass().getSimpleName();}
         try{
@@ -178,7 +198,17 @@ final class ServerVehicleProbe {
             nativeAfter=Bullet.getVehicleCount();
             if(nativeBefore>=0&&nativeAfter!=nativeBefore)error="native_body_count_not_restored";
         }catch(Throwable t){error="world_cleanup_failed:"+t.getClass().getSimpleName();}
-        vehicle=null;worldAdded=false;
+        vehicle=null;worldAdded=false;releaseTerrain();
+    }
+    private void releaseTerrain(){
+        if(!nativeTerrain||nativeBody)return;
+        try{
+            while(!nativeCells.isEmpty()){
+                int[] xy=nativeCells.getLast();Bullet.removeServerCell(xy[0],xy[1]);nativeCells.removeLast();terrainRemoved++;
+            }
+            nativeTerrain=false;
+        }
+        catch(Throwable t){error="terrain_cleanup_failed:"+t.getClass().getSimpleName();}
     }
     private void publish(){
         Map<String,String> s=new LinkedHashMap<>();
@@ -195,6 +225,10 @@ final class ServerVehicleProbe {
         s.put("ready_cell",Boolean.toString(readyCell));s.put("ready_meta",Boolean.toString(readyMeta));s.put("ready_server_map",Boolean.toString(readyMap));
         s.put("native_world_created",Boolean.toString(nativeWorldReady));
         s.put("native_library_initialized",Boolean.toString(Bullet.cmdBuf!=null));
+        s.put("native_terrain_active",Boolean.toString(nativeTerrain));
+        s.put("native_terrain_min_chunk_x",Integer.toString(terrainMinX));s.put("native_terrain_min_chunk_y",Integer.toString(terrainMinY));
+        s.put("native_terrain_mode","server_cells_5x5");s.put("native_terrain_cells_live",Integer.toString(nativeCells.size()));
+        s.put("native_terrain_cells_created",Integer.toString(terrainCreated));s.put("native_terrain_cells_removed",Integer.toString(terrainRemoved));
         s.put("client_validation","not_observed");io.status.set(Collections.unmodifiableMap(s));
     }
 }

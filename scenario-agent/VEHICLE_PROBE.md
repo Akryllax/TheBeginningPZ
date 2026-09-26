@@ -46,7 +46,12 @@ and cell map exist. On an explicit start, it invokes the engine's `Bullet.init()
 when needed (the bundled headless native library on Linux servers) and initializes
 WorldSimulation if the empty dedicated server has not created its Bullet world
 yet. It waits for actual loaded chunks, checks a ground-level
-outdoor clear corridor, and sends one chunk's collision data per tick. It then
+outdoor clear corridor, creates the bounded native server cells covering the
+road, and sends one chunk's collision data per tick. The pinned native server
+cell is 5×5 eight-tile chunks; Java ServerMap cells have a different size.
+Native server mode ignores the client chunk-map activation path. Cell creation
+requires a fresh native world created by this probe and an empty native vehicle
+world; cleanup removes only the exact cells this probe created. It then
 defines the vehicle script in Bullet, creates one BaseVehicle through normal
 world methods, explicitly registers/activates its native body, and confirms the
 native body count and readback API. Dedicated-server vanilla code skips those
@@ -77,3 +82,37 @@ is intentional: a server file cannot establish what two clients rendered.
 `python3 scripts/build_scenario_agent.py --test` verifies build/bytecode contracts,
 the server JVM bootstrap, IPC and private control boundaries. These fixtures do
 not execute native driving. Record actual disposable-world results separately.
+
+## Recorded native-motion proof: 2026-09-26
+
+The isolated no-mod server, with zero players connected, completed the native
+physics run using agent SHA256
+`106c3f900cb80a89e755ab881a9f9a81ae61b0d6980cca1f79198c09d97599b3`.
+Its bundled `linux64/libPZBulletNoOpenGL64.so` SHA256 was
+`256304a998a33fa9ba356182cad3ebaad0db14ac36762b806a950d0f08e95d6f`.
+The 5×5 native server-cell layout is specific to this binary. Before using this
+path in a normal world, compatibility checks must cover that native library as
+well as Java classes.
+
+One empty SmallCar settled on the road, drove from `(10756.5,9856.5)` to
+`(10766.5546875,9856.5)`, braked, remained in the world for the three-second hold and
+was removed. Stopping distance was 10.0546875 tiles; maximum observed speed was
+4.8211 km/h and final speed was 0.0528 km/h, below the 0.25 km/h stopped threshold.
+Physical height settled near 0.13951. The native vehicle count returned from
+zero to one to zero; both owned native terrain cells were removed. The final
+phase was `complete` with no error, 175 active physics frames and 176 position
+dirty-state publications. Motion came from native force/brake control and
+normal readback, with no coordinate-driven movement or additional physics step.
+
+The largest measured probe tick was 96.3 ms during one-time vehicle creation.
+This is not a steady-state performance result or evidence of production capacity.
+The disposable server was then stopped gracefully and left prepared for a later
+ordinary-client observation session. Full local receipts are
+`artifacts/scenario-agent/vehicle-probe-result.json` and
+`artifacts/scenario-agent/vehicle-probe-server-cell-run.jsonl`.
+
+This proves the bounded server-native motion and cleanup path. It does not yet
+prove ordinary-client interpolation or packet delivery, late joins, turning,
+obstacle handling, player-car collisions, ownership transfer, NPC passengers,
+or reliability in a normal populated world. No game client was launched for
+this test and no client Java agent or core-file replacement was used.
