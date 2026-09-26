@@ -23,6 +23,7 @@ public final class ScenarioFixture {
     public static void main(String[] args)throws Exception {
         ProbeFixture.run();
         BuildGuard.verify(ScenarioFixture.class.getClassLoader());
+        NativeGuardFixture.run(Path.of(args[0]).getParent().getParent());
         try(var helper=new URLClassLoader(new URL[]{Path.of(args[0]).getParent().getParent().resolve("pzexe.jar").toUri().toURL()})) {
             check(LaunchGuard.isPinnedDiscovery("zombie.pzexe","pzexe.jar",helper),"Pinned launcher discovery was not recognized");
             check(!LaunchGuard.isPinnedDiscovery("zombie.gameStates.MainScreenState","pzexe.jar",helper),"Game JVM exempted");

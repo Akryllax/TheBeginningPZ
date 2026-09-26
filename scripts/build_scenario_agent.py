@@ -51,14 +51,17 @@ def build(cache: Path, game_jar: Path, test: bool = False):
             for name in upstream.namelist():
                 if not name.endswith("/") and name != "META-INF/MANIFEST.MF":
                     archive.writestr(name, upstream.read(name))
-    guards = dict(re.findall(r'Map.entry\("([^"]+)","([a-f0-9]{64})"\)',
-                           (ROOT / "scenario-agent/src/net/lofers/scenario/BuildGuard.java").read_text()))
+    guard_source = (ROOT / "scenario-agent/src/net/lofers/scenario/BuildGuard.java").read_text()
+    guards = dict(re.findall(r'Map.entry\("([^"]+)","([a-f0-9]{64})"\)', guard_source))
+    native_library = re.search(r'SERVER_PHYSICS_LIBRARY="([^"]+)"', guard_source).group(1)
+    native_hash = re.search(r'SERVER_PHYSICS_SHA256="([a-f0-9]{64})"', guard_source).group(1)
     with zipfile.ZipFile(game_jar) as game:
         for name, expected_hash in guards.items():
             if hashlib.sha256(game.read(name + ".class")).hexdigest() != expected_hash:
                 raise ValueError(f"Unsupported game build: {name}")
     (out / "manifest.json").write_text(json.dumps({"game_build": "42.20.4/b0bbce05d5", "java": 25,
         "class_hashes": guards, "jar_sha256": hashlib.file_digest(jar.open("rb"), "sha256").hexdigest(),
+        "server_physics_library": native_library, "server_physics_sha256": native_hash,
         "bandits_update_sha256": "fb9bd559da4e0faabd2c35c41cd7d2cd74d85510ef642a7ba6e3776cb8a02192"}, indent=2) + "\n")
     if test:
         tests = list(ROOT.glob("scenario-agent/test/**/*.java"))

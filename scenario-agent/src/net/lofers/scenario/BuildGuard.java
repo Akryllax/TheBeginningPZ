@@ -1,11 +1,15 @@
 package net.lofers.scenario;
 
 import java.io.*;
+import java.lang.instrument.Instrumentation;
+import java.nio.file.*;
 import java.security.MessageDigest;
 import java.util.*;
 
 /** Exact B42.20.4 method contract; a different build cannot silently run a scenario. */
 final class BuildGuard {
+    static final String SERVER_PHYSICS_LIBRARY="libPZBulletNoOpenGL64.so";
+    static final String SERVER_PHYSICS_SHA256="256304a998a33fa9ba356182cad3ebaad0db14ac36762b806a950d0f08e95d6f";
     static final Map<String,String> HASHES=Map.ofEntries(
         Map.entry("zombie/network/RCONServer","c31a83c6868d6c88da96db66db10a3d3414ae39947b13e3d800afbb2c034c645"),
         Map.entry("zombie/Lua/Event","cf4b0ba953b8f965fbcacb73ebb5d1a173dc3ed140656e15b90ad932eff0e952"),
@@ -29,6 +33,9 @@ final class BuildGuard {
         Map.entry("zombie/vehicles/VehiclesDB2","f908628f3a94a018cc4666ef14bdb01326eeb90ca27f55d7b744d215a7a9f9ba"),
         Map.entry("zombie/iso/IsoChunk","68431ace471b30c842ff7c2a6e706d8ba48d7a84ae07f876484153c0d62a794b"),
         Map.entry("zombie/iso/IsoGridSquare","cf5ef9005829d258f6ef28394a9f514350fa8fa1ea5f6209cc7836a656f0b0eb"),
+        Map.entry("zombie/iso/IsoObject","aa11e4c764ea17a731f2cccc2d968477aa40b488ca348f1b22699b98874044b6"),
+        Map.entry("zombie/core/properties/PropertyContainer","bc236f8e9e4e0da8a86b0d1fd19ad8d44a040fe4f67d1baac77401b3b148bd77"),
+        Map.entry("zombie/scripting/objects/VehicleScript$Wheel","4892e3df3443aea2ecec0ffcc6a2383820cc31a859b455c8ca3d2f99369cda3f"),
         Map.entry("zombie/network/packets/vehicle/VehicleUpdatePacket","2ee2b9be9d06a502a7d5169026d37c5d8174e0a60228c9ca9d0379a7686aa995"),
         Map.entry("zombie/network/packets/vehicle/VehicleFullUpdatePacket","87d27cd4af602a6f6c2424a421de3167bec28a8c68179515a19f16ba0227989e"),
         Map.entry("zombie/vehicles/VehicleInterpolationData","9c9b6518838495b8740dcc105bc007682abb5e9773c0830a4f00aa67b2fc743b"));
@@ -41,5 +48,51 @@ final class BuildGuard {
             if(in==null || !e.getValue().equals(hash(in.readAllBytes())))
                 throw new IllegalStateException("Unsupported game class: "+e.getKey());
         }
+    }
+    /** The native server-cell layout is an ABI contract independent of class hashes. */
+    static Path verifyServerPhysics(Instrumentation instrumentation) throws Exception {
+        if(Runtime.version().feature()!=25)throw new IllegalStateException("Native lookup guard requires Java 25");
+        String os=System.getProperty("os.name","").toLowerCase(Locale.ROOT);
+        String arch=System.getProperty("os.arch","");
+        if(!os.equals("linux")||!Set.of("amd64","x86_64").contains(arch))
+            throw new IllegalStateException("Server vehicle physics requires the pinned Linux x86-64 native library");
+        if("1".equals(System.getProperty("zomboid.debuglibs.bullet")))
+            throw new IllegalStateException("Debug Bullet library is not verified for server vehicle physics");
+        // NativeLibraries reads StaticProperty's bootstrap snapshot. The mutable
+        // System properties can already differ when an earlier agent has run.
+        // Export only this package to our module; no deep reflection or game
+        // class initialization is needed to inspect the JVM's actual paths.
+        Module base=Object.class.getModule(),ours=BuildGuard.class.getModule();
+        if(!base.isExported("jdk.internal.util",ours)) {
+            if(instrumentation==null)throw new IllegalStateException("Native startup-path inspection requires instrumentation");
+            instrumentation.redefineModule(base,Set.of(),Map.of("jdk.internal.util",Set.of(ours)),Map.of(),Set.of(),Map.of());
+        }
+        Class<?> startup=Class.forName("jdk.internal.util.StaticProperty",false,null);
+        String bootPath=(String)startup.getMethod("sunBootLibraryPath").invoke(null);
+        String gamePath=(String)startup.getMethod("javaLibraryPath").invoke(null);
+        return verifyNativeSearchPath(bootPath,gamePath);
+    }
+    static Path verifyNativeSearchPath(String bootPath,String gamePath) throws Exception {
+        // The shipped game uses System.loadLibrary. Refuse a boot-library shadow
+        // and check the first existing game-path candidate, not a later good copy.
+        for(String entry:bootPath.split(File.pathSeparator,-1)) {
+            Path candidate=Path.of(entry).resolve(SERVER_PHYSICS_LIBRARY);
+            if(Files.exists(candidate,LinkOption.NOFOLLOW_LINKS))
+                throw new IllegalStateException("Unexpected Bullet library on the JVM boot search path");
+        }
+        for(String entry:gamePath.split(File.pathSeparator,-1)) {
+            Path candidate=Path.of(entry).resolve(SERVER_PHYSICS_LIBRARY);
+            if(!Files.exists(candidate,LinkOption.NOFOLLOW_LINKS))continue;
+            if(!Files.isRegularFile(candidate))throw new IllegalStateException("Invalid server physics library candidate");
+            MessageDigest digest=MessageDigest.getInstance("SHA-256");
+            try(InputStream in=Files.newInputStream(candidate)) {
+                byte[] block=new byte[65536];int count;
+                while((count=in.read(block))!=-1)digest.update(block,0,count);
+            }
+            if(!SERVER_PHYSICS_SHA256.equals(HexFormat.of().formatHex(digest.digest())))
+                throw new IllegalStateException("Unsupported server physics library: "+candidate);
+            return candidate.toRealPath();
+        }
+        throw new IllegalStateException("Pinned server physics library missing from java.library.path");
     }
 }

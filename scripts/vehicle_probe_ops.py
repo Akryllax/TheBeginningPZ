@@ -1,6 +1,10 @@
 """Operate the disposable server-owned vehicle experiment, without client injection."""
 import hashlib
 import json
+import math
+from contextlib import contextmanager
+import fcntl
+from functools import wraps
 from pathlib import Path
 import shutil
 import sqlite3
@@ -8,6 +12,28 @@ import time
 import uuid
 
 import scenario_ops as scenario
+
+
+@contextmanager
+def operation_lock(m):
+    base = m.ROOT / 'artifacts/vehicle-probe'
+    base.mkdir(parents=True, exist_ok=True)
+    path = base / '.operations.lock'
+    with path.open('a') as lock:
+        path.chmod(0o600)
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def serialized(function):
+    @wraps(function)
+    def invoke(m, *args, **kwargs):
+        with operation_lock(m):
+            return function(m, *args, **kwargs)
+    return invoke
 
 
 def current(m):
@@ -20,6 +46,7 @@ def current(m):
     return receipt, target
 
 
+@serialized
 def prepare(m):
     base = m.ROOT / 'artifacts/vehicle-probe'
     base.mkdir(parents=True, exist_ok=True)
@@ -74,6 +101,7 @@ def prepare(m):
     print(f'Prepared isolated vehicle probe {world}. Playable world preserved.')
 
 
+@serialized
 def start(m):
     receipt, target = current(m)
     scenario.free_ports()
@@ -110,6 +138,60 @@ def properties(path):
                 if '=' in line and not line.startswith(('#', '!')))
 
 
+def route_points(payload):
+    """Validate detached coordinates before modifying the stopped experiment."""
+    points = payload.get('waypoints') if isinstance(payload, dict) else None
+    if not isinstance(points, list) or not 2 <= len(points) <= 16:
+        raise ValueError('A probe route requires 2 to 16 waypoints')
+    normalized = []
+    for point in points:
+        if not isinstance(point, dict):
+            raise ValueError('Waypoint must contain numeric x/y coordinates')
+        xy = [point.get('x'), point.get('y')]
+        if any(type(v) not in (int, float) or not math.isfinite(v) or not -20000 <= v <= 60000 for v in xy):
+            raise ValueError('Waypoint coordinate is not finite or within the probe bounds')
+        z = point.get('z', 0)
+        if type(z) not in (int, float) or z != 0:
+            raise ValueError('Probe waypoints must be at ground level')
+        normalized.append(tuple(float(v) for v in xy))
+    lengths = [math.dist(a, b) for a, b in zip(normalized, normalized[1:])]
+    if min(lengths) < 0.5 or max(lengths) > 40 or not 2 <= sum(lengths) <= 60:
+        raise ValueError('Probe route needs segments 0.5 to 40 tiles and total length 2 to 60 tiles')
+    return normalized
+
+
+@serialized
+def configure_route(m, source):
+    receipt, target = current(m)
+    active = m.run([m.PODMAN, 'ps', '--filter', f"name=^{receipt['container']}$", '--format', '{{.ID}}'], capture=True)
+    if active.stdout.strip():
+        raise RuntimeError('Stop the vehicle probe before changing its route')
+    source = Path(source).resolve()
+    if not source.is_relative_to((m.ROOT / 'artifacts').resolve()):
+        raise ValueError('Use a reviewed route artifact inside this project artifacts directory')
+    with source.open('rb') as stream:
+        data = stream.read(65537)
+    if len(data) > 65536:
+        raise ValueError('Probe route artifact exceeds 64 KiB')
+    points = route_points(json.loads(data))
+    dx, dy = points[1][0] - points[0][0], points[1][1] - points[0][1]
+    changes = {'vehicle_probe.x': points[0][0], 'vehicle_probe.y': points[0][1],
+               'vehicle_probe.heading_degrees': math.degrees(math.atan2(dx, dy)) % 360,
+               'vehicle_probe.waypoints': ';'.join(f'{x:.8f},{y:.8f}' for x, y in points)}
+    config = target / 'scenario.properties'
+    before = config.read_text()
+    # Retain exact geometry/provenance and the previous private configuration.
+    digest = hashlib.sha256(data).hexdigest()
+    record = target / 'routes' / digest
+    scenario.write_private(record / 'route.json', data.decode('utf-8'))
+    if not (record / 'previous.properties').exists():
+        scenario.write_private(record / 'previous.properties', before)
+    pending = config.with_suffix('.pending')
+    scenario.write_private(pending, scenario.replace_ini(before, changes))
+    pending.replace(config)
+    print(f'Configured {len(points)} waypoints; route SHA256 {digest}. Runtime road/obstacle checks still apply.')
+
+
 def control(m, action):
     if action not in {'start', 'stop'}:
         raise ValueError('Probe control must be start or stop')
@@ -125,6 +207,7 @@ def control(m, action):
     print(f'Submitted {action} to the current disposable probe epoch.')
 
 
+@serialized
 def stop(m):
     receipt, target = current(m)
     active = m.run([m.PODMAN, 'ps', '--filter', 'name=^lofers-vehicle-probe$', '--format', '{{.ID}}'], capture=True)
@@ -156,4 +239,7 @@ def dispatch(m, command, args):
     elif command == 'vehicle-probe-control':
         if len(args) != 1: raise ValueError('Expected start or stop')
         control(m, args[0])
+    elif command == 'vehicle-probe-route':
+        if len(args) != 1: raise ValueError('Expected one reviewed route JSON artifact')
+        configure_route(m, args[0])
     else: raise ValueError('Unknown vehicle probe command')

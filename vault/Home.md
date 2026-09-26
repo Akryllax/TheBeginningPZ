@@ -14,6 +14,7 @@ Start with [[Experiments/Implementation Ledger]] for what exists and what has ac
 
 - [[Design/First Week]] — corrected civilian opening, C++/Lua service and replication contract.
 - [[Design/Architecture]] — services, authority and data flow.
+- [[Design/Navigation]] — precomputed terrain scores, vehicle clearance and live obstacle checks.
 - [[Design/Storyteller]] — world phases, pressure, recovery and lifecycle.
 - [[Design/Storyteller Implementation]] — source-level implementation and limitations.
 - [[Design/Spatial Field]] — base inference from bounded observations.

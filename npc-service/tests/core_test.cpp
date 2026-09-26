@@ -61,6 +61,15 @@ int main(int argc, char** argv) {
         require(plan.reason().find("road_disconnected")!=std::string::npos,"blocked road reason");
         b=fixture();auto route=road_route(b,b.residents(0).position(),b.residents(0).work());require(route.error.empty()&&route.points.size()==4,"directed road path");
         route=road_route(b,b.residents(0).work(),b.residents(0).position());require(route.error=="road_disconnected","one-way roads respected");
+        b=fixture();
+        *b.mutable_road_nodes(0)->mutable_position()=at(100,100);
+        *b.mutable_road_nodes(1)->mutable_position()=at(120,100);
+        *b.mutable_road_nodes(2)->mutable_position()=at(120,120);
+        *b.mutable_road_nodes(3)->mutable_position()=at(140,120);
+        for(auto& edge:*b.mutable_road_edges())edge.set_cost(20);
+        route=road_route(b,at(100,100),at(140,120));
+        require(route.error.empty()&&route.points.size()==4&&route.cost==60,"bent road retains all graph segments");
+        require(route.points[1].x()==120&&route.points[1].y()==100&&route.points[2].x()==120&&route.points[2].y()==120,"A* must not shortcut intermediate road bends");
         b=fixture();b.mutable_residents(0)->mutable_position()->set_x(std::numeric_limits<double>::quiet_NaN());require(!validate(b,reason),"NaN rejected");
         b=fixture();*b.add_residents()=b.residents(0);require(!validate(b,reason),"duplicate residents rejected");
         b=fixture(); const auto expected=normalized(planner.plan(b,b.residents(0)));

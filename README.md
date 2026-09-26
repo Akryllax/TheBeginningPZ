@@ -14,7 +14,7 @@ The development workspace currently remains in `Documents/Projects/ZomboidDayOne
 is an observation-only world. It has not been replaced by the new civilian scenario.
 
 Implemented components include a bounded C++20/Lua planner, Protobuf IPC, a server Java
-bridge, persistent resident/scenario models, admin controls, a road index, and private
+bridge, persistent resident/scenario models, admin controls, a scored road index, and private
 Observer diagnostics. Planner, protocol, Lua domain and JVM fixtures have been exercised.
 Those results do not establish visible NPC behavior, safe driving, or two-client consistency.
 
@@ -22,8 +22,15 @@ The current integration work targets ordinary Lua clients and **server-only JVM 
 An isolated empty-vehicle test passed native movement, braking and cleanup: the car traveled
 10.05 tiles using server physics. This required explicit native server terrain cells.
 One connected player then confirmed visible, smooth movement on an ordinary client. The
-probe followed a fixed straight strip on the sidewalk; road-following steering is not wired
-into it. Client-visible duration and interpolation latency were not measured.
+first probe followed a fixed straight strip on the sidewalk. A later empty-server probe
+completed an asphalt route with a 90-degree turn, arrival braking and cleanup. Its native
+car traveled 53.88 tiles; no client observed that turn. Client-visible duration and
+interpolation latency remain unmeasured.
+
+[Navigation preprocessing](vault/Design/Navigation.md) now bakes original map tiles into
+versioned surface-cost and clearance chunks. The graph rejects swept paths across sidewalks
+and favors roomier roads. The current profile covers verified asphalt in the initial
+Muldraugh region; dynamic obstacles still require live checks.
 Integration with normal gameplay, collision ownership, NPC seating, unloaded resident
 reconciliation, and the full outbreak/adaptive event progression remain incomplete. Native
 vehicle packets still need observation from two real clients.
@@ -65,7 +72,8 @@ The separate `.160` game and Observer are outside this project's operations.
 ./dayone test
 python3 scripts/build_npc_service.py --test --bundle
 python3 scripts/build_scenario_agent.py --test
-python3 scripts/build_scenario_map.py
+.tooling/venv/bin/python scripts/build_scenario_map.py --bake-navigation
+.tooling/venv/bin/python scripts/build_scenario_map.py
 python3 scripts/decompile_java.py zombie.vehicles.VehicleManager
 ```
 

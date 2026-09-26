@@ -10,6 +10,61 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Navigation and road-turn iteration — 2026-09-26
+
+- Added [[Design/Navigation]]: original installed-map stacks, floor definitions and road
+  geometry produce content-identified navigation chunks. Two bytes per tile record surface
+  cost and conservative quarter-tile clearance. Asphalt beneath sidewalk overlays is blocked.
+  Vehicle graph edges require a swept footprint and use a bounded clearance penalty; no
+  diagonal shortcut across a sidewalk is accepted. The native worker still reads the
+  existing prebuilt Protobuf graph; no worker wire-contract change was required.
+- Initial Muldraugh coverage contains 1,081,600 tiles, 50,423 permitted asphalt tiles and
+  24 chunks occupying 3,146,304 bytes. The conservative graph has 1,076 nodes and 2,426
+  directed edges. This excludes uncertain/narrow surfaces and does not establish driving
+  coverage of the whole map, lane discipline, traffic rules or collision avoidance.
+  The final first bake including its prerequisite raster took 6.508 s; a validated cache
+  open took 80.3 ms and cached graph generation 1.932 s. These are offline costs, not
+  measured per-NPC A* latency. Exact reproduction commands are in the navigation page.
+- The server probe now accepts bounded waypoint routes, retains bends, steers with native
+  force/brake control, slows for turns and checks loaded road/actor/car hazards. The probe
+  is still one empty car in an isolated world. Route configuration is serialized with
+  start/stop/preparation and allowed only while stopped; previous private configuration
+  and source-route provenance are preserved.
+- The native physics guard now hashes the first library the pinned JVM would actually
+  select, using its startup-captured library paths. Mutable Java properties cannot mask
+  an incompatible startup path. Eight subprocess path cases, premain, the pzexe bootstrap,
+  Java IPC and controller fixtures passed. Core game files remain read-only.
+- **Actual server-native asphalt turn passed**, with zero clients connected, agent SHA256
+  `f135a657cc1f4f119ffd9d18d8e35bcc72114567bc84844caf982d6716763c51`, epoch
+  `70d34a75-51f1-4344-8962-b325fa6fd9ad`. The six-point planned route was 55.2117 tiles;
+  physical travel was 53.8780 tiles, including corner rounding and arrival tolerance.
+  Heading changed from 90 to 180 degrees, maximum speed was 4.0002 km/h, and final speed
+  was 0.05275 km/h at `(10818.5,9839.1796875)`, 0.6797 tiles from the requested endpoint.
+  All 307 planned road tiles passed loaded-world validation. Largest captured cross-track
+  distance was 0.5933 tiles (sampled evidence, not an every-tick maximum). Native bodies
+  returned from zero to one to zero, and all three owned terrain cells were removed.
+  Final status was `complete`, reason `route_arrived`, with no error.
+- The measured 650 active warm probe ticks had mean 0.1263 ms, histogram p95 upper bound
+  0.4 ms, p99 upper bound 0.6 ms, and maximum 1.0824 ms; none exceeded 2 ms. These timings
+  cover the hook's control/check work, not total game/Bullet/network frame time. Cold
+  vehicle creation cost 35.45 ms and cleanup 12.36 ms. A single empty-server car is not
+  evidence of production capacity. Raw private evidence is under
+  `artifacts/scenario-agent/road-turn-70d34a75-51f1-4344-8962-b325fa6fd9ad/`.
+- Final validation: **116 project tests passed**, alongside native core/real IPC and
+  the Java/controller/bootstrap fixtures. Review found and fixed stale prerequisite road
+  masks when source bytes changed without size/timestamp changes; a real binary-map
+  regression reproduces that case. Full-source identities now namespace all navigation
+  and route-evidence prerequisite masks. Geometry sampling rejects nonfinite parameters
+  and caps the total route at 32,768 samples before doing work.
+- The disposable server acknowledged quit, logged completed world saving and shutdown,
+  exited with code zero, and closed its RCON port. Final navigation/graph identity is
+  `f086062b762a6096d7d6123b33d43b36ad0d75061c5ef27f7aac36494f95b366`.
+
+This is a prepared and exercised turn controller, not full civilian driving. No client
+observed the turn. NPC driver presentation, normal-world collision/ownership integration,
+late joins, two-client comparison and the accepted full scenario remain open gates.
+The original playable prototype and the `.160` production deployment were not changed.
+
 ## First Week iteration — 2026-09-26
 
 - The accepted target is [[Design/First Week]]: calm civilians, manual outbreak, seven-day

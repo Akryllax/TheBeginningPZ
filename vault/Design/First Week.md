@@ -8,16 +8,19 @@ updated: 2026-09-26
 
 Implementation note: the user selected **server-only JVM injection with ordinary Lua clients**.
 The initial client-agent prototype is superseded; it was never installed or launched in the
-local game. Pedestrian execution is being adapted to Lua. A separate server-only vehicle
-probe is testing native physics and replication before adopting that path for NPC driving.
+local game. Pedestrian execution has been adapted to Lua, with gameplay validation pending.
+A separate server-only vehicle probe passed bounded straight-line native movement and
+cleanup; one ordinary client reported smooth movement. Road following, NPC occupants and
+two-client comparison remain to be validated before adopting that path for NPC driving.
 The playable reset still requires actual scenario and multiplayer acceptance.
 
 The user explicitly requires behavior injection without modifying installed core game files,
 so future distribution contains original Lua/JAR code and notices only. Class-replacement
 overlay JARs and redistributed decompiled engine classes are excluded. A newly identified
 research route uses server-owned vehicle simulation and the existing vehicle stream with
-ordinary Lua clients. Physics registration/cleanup, collision ownership and NPC occupant
-representation remain unproven; this is not yet a replacement implementation.
+ordinary Lua clients. Physics registration/cleanup have been demonstrated in an isolated
+empty-car test. Normal-world integration, collision ownership and NPC occupant representation
+remain unproven; this is not yet a complete driving implementation.
 
 The group starts together in a living Muldraugh. Residents have persistent homes, occupations,
 needs, possessions and histories. They walk or drive to work/shops, eat, rest and return home.
@@ -48,7 +51,7 @@ identity and history. Observed entities move continuously; nearby work is stagge
 town outcomes may be batched. Visibility considers all clients, not exploration fog.
 No fabricated event silently consumes player storage or destroys player property.
 
-Use a separate guarded gameplay Java bridge and a version-checked client helper where needed.
+Use a separate guarded server Java bridge and version-checked ordinary Lua client integration.
 All native autonomous spawns must respect the calm opening while explicit civilian creation
 remains available. Build guards must reject incompatible integrations instead of silently
 turning the intended opening into a vanilla zombie world.

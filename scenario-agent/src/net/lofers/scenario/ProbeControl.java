@@ -7,7 +7,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Private operator files and detached diagnostics only; this thread sees no game objects. */
 final class ProbeControl implements Runnable {
-    record Config(Path directory,double x,double y,double yaw,double distance,double speed) {
+    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode) {
+        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false);}
+        double deadlineSeconds(){return roadMode?Math.min(120,Math.max(45,route.length/speed*3.6*2+15)):30;}
         static Config read(Properties p,String world,boolean server) {
             if(!Boolean.parseBoolean(p.getProperty("vehicle_probe.enabled","false")))return null;
             if(!server||!world.matches("LofersVehicleProbe_[A-Za-z0-9_-]{1,64}"))throw new IllegalArgumentException("Vehicle probe requires a disposable LofersVehicleProbe_ world on server");
@@ -15,7 +17,12 @@ final class ProbeControl implements Runnable {
             if(!dir.isAbsolute()||dir.getParent()==null)throw new IllegalArgumentException("Private absolute probe directory required");
             double x=bounded(p,"x",Double.NaN,-20000,60000),y=bounded(p,"y",Double.NaN,-20000,60000);
             if(bounded(p,"z",0,0,0)!=0)throw new IllegalArgumentException("Ground-level probe only");
-            return new Config(dir,x,y,bounded(p,"heading_degrees",90,0,360),bounded(p,"distance",10,2,12),bounded(p,"speed_kmh",4,1,5));
+            String points=p.getProperty("vehicle_probe.waypoints","").strip();boolean roadMode=!points.isEmpty();
+            double yaw=bounded(p,"heading_degrees",90,0,360),distance=bounded(p,"distance",10,2,12),speed=bounded(p,"speed_kmh",4,1,5);
+            ProbeRoute route=roadMode?ProbeRoute.parse(points):ProbeRoute.straight(x,y,yaw,distance);
+            if(Math.hypot(route.points.getFirst().x()-x,route.points.getFirst().y()-y)>0.01)throw new IllegalArgumentException("Route must start at configured spawn");
+            if(Math.abs(ProbeRoute.wrap(route.heading()-Math.toRadians(yaw)))>Math.toRadians(10))throw new IllegalArgumentException("Spawn heading differs from route");
+            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode);
         }
         private static double bounded(Properties p,String name,double fallback,double min,double max) {
             double n=Double.parseDouble(p.getProperty("vehicle_probe."+name,Double.toString(fallback)));

@@ -312,7 +312,7 @@ def main():
         'stop', 'status', 'logs', 'rcon', 'backup', 'restore-test', 'test', 'package', 'install-mod',
         'scenario-build', 'scenario-test-create', 'scenario-test-start', 'scenario-test-stop',
         'scenario-test-rcon', 'scenario-reset', 'vehicle-probe-create', 'vehicle-probe-start',
-        'vehicle-probe-stop', 'vehicle-probe-status', 'vehicle-probe-control'])
+        'vehicle-probe-stop', 'vehicle-probe-status', 'vehicle-probe-control', 'vehicle-probe-route'])
     parser.add_argument('args', nargs='*')
     args = parser.parse_args()
     if args.command.startswith('vehicle-probe-'):

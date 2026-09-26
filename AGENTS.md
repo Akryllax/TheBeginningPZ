@@ -35,7 +35,10 @@ Runtime injection still depends on engine compatibility; do not describe it as u
 The current architecture investigation targets server-owned vehicle physics and stock vehicle
 replication with ordinary Lua clients. The user explicitly permits JVM injection on the
 controlled server. Do not require a client Java agent for this revised architecture;
-no actual driving or multiplayer safety has been established.
+the isolated straight-line physics probe passed and one ordinary client reported smooth
+movement. A separate empty-server asphalt turn passed; normal-world road following, NPC
+occupants and two-client consistency remain unvalidated;
+see the implementation ledger for the exact evidence and limitations.
 
 See `SKILLS.md` for task-specific workflows. Existing user authorization applies to
 routine implementation and validation; do not add repeated approval prompts.

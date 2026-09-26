@@ -57,6 +57,24 @@ The scenario test harness contains the earlier NPC experiment; it is not proof o
 
 For the planner's own tests and runtime bundle, use `python3 scripts/build_npc_service.py --test --bundle`. For the scenario agent fixtures, use `python3 scripts/build_scenario_agent.py --test`. These checks do not replace a real two-client playtest.
 
+## Offline navigation preprocessing
+
+```bash
+.tooling/venv/bin/python scripts/build_scenario_map.py --bake-navigation
+.tooling/venv/bin/python scripts/build_scenario_map.py
+.tooling/venv/bin/python scripts/build_scenario_map.py --benchmark-navigation artifacts/scenario-map/vehicle-probe-route.json
+```
+
+The first command builds or verifies scored navigation chunks; the second regenerates the
+Protobuf road graph and server place index. Source hashes invalidate stale cache entries.
+The optional benchmark needs the prepared private route artifact and measures offline
+preprocessing, not per-NPC or game-thread latency. These commands prepare local artifacts;
+they do not restart or deploy services. Keep generated data under ignored
+`artifacts/scenario-map/`. Current coverage is the configured Muldraugh rectangle, with
+conservative asphalt and vehicle-clearance checks; live obstacles and turning feasibility
+still require runtime validation. See [[Design/Navigation]] for format, bounds, evidence
+and the separate route-artifact preparation command.
+
 ## Disposable server vehicle probe
 
 The probe has its own fresh world under `artifacts/vehicle-probe/`, a private copy of the built agent JAR, read-only core game files and no loaded game mods (`Mods` and `WorkshopItems` are empty). It uses an unoccupied vehicle, no NPCs, no fake players and no planner. Clients use the ordinary game. The probe deliberately does not pause when empty; whether native physics advances without a real player is a test result to record.
@@ -66,11 +84,19 @@ Both disposable harnesses use `.132` UDP **16281/16282** and loopback TCP **2703
 ```bash
 python3 scripts/build_scenario_agent.py --test
 ./dayone vehicle-probe-create
+# Optional road mode, after preparing/reviewing the private route artifact:
+./dayone vehicle-probe-route artifacts/scenario-map/vehicle-probe-route.json
 ./dayone vehicle-probe-start
 ./dayone vehicle-probe-status
 ```
 
 Once status reports the current server epoch, `./dayone vehicle-probe-control start` requests the driving experiment; `./dayone vehicle-probe-control stop` requests braking/stopping that experiment. These controls do not start or shut down the server container. Use `./dayone vehicle-probe-stop` for graceful server shutdown. Control requests are bound to the current server epoch. A missing status file means initialization has not yet produced evidence.
+
+Route configuration requires the probe server to be stopped. It validates bounded numeric
+waypoints, keeps the previous private configuration and source artifact, and shares an
+operation lock with preparation/start/stop. The Java runtime separately validates route
+geometry, loaded road surfaces and live hazards. Omit route configuration only when
+deliberately reproducing the older straight-line experiment.
 
 Record agent/game hashes, observed movement, authority changes and results from separate ordinary clients in [[Templates/Experiment]]. Inspect the private probe status/logs before claiming physics or replication works. This probe does not demonstrate NPC seats, behavior or combat ownership.
 

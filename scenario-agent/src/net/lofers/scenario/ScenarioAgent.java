@@ -34,6 +34,10 @@ public final class ScenarioAgent {
         enabled=Boolean.parseBoolean(p.getProperty("scenario.enabled","false"));if(!enabled)return;
         String side=p.getProperty("side","server");if(!Set.of("server","client").contains(side))throw new IllegalArgumentException("side server/client required");server=side.equals("server");
         BuildGuard.verify(ScenarioAgent.class.getClassLoader());verified=true;
+        if(server&&Boolean.parseBoolean(p.getProperty("vehicle_probe.enabled","false"))) {
+            BuildGuard.verifyServerPhysics(instrumentation);
+            System.out.println("[LofersScenario] Verified native server physics "+BuildGuard.SERVER_PHYSICS_SHA256);
+        }
         Path bandit=Path.of(p.getProperty("bandits_update_file",""));
         if(!Files.isRegularFile(bandit)||!BuildGuard.hash(Files.readAllBytes(bandit)).equals("fb9bd559da4e0faabd2c35c41cd7d2cd74d85510ef642a7ba6e3776cb8a02192"))
             throw new IllegalStateException("Pinned Bandits 42.20 callback source required");
