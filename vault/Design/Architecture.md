@@ -1,10 +1,15 @@
 ---
 type: design
 status: accepted-target
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # Architecture
+
+The immediate next milestone is [[Live Event Runtime]]: a persistent engine adapter, shared
+event API, compatible behavior reload and batch runner. It will serve operator tests and the
+future Storyteller, while keeping Observer read-only. See [[Experiments/Current State]] for
+what is actually deployed; this runtime split is not implemented yet.
 
 For the current scenario layer, see [[Design/First Week]] and
 [[Decisions/0004 Server Runtime Extensions]]. It adds a C++/Lua worker over private Protobuf

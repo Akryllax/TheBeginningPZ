@@ -1,17 +1,19 @@
 ---
 type: index
 status: active
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # The Beginning
 
 A fresh multiplayer world on the workstation, with an adaptive storyteller and an independent Observer map. The existing `.160` game remains separate. Open this `vault/` directory as an Obsidian vault; plain Markdown readers also work.
 
-Start with [[Experiments/Implementation Ledger]] for what exists and what has actually been tested. The design below is a target; it is not evidence that every event or integration is live.
+Resume with [[Experiments/Current State]] and [[Design/Live Event Runtime]] for the current
+runtime/reload/batch milestone. Use [[Experiments/Implementation Ledger]] for what exists and what has actually been tested. The design below is a target; it is not evidence that every event or integration is live.
 
 ## Design
 
+- [[Design/Live Event Runtime]] — persistent event execution, compatible module reload and batch tests.
 - [[Design/Implementation Roadmap]] — accepted continuation, complete commute and rollout gates.
 - [[Design/First Week]] — corrected civilian opening, C++/Lua service and replication contract.
 - [[Design/Architecture]] — services, authority and data flow.
@@ -41,6 +43,7 @@ Start with [[Experiments/Implementation Ledger]] for what exists and what has ac
 - [[Runbooks/Multiplayer Validation]] — two-client acceptance sequence.
 - [[Runbooks/Private Mod Distribution]] — original companion ZIP installation.
 - [[Runbooks/Java Inspection]] — project-local decompilation and bytecode evidence for the installed game.
+- [[Experiments/Current State]] — deployment snapshot, unfinished source and next-session handoff.
 - [[Experiments/Implementation Ledger]] — implementation evidence and open gates.
 - [[Templates/Experiment]] and [[Templates/Decision]] — record new work without losing context.
 

@@ -11,7 +11,23 @@ This is the accepted continuation after source checkpoint `0599298`. It suppleme
 [[Experiments/Implementation Ledger]]. A controlled asphalt turn passed on the server;
 integrated resident driving and two-client turning remain unvalidated.
 
-## Next milestone: one complete commute
+## Immediate priority: persistent event runtime and batch testing
+
+The 2026-09-27 user direction supersedes immediately running another individual crash:
+first remove the recurring restart requirement from routine iteration. Follow
+[[Live Event Runtime]] and [PLAN_SchedulerAPI.md](../../PLAN_SchedulerAPI.md). The framework
+is planned, not deployed; [[Experiments/Current State]] identifies the running build and
+incomplete opposing-car edits.
+
+Extract one resident native-world/entity/terrain owner, add the shared operator/Storyteller
+event API with a bounded FIFO, then stage compatible behavior reload between cleaned-up
+events. Add unattended and watched batches with explicit receipts and cleanup gates. Keep
+normal-world automatic scheduling disabled. Validate same-process parameter changes,
+Java/Lua reload, fault recovery and a 100-case/20-reload soak before claiming routine live
+iteration. Return to low-speed two-body validation, then the requested faster opposing-car
+experiment. A rollover remains unproven and is a separate retained experiment.
+
+## Following milestone: one complete commute
 
 Demonstrate the same resident walking from home to a car, boarding, driving to work,
 parking, walking to the workplace, and returning home. Preserve identity, appearance

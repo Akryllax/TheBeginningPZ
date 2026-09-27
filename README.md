@@ -13,6 +13,12 @@ The development workspace currently remains in `Documents/Projects/ZomboidDayOne
 **Under development; no multiplayer-validated release yet.** The earlier playable prototype
 is an observation-only world. It has not been replaced by the new civilian scenario.
 
+The immediate milestone is a **persistent live event runtime with behavior reload and batch
+testing**, before the next opposing-car experiment. The latest single-car collision was
+accepted by one client; two-car physics, rollovers and two-client consistency remain unproven.
+See [the implementation plan](PLAN_SchedulerAPI.md), [runtime design](vault/Design/Live%20Event%20Runtime.md)
+and [current state](vault/Experiments/Current%20State.md). The framework is planned, not deployed.
+
 Implemented components include a bounded C++20/Lua planner, Protobuf IPC, a server Java
 bridge, persistent resident/scenario models, admin controls, a scored road index, and private
 Observer diagnostics. Planner, protocol, Lua domain and JVM fixtures have been exercised.

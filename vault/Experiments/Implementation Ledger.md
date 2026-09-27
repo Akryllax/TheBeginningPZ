@@ -10,6 +10,22 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Runtime framework priority and saved handoff — 2026-09-27
+
+After the accepted stove collision, the user requested an opposing-car test, then redirected
+work before implementation completed: first design a reliable way to inject events, reload
+behavior and run batches without restarting the server for every iteration. The saved plan
+is [PLAN_SchedulerAPI.md](../../PLAN_SchedulerAPI.md); [[Design/Live Event Runtime]] records
+the architecture and evidence, and [[Current State]] records the exact deployment/source
+boundary. The head-on test remains pending behind this framework work.
+
+At 12:18 UTC the disposable server reported phase `complete`, no managed body, native count
+zero, no error and zero online players. Its validated private JAR is unchanged. The incomplete
+opposing-car source edits remain unbuilt/undeployed and include a missing helper reference;
+a local diff/state/plan backup is under `artifacts/handoffs/20260927-live-event-runtime/`.
+No restart, experiment or framework implementation occurred during this documentation task.
+The existing unrelated CMake edit is preserved.
+
 ## One-client fast crash accepted; rock and opposing-car requests — 2026-09-27
 
 The first client attempt was aborted when the observer moved inside the 12-tile route buffer;
@@ -93,7 +109,7 @@ coordinates. Warm mean 0.294 ms, p99 upper bound 1.6 ms; two ticks exceeded 2 ms
 Java fixtures and 191 Python tests passed; logs are `artifacts/stove-impact-agent-tests.log`
 and `artifacts/stove-impact-python-tests.log`. The disposable server is running with noon and
 clear weather for the requested client check. This scene has no living NPC occupant; neither
-NPC death nor total engine destruction is demonstrated. Client confirmation is pending.
+NPC death nor total engine destruction is demonstrated. Client confirmation was pending at preparation; the later accepted reconnect is recorded above.
 
 ## Faster stock sports-car brake failure — 2026-09-27
 

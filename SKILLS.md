@@ -14,4 +14,11 @@ Codex discovers these workflows under `.agents/skills/`. Read the applicable ski
 | [dayone-scenario-validation](.agents/skills/dayone-scenario-validation/SKILL.md) | Calm-opening and two-client acceptance in disposable worlds, then fresh-world rollout |
 | [dayone-java-inspection](.agents/skills/dayone-java-inspection/SKILL.md) | Inspecting pinned game Java classes, bytecode, ownership paths and compatibility evidence |
 
+For the current iteration milestone, start with [the scheduler plan](PLAN_SchedulerAPI.md),
+[the runtime design](vault/Design/Live%20Event%20Runtime.md) and
+[the current handoff](vault/Experiments/Current%20State.md). Use the existing Java inspection,
+scenario validation and native-worker workflows as applicable. Planned reload/batch commands
+are not available yet; the handoff distinguishes validated runtime artifacts from incomplete
+source edits.
+
 Keep skills focused on decisions that are easy to get wrong in this project. Put research evidence and evolving design in the vault; avoid copying long design documents into each skill.

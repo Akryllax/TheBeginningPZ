@@ -6,6 +6,16 @@ The accepted target is a civilian opening, manual outbreak activation, and seven
 of contagion/collapse. A planner, telemetry feed, or vanilla populated world alone is not
 completion. See `vault/Design/First Week.md` for the accepted behavior and release gates.
 
+Current priority (2026-09-27): build the persistent live event runtime and batch-testing
+framework before resuming the opposing-car test. Read `PLAN_SchedulerAPI.md`,
+`vault/Design/Live Event Runtime.md` and `vault/Experiments/Current State.md` first.
+The running single-car probe is validated; the live runtime/reload framework and two-car
+execution are planned, not implemented. The interrupted opposing-car source draft references
+a missing `ProbeOpposingCar` class and must be reconciled before building. Preserve unrelated
+working-tree changes. Routine scenarios should eventually reload between events through one
+resident engine adapter, with bounded queues and shared native-world/resource ownership;
+do not solve each new case with another startup-only probe and mandatory server restart.
+
 Read `vault/Home.md` for the design index and `vault/Runbooks/Operations.md` for commands.
 Use `./dayone` for project operations. Keep downloads, caches, images, references,
 saves and build output under this project. Use the installed host Podman; do not

@@ -4,6 +4,17 @@ This is a separate gameplay Java agent for **Project Zomboid 42.20.4 / b0bbce05d
 Java 25**. Observer remains a read-only service and exporter. The agent changes
 class definitions in memory and never writes a game JAR.
 
+The active integration uses **server-only injection and ordinary clients**. The client-helper
+and owner-client NPC-control sections below document retained prototype APIs; they are not
+the current deployment direction. The validated vehicle probe explicitly owns server native
+bodies and stock replication. Do not install a client Java agent.
+
+Current priority: [live event runtime](../vault/Design/Live%20Event%20Runtime.md) and
+[shared scheduler plan](../PLAN_SchedulerAPI.md). Read the
+[current handoff](../vault/Experiments/Current%20State.md) before building: the interrupted
+opposing-car draft references a missing helper and has not been tested or deployed. The
+resident adapter/module split and reload API remain planned.
+
 Build and run the independent fixtures:
 
 ```sh

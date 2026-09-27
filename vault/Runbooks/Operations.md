@@ -10,6 +10,19 @@ Operate from `/var/home/akr/Documents/Projects/ZomboidDayOne`. The normal launch
 
 The current architecture uses server runtime Java hooks and ordinary Lua clients. Do not install the experimental client Java helper or replace installed game classes. The vehicle probe below investigates server-owned physics and stock replication; a successful build or server boot does not establish working NPC driving or multiplayer safety.
 
+## Current handoff and planned runtime
+
+Read [[Experiments/Current State]] before resuming tests. The live probe remains the last
+validated single-car build; the interrupted opposing-car source edits are incomplete and
+must be reconciled before rebuilding. Preserve the unrelated CMake change.
+
+[[Design/Live Event Runtime]] and [PLAN_SchedulerAPI.md](../../PLAN_SchedulerAPI.md) describe
+the next milestone. Their submit/reload/batch interface is **not implemented**. The commands
+below retain their current behavior: start/stop/inspect can run in-session, while configuring
+a route requires the disposable container stopped. Do not infer that a plan changes that gate.
+The framework's initial installation needs one coordinated disposable-server restart; routine
+scenario/module iterations are intended to remain in the same session afterward.
+
 ## Command interface
 
 `./dayone vehicle-probe-create driver-model` prepares the isolated original seated-driver
