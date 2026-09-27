@@ -10,6 +10,74 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## One-client fast crash accepted; rock and opposing-car requests — 2026-09-27
+
+The first client attempt was aborted when the observer moved inside the 12-tile route buffer;
+all fixtures were cleaned. The next contact passed telemetry but the user could not see it
+well at night. After setting the disposable clock to noon and clearing weather, the user
+confirmed daylight and accepted the replay: “The car ate a wall. It looked right for this one.”
+Evidence: `artifacts/scenario-agent/fast-sports-brake-impact-client-20260927_102200/`.
+Peak 100 km/h; final pre-contact sample 92.64 km/h, 80% brake request / 17.28 native force.
+Native impact severity 77.712524, one crash sound, no feedback failures or new client errors.
+Hood 100->46, windshield 100->39, headlights 100->41; engine remained 100. Four other cars
+retained coordinates. Tagged pole and managed body cleaned; native count zero. Warm mean
+0.162 ms, p99 upper bound 0.6 ms. This is one-client acceptance, not two-client consistency.
+
+Next requested sequence: retain a **rock / rollover attempt first**, with the obstacle
+removed about three seconds after contact, then test **two cars moving in opposing
+directions** as a subsequent experiment. Do not replace the rock trial with the car-car trial.
+Neither a rollover nor managed two-car native collision is yet demonstrated. Ordinary parked
+Java cars still do not provide native vehicle bodies; the opposing test requires explicit
+registration, ownership, independent controls, contact feedback and cleanup for both cars.
+
+## Alternative collider preparation — 2026-09-27
+
+Stock boulder contacts did not roll the car: the first measured maximum tilt was 4.97°.
+An original convex rock collider, scoped to the single tagged disposable fixture through
+an injected post-calculation hook, also stopped the car without rolling it (3.68° maximum).
+The latest isolated run completed and removed both fixture and managed native body:
+`artifacts/scenario-agent/sloped-rock-impact-empty-20260927_104149/`.
+The first mesh attempt failed before spawning because the game object list does not support
+iteration; indexed access fixed that error. No rollover or client acceptance is claimed.
+
+User subsequently requested another collider and more speed. The next reviewed object is
+`appliances_cooking_01_16`, the antique wood stove, whose installed tile has `solidtrans` and
+therefore uses the stock solid collider. It does not use the experimental rock hull. The
+extended disposable impact speed ceiling is now 120 km/h, matching the installed stock
+SportsCar script maximum; actual drivetrain, tyre, mass and brake capabilities still apply.
+Normal driving ceilings are unchanged. The original rock scene remains available, and the
+opposing-car test remains a separate subsequent experiment. Neither a stove contact nor
+more speed guarantees a rollover. Fixture removal remains about three seconds after contact.
+
+The first stove run reached 103.68 km/h and 44.56° maximum tilt, with a real crash severity
+of 83.12038 and one stock crash sound. Hood fell to 34, windshield to 42, front lights to 37;
+engine remained 100. Cleanup completed with native count zero. Evidence:
+`artifacts/scenario-agent/stove-impact-empty-20260927_105355/`. This is empty-server evidence,
+not a rollover or client observation. The requested 120 was limited by the planner's older
+18-second preference. The revised extended-only cap now derives from the checked 320-tile
+stopping preview (retaining a three-tile allowance), still bounded by the stock vehicle and
+route-end stopping envelope. Ordinary-route preferences are unchanged.
+
+The 480-tile replay still peaked at 103.32 km/h because the endpoint entered the braking
+preview before contact (`stove-impact-empty-20260927_105707`). It completed and cleaned up.
+The next course keeps the same start, target and observer location but extends the downstream
+runout to 600 tiles total. Extended-only retained bounds are 1,900 swept tiles, 320 chunks,
+20 loading anchors and native map width 81; per-tick validation and scan budgets are unchanged.
+
+Final empty-server validation passed in
+`artifacts/scenario-agent/stove-impact-empty-20260927_110054/`: peak **114.66 km/h**, final
+pre-contact sample **110.23 km/h while applying 17.28 native brake force**, native crash
+severity 91.871956 and one stock crash sound. Maximum tilt 11.54°: no rollover. The tagged
+stove was removed 3.11 seconds after observed contact; the managed body was retained for the
+viewing hold and then removed (native count zero). Five unrelated loaded cars retained their
+coordinates. Warm mean 0.294 ms, p99 upper bound 1.6 ms; two ticks exceeded 2 ms, none exceeded
+5 ms (maximum 3.219 ms). Final JAR SHA256:
+`43c057c30ad71397f2fcf86461d141a7f5da751c10f6799aee64b2bb49711c8e`.
+Java fixtures and 191 Python tests passed; logs are `artifacts/stove-impact-agent-tests.log`
+and `artifacts/stove-impact-python-tests.log`. The disposable server is running with noon and
+clear weather for the requested client check. This scene has no living NPC occupant; neither
+NPC death nor total engine destruction is demonstrated. Client confirmation is pending.
+
 ## Faster stock sports-car brake failure — 2026-09-27
 
 User requested substantially more speed. Only explicit extended impact experiments now admit

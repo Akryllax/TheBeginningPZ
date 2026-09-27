@@ -14,7 +14,7 @@ final class ScenarioTransformer implements ClassFileTransformer {
     static final ClassDesc CRASH=ClassDesc.of("net.lofers.scenario.ProbeCrashFeedback");
     static final Set<String> TARGETS=Set.of("zombie/network/RCONServer","zombie/Lua/LuaManager",
         "zombie/Lua/Event","zombie/VirtualZombieManager","zombie/iso/IsoWorld","zombie/core/physics/CarController",
-        "zombie/vehicles/BaseVehicle");
+        "zombie/vehicles/BaseVehicle","zombie/iso/IsoChunk");
     public byte[] transform(ClassLoader loader,String name,Class<?> redefining,ProtectionDomain domain,byte[] bytes) {
         if(!TARGETS.contains(name)||redefining!=null) return null;
         try { byte[] result=instrument(name,bytes,loader);ScenarioAgent.hooks.add(name);return result; }
@@ -50,6 +50,8 @@ final class ScenarioTransformer implements ClassFileTransformer {
                 }
             }
             public void accept(CodeBuilder b,CodeElement e) {
+                if(name.equals("zombie/iso/IsoChunk")&&method.equals("calcPhysics")&&descriptor.equals("(III[I)V")&&e instanceof ReturnInstruction)
+                    b.aload(0).iload(1).iload(2).iload(3).aload(4).invokestatic(ClassDesc.of("net.lofers.scenario.ProbeRockCollider"),"apply",MethodTypeDesc.ofDescriptor("(Lzombie/iso/IsoChunk;III[I)V"));
                 if(name.equals("zombie/Lua/LuaManager")&&method.equals("init")&&e instanceof ReturnInstruction)
                     b.invokestatic(AGENT,"bootstrap",MethodTypeDesc.ofDescriptor("()V"));
                 if(name.equals("zombie/Lua/Event")&&method.equals("trigger")&& e instanceof InvokeInstruction call

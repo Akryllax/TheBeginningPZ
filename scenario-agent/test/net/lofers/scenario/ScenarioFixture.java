@@ -37,6 +37,7 @@ public final class ScenarioFixture {
         check(!LaunchGuard.isPinnedDiscovery("zombie.pzexe","pzexe.jar",tampered),"Unknown launcher helper exempted");
         try(ZipFile game=new ZipFile(args[0])){
             ProbeCrashFeedbackFixture.run(game);
+            ProbeRockColliderFixture.run(game);
             for(String name:ScenarioTransformer.TARGETS){
                 byte[] original=game.getInputStream(game.getEntry(name+".class")).readAllBytes();
                 byte[] changed=ScenarioTransformer.instrument(name,original,ScenarioFixture.class.getClassLoader());

@@ -200,3 +200,7 @@ condition retains residual stock braking: record available force, driver request
 applied force, approach speed and post-impact part conditions. Do not equate a 0% brake part
 with zero force, peak speed with contact speed, or a decorative driver with a living occupant.
 Require terminal phase, no native body and exact tagged-fixture cleanup before a rerun.
+Before a visual crash test, verify daylight as well as fog: the disposable clock can
+advance into night between trials. Set its game time to noon through the private
+world-scoped operator helper, clear weather, and confirm the ordinary client sees daylight.
+Keep the observer at least 12 tiles from the entire course; moving inside aborts the run.

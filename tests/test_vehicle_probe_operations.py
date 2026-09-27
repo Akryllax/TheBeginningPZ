@@ -198,6 +198,29 @@ def test_extended_impact_requires_marked_scene_and_resets_on_normal_route(probe)
     assert settings['vehicle_probe.extended_impact'] == 'true'
     assert settings['vehicle_probe.impact_target'] == '240,0'
     assert settings['vehicle_probe.script'] == 'Base.SportsCar'
+    data['waypoints'] = [dict(point, y=.8) for point in data['waypoints']]
+    data['beziers'] = [[dict(point, y=.8) for point in curve] for curve in data['beziers']]
+    data.update(impact_target=[240, 1], impact_lateral_offset=-.7, impact_sprite='boulders_0')
+    route.write_text(json.dumps(data));ops.configure_route(manager,route)
+    settings=ops.properties(target/'scenario.properties')
+    assert settings['vehicle_probe.impact_sprite']=='boulders_0'
+    assert float(settings['vehicle_probe.impact_lateral_offset'])==-.7
+    data.update(impact_sprite='appliances_cooking_01_16', speed_kmh=120)
+    route.write_text(json.dumps(data));ops.configure_route(manager,route)
+    settings=ops.properties(target/'scenario.properties')
+    assert settings['vehicle_probe.impact_sprite']=='appliances_cooking_01_16'
+    assert float(settings['vehicle_probe.speed_kmh'])==120
+    before=(target/'scenario.properties').read_bytes()
+    data['speed_kmh']=121
+    route.write_text(json.dumps(data))
+    with pytest.raises(ValueError,match='bounded speed'):ops.configure_route(manager,route)
+    assert (target/'scenario.properties').read_bytes()==before
+    data['speed_kmh']=120
+    data['impact_lateral_offset']=-1.2
+    route.write_text(json.dumps(data))
+    with pytest.raises(ValueError,match='lateral offset'):ops.configure_route(manager,route)
+    assert (target/'scenario.properties').read_bytes()==before
+
     route.write_text(normal)
     ops.configure_route(manager, route)
     settings = ops.properties(target / 'scenario.properties')

@@ -6,6 +6,7 @@ import zombie.GameTime;
 import zombie.core.physics.Bullet;
 import zombie.core.physics.WorldSimulation;
 import zombie.iso.*;
+import zombie.iso.SpriteDetails.IsoFlagType;
 import zombie.network.GameServer;
 import zombie.network.ServerMap;
 import zombie.scripting.ScriptManager;
@@ -65,6 +66,7 @@ final class ServerVehicleProbe {
     private int nativeBefore=-1,nativeAfter=-1,vehicleId=-1,chunkCursor,validationCursor;
     private long commandId,ticks,publications,started,bodyStarted,phaseAt,nextStatus,physicsFrameStart,physicsFrames;
     private String phase="waiting_for_world",error="",finishReason="";
+    private double maxTiltDegrees;
     private double distance,displacement,maxSpeed,lastX,lastY,lastZ,speed,stopDistance,goalDistance,heading,bodyRadius,wheelbase;
     private long lastControlAt,coldNanosThisTick;
     private ProbeTiming warmTiming=new ProbeTiming(),coldTiming=new ProbeTiming();
@@ -97,7 +99,7 @@ final class ServerVehicleProbe {
                     waitingNanos=0;parkedStop=Double.POSITIVE_INFINITY;parkedBlocker=-1;bypassRequests=0;blockageDecision=null;
                     driveRoute=route;bypassUsed=false;validationShoulder=false;bypassOffroad=false;bypassesCompleted=0;bypassCandidate=null;bypassJob=null;bypassCandidates=List.of();bypassCandidateIndex=bypassTileCursor=0;
                     bypassStatus=config.bypass()?"ready":"disabled";io.bypassJob.set(null);io.bypassResult.set(null);
-                    stopDistance=0;displacement=0;goalDistance=route.length;lastX=config.x();lastY=config.y();lastZ=0;
+                    maxTiltDegrees=0;stopDistance=0;displacement=0;goalDistance=route.length;lastX=config.x();lastY=config.y();lastZ=0;
                     nativeBefore=-1;nativeAfter=-1;started=System.nanoTime();phase("loading");
                 }
             }
@@ -163,8 +165,9 @@ final class ServerVehicleProbe {
                 terrainMinY=route.chunks.stream().mapToInt(ProbeRoute.Tile::y).min().orElseThrow();
                 terrainWidth=Math.max(route.chunks.stream().mapToInt(ProbeRoute.Tile::x).max().orElseThrow()-terrainMinX,
                     route.chunks.stream().mapToInt(ProbeRoute.Tile::y).max().orElseThrow()-terrainMinY)+1;
-                if(terrainWidth>(route.extendedImpact?65:13))throw new IllegalStateException("native_collision_map_extent");
+                if(terrainWidth>(route.extendedImpact?81:13))throw new IllegalStateException("native_collision_map_extent");
                 }finally{coldCost("native_world",coldStart);}
+                ProbeRockCollider.activate(config.impact());
                 phase("preparing_terrain");
             }
             if(phase.equals("preparing_terrain")){
@@ -178,11 +181,12 @@ final class ServerVehicleProbe {
                 if(chunkCursor<route.chunks.size()) {
                     ProbeRoute.Tile xy=route.chunks.get(chunkCursor);IsoChunk chunk=ServerMap.instance.getChunk(xy.x(),xy.y());
                     if(chunk==null||!chunk.loaded){fail("physics_chunk_unloaded");return;}
-                    long coldStart=System.nanoTime();try{ProbeTerrainMeshGuard.validate(chunk);Bullet.setChunkMinMaxLevel(chunk.wx,chunk.wy,chunk.minLevel,chunk.maxLevel);chunk.updatePhysicsForLevel(0);chunkCursor++;}finally{coldCost("chunk_upload",coldStart);}return;
+                    long coldStart=System.nanoTime();try{ProbeTerrainMeshGuard.validate(chunk);Bullet.setChunkMinMaxLevel(chunk.wx,chunk.wy,chunk.minLevel,chunk.maxLevel);chunk.updatePhysicsForLevel(0);if(!ProbeRockCollider.failure().isEmpty())throw new IllegalStateException(ProbeRockCollider.failure());chunkCursor++;}finally{coldCost("chunk_upload",coldStart);}return;
                 }
                 long coldStart=System.nanoTime();try{create();}finally{coldCost("vehicle_create",coldStart);}phase("settling");
             }
             if(vehicle==null)return;
+            if(!ProbeRockCollider.failure().isEmpty()){fail(ProbeRockCollider.failure());return;}
             worldPresent=!vehicle.isRemovedFromWorld();
             registryPresent=VehicleManager.instance.getVehicleByID((short)vehicleId)==vehicle;
             chunkPresent=vehicle.chunk!=null&&vehicle.chunk.vehicles.contains(vehicle);
@@ -192,6 +196,7 @@ final class ServerVehicleProbe {
             if(!loadedCorridor()){fail("road_chunks_unloaded");return;}
             double previousX=lastX,previousY=lastY;lastX=vehicle.getX();lastY=vehicle.getY();lastZ=vehicle.jniTransform.origin.y;
             speed=Math.hypot(vehicle.jniLinearVelocity.x,vehicle.jniLinearVelocity.z)*3.6;
+            maxTiltDegrees=Math.max(maxTiltDegrees,Math.toDegrees(Math.acos(Math.max(-1,Math.min(1,vehicle.jniTransform.basis.m11())))));
             distance+=Math.hypot(lastX-previousX,lastY-previousY);displacement=Math.hypot(lastX-config.x(),lastY-config.y());maxSpeed=Math.max(maxSpeed,speed);
             vehicle.getForwardVector(forward);heading=Math.toDegrees(Math.atan2(forward.x,forward.z));
             goalDistance=Math.hypot(lastX-route.points.getLast().x(),lastY-route.points.getLast().y());
@@ -279,10 +284,10 @@ final class ServerVehicleProbe {
     }
     private String tileProblem(int x,int y,boolean requireRoad,boolean actors,boolean shoulder){
         IsoGridSquare square=ServerMap.instance.getGridSquare(x,y,0);
-        if(square==null||square.getFloor()==null||!square.TreatAsSolidFloor()||!square.isOutside()||!square.isFree(false)||square.HasStairs())return "road_not_clear";
+        boolean target=config.impact()!=null&&config.impact().tile(x,y);
+        if(square==null||square.getFloor()==null||!square.TreatAsSolidFloor()||!square.isOutside()||(!square.isFree(false)&&!target)||square.HasStairs())return "road_not_clear";
         var merged=square.getProperties();
         String physics=TrafficTileObstacle.problem(declared(merged,"PhysicsShape"),declared(merged,"PhysicsMesh"),null,merged.get("MoveType"),merged.has("StopCar"),merged.has("HitByCar"));
-        boolean target=config.impact()!=null&&config.impact().tile(x,y);
         if(!physics.isEmpty()&&!target)return physics;
         boolean targetFound=false;
         var objects=square.getObjects();if(objects.size()>32)return "road_object_limit";
@@ -290,6 +295,7 @@ final class ServerVehicleProbe {
             var object=objects.get(i);var properties=object.getProperties();
             if(properties==null)return "object_properties_unavailable";
             if(target&&config.impact().matches(object)){if(targetFound)return "duplicate_impact_target";targetFound=true;continue;}
+            if(target&&blockingFlags(properties))return "extra_impact_tile_obstacle";
             physics=TrafficTileObstacle.problem(declared(properties,"PhysicsShape"),declared(properties,"PhysicsMesh"),object.sprite==null?null:object.sprite.name,properties.get("MoveType"),properties.has("StopCar"),properties.has("HitByCar"));
             if(!physics.isEmpty())return physics;
         }
@@ -301,11 +307,31 @@ final class ServerVehicleProbe {
                 if(material!=null&&!BypassTerrain.allows(material,shoulder))return "conflicting_surface_overlay";
             }
             IsoGridSquare west=ServerMap.instance.getGridSquare(x-1,y,0),north=ServerMap.instance.getGridSquare(x,y-1,0);
-            if(west==null||north==null||square.isBlockedTo(west)||square.isBlockedTo(north))return "road_wall_edge";
+            if(west==null||north==null||(square.isBlockedTo(west)&&!impactEdge(square,west))||(square.isBlockedTo(north)&&!impactEdge(square,north)))return "road_wall_edge";
         }
         if(actors){var moving=square.getMovingObjects();if(moving.size()>16)return "road_actor_limit";
             for(IsoMovingObject object:moving)if(object!=vehicle)return "actor_in_vehicle_path";}
         return "";
+    }
+    private static boolean blockingFlags(zombie.core.properties.PropertyContainer p){
+        return p.has(IsoFlagType.solid)||p.has(IsoFlagType.solidtrans)||p.has(IsoFlagType.blocksight)||p.has(IsoFlagType.collideN)||p.has(IsoFlagType.collideW);
+    }
+    /** Only the exact tagged stock boulder may account for a blocked adjacent edge. */
+    private boolean impactEdge(IsoGridSquare a,IsoGridSquare b){
+        var target=config.impact();
+        if(target==null||!ProbeImpactTarget.BOULDER.equals(target.sprite())||
+            !(target.tile(a.getX(),a.getY())||target.tile(b.getX(),b.getY())))return false;
+        boolean found=false;
+        for(var sq:List.of(a,b)){
+            if(sq.HasStairs()||!sq.getSpecialObjects().isEmpty()||sq.getObjects().size()>32)return false;
+            for(int i=0;i<sq.getObjects().size();i++){
+                var object=sq.getObjects().get(i);
+                if(target.tile(sq.getX(),sq.getY())&&target.matches(object)){if(found)return false;found=true;continue;}
+                var p=object.getProperties();if(p==null||blockingFlags(p))return false;
+                if(!TrafficTileObstacle.problem(declared(p,"PhysicsShape"),declared(p,"PhysicsMesh"),object.sprite==null?null:object.sprite.name,p.get("MoveType"),p.has("StopCar"),p.has("HitByCar")).isEmpty())return false;
+            }
+        }
+        return found;
     }
     private String impactObserverProblem(){
         if(config.impact()==null)return "";
@@ -534,6 +560,7 @@ final class ServerVehicleProbe {
         vehicle=null;worldAdded=false;releaseTerrain();
     }
     private void releaseTerrain(){
+        ProbeRockCollider.deactivate();
         if(!nativeTerrain||nativeBody)return;
         try{
             Bullet.deactivateChunkMap(0);terrainRemoved++;
@@ -600,7 +627,7 @@ final class ServerVehicleProbe {
         s.put("stop_hold_seconds",Double.toString(driver==null?0:driver.stopHoldSeconds()));
         s.put("route_points",Integer.toString(route.points.size()));s.put("road_tiles_validated",Integer.toString(validationCursor));
         s.put("collision_chunks",Integer.toString(route.chunks.size()));s.put("displacement",Double.toString(displacement));s.put("goal_distance",Double.toString(goalDistance));
-        s.put("heading_degrees",Double.toString(heading));
+        s.put("heading_degrees",Double.toString(heading));s.put("max_tilt_degrees",Double.toString(maxTiltDegrees));s.put("rock_mesh_uploads",Long.toString(ProbeRockCollider.uploads()));
         s.put("loaded_body_radius",Double.toString(bodyRadius));s.put("loaded_wheelbase",Double.toString(wheelbase));
         if(control!=null){s.put("route_progress",Double.toString(control.progress()));s.put("cross_track",Double.toString(control.crossTrack()));
             s.put("engine_force",Double.toString(control.engineForce()));s.put("brake_force",Double.toString(control.brake()));

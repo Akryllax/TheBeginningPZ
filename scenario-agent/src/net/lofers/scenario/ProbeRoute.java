@@ -34,7 +34,7 @@ final class ProbeRoute {
                 if(Math.abs(turn)>Math.toRadians(100))throw new IllegalArgumentException("Route turn too sharp");}
         }
         if(trajectory!=null)System.arraycopy(trajectory.ends,0,cumulative,0,cumulative.length);
-        length=cumulative[cumulative.length-1];if(length<2||length>(extendedImpact?480:60))throw new IllegalArgumentException("Route length outside2..60tiles");
+        length=cumulative[cumulative.length-1];if(length<2||length>(extendedImpact?600:60))throw new IllegalArgumentException("Route length outside2..60tiles");
         LinkedHashSet<Tile> swept=new LinkedHashSet<>(),coverage=new LinkedHashSet<>(),nativeCells=new LinkedHashSet<>();
         // Quarter-tile samples plus a half-sample margin conservatively include
         // every tile touched by the radius2.25 swept disk, including its ends.
@@ -47,7 +47,7 @@ final class ProbeRoute {
                 for(int cx=(int)Math.floor((p.x-loadingMargin)/8);cx<=(int)Math.floor((p.x+loadingMargin)/8);cx++)coverage.add(new Tile(cx,cy));
         }
         if(laneMode)swept=trajectory==null?ProbeFootprint.swept(points):ProbeFootprint.swept(trajectory);
-        if(swept.size()>1500||coverage.size()>(extendedImpact?256:96))throw new IllegalArgumentException("Route spatial work exceeds bounds");
+        if(swept.size()>(extendedImpact?1900:1500)||coverage.size()>(extendedImpact?320:96))throw new IllegalArgumentException("Route spatial work exceeds bounds");
         for(Tile t:coverage)nativeCells.add(new Tile(Math.floorDiv(t.x,5),Math.floorDiv(t.y,5)));
         if(nativeCells.size()>(extendedImpact?48:9))throw new IllegalArgumentException("Route native cell limit");
         tiles=List.copyOf(swept);chunks=List.copyOf(coverage);cells=List.copyOf(nativeCells);
@@ -55,13 +55,13 @@ final class ProbeRoute {
         int minY=chunks.stream().mapToInt(Tile::y).min().orElseThrow(),maxY=chunks.stream().mapToInt(Tile::y).max().orElseThrow();
         centerChunkX=Math.floorDiv(minX+maxX,2);centerChunkY=Math.floorDiv(minY+maxY,2);
         int width=Math.max(maxX-minX+1,maxY-minY+1)+2;widthChunks=width+(width%2==0?1:0);
-        if(widthChunks>(extendedImpact?67:13))throw new IllegalArgumentException("Route loading extent exceeded");
+        if(widthChunks>(extendedImpact?83:13))throw new IllegalArgumentException("Route loading extent exceeded");
         if(extendedImpact){
             if(!TrafficBypass.straight(this))throw new IllegalArgumentException("Extended impact course must be straight");
             var anchors=new LinkedHashSet<Tile>();
             for(double s=0;s<length+32;s+=32){var p=at(Math.min(s,length));anchors.add(new Tile((int)Math.floor(p.x()/8),(int)Math.floor(p.y()/8)));}
             loadingAnchors=List.copyOf(anchors);
-            if(loadingAnchors.size()>16)throw new IllegalArgumentException("Too many loading anchors");
+            if(loadingAnchors.size()>20)throw new IllegalArgumentException("Too many loading anchors");
         }else loadingAnchors=List.of(new Tile(centerChunkX,centerChunkY));
     }
     int requestWidth(){return extendedImpact?9:widthChunks;}

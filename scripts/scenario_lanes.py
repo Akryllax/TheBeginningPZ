@@ -75,7 +75,7 @@ def bezier_samples(curves, *, extended_impact=False):
             last_point=point;last_tangent=tangent
             yield (*point,*tangent)
         previous=(point,tangent)
-    if not 2<=length<=(480 if extended_impact else 60):raise ValueError('Bezier length exceeds bounded course')
+    if not 2<=length<=(600 if extended_impact else 60):raise ValueError('Bezier length exceeds bounded course')
 
 
 def bezier_cells(curves):
