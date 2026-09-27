@@ -11,8 +11,10 @@ import java.util.Set;
 final class ScenarioTransformer implements ClassFileTransformer {
     static final ClassDesc AGENT=ClassDesc.of("net.lofers.scenario.ScenarioAgent");
     static final ClassDesc NATIVE=ClassDesc.of("net.lofers.scenario.GameHooks");
+    static final ClassDesc CRASH=ClassDesc.of("net.lofers.scenario.ProbeCrashFeedback");
     static final Set<String> TARGETS=Set.of("zombie/network/RCONServer","zombie/Lua/LuaManager",
-        "zombie/Lua/Event","zombie/VirtualZombieManager","zombie/iso/IsoWorld","zombie/core/physics/CarController");
+        "zombie/Lua/Event","zombie/VirtualZombieManager","zombie/iso/IsoWorld","zombie/core/physics/CarController",
+        "zombie/vehicles/BaseVehicle");
     public byte[] transform(ClassLoader loader,String name,Class<?> redefining,ProtectionDomain domain,byte[] bytes) {
         if(!TARGETS.contains(name)||redefining!=null) return null;
         try { byte[] result=instrument(name,bytes,loader);ScenarioAgent.hooks.add(name);return result; }
@@ -25,6 +27,8 @@ final class ScenarioTransformer implements ClassFileTransformer {
             String method=m.methodName().stringValue(),descriptor=m.methodType().stringValue();
             cb.transformMethod(m,MethodTransform.transformingCode(new CodeTransform(){
             public void atStart(CodeBuilder b) {
+                if(name.equals("zombie/vehicles/BaseVehicle")&&method.equals("crash")&&descriptor.equals("(FZ)V"))
+                    b.aload(0).fload(1).iload(2).invokestatic(CRASH,"onCrash",MethodTypeDesc.ofDescriptor("(Lzombie/vehicles/BaseVehicle;FZ)V"));
                 if(name.equals("zombie/network/RCONServer")&&method.equals("update")&&descriptor.equals("()V"))
                     b.invokestatic(AGENT,"tick",MethodTypeDesc.ofDescriptor("()V"));
                 if(name.equals("zombie/Lua/Event")&&method.equals("trigger"))

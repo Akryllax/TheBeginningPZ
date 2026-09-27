@@ -287,8 +287,8 @@ def configure_route(m, source):
 
 
 def control(m, action):
-    if action not in {'start', 'stop'}:
-        raise ValueError('Probe control must be start or stop')
+    if action not in {'start', 'stop', 'inspect'}:
+        raise ValueError('Probe control must be start, stop or inspect')
     _, target = current(m)
     status = properties(target / 'probe/status.properties')
     epoch = status.get('server_epoch', '')
@@ -333,7 +333,7 @@ def dispatch(m, command, args):
         path = target / 'probe/status.properties'
         print(path.read_text() if path.exists() else 'Probe status not yet available.')
     elif command == 'vehicle-probe-control':
-        if len(args) != 1: raise ValueError('Expected start or stop')
+        if len(args) != 1: raise ValueError('Expected start, stop or inspect')
         control(m, args[0])
     elif command == 'vehicle-probe-route':
         if len(args) != 1: raise ValueError('Expected one reviewed route JSON artifact')

@@ -70,10 +70,12 @@ def clearance_scores(costs, width, height):
     return result
 
 
-def source_identity(map_root, definitions, bounds):
+def source_identity(map_root, definitions, bounds, supplemental_definitions=()):
     """Hash inputs once per offline session, never during an edge query."""
     x0, y0, x1, y1 = bounds
     paths = [map_root / 'worldmap.xml.bin', definitions, definitions.with_suffix('')]
+    for source in supplemental_definitions:
+        paths.extend([Path(source), Path(source).with_suffix('')])
     for cx in range(x0 // CELL, (x1 - 1) // CELL + 1):
         for cy in range(y0 // CELL, (y1 - 1) // CELL + 1):
             paths.extend([map_root / f'{cx}_{cy}.lotheader', map_root / f'world_{cx}_{cy}.lotpack'])

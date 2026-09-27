@@ -11,6 +11,9 @@ final class BuildGuard {
     static final String SERVER_PHYSICS_LIBRARY="libPZBulletNoOpenGL64.so";
     static final String SERVER_PHYSICS_SHA256="256304a998a33fa9ba356182cad3ebaad0db14ac36762b806a950d0f08e95d6f";
     static final Map<String,String> HASHES=Map.ofEntries(
+        Map.entry("zombie/SoundManager","42753adceb47d3157402eabc1efd871891845ac8bc66aa9be6ef7ff7d81d2c77"),
+        Map.entry("zombie/network/GameServer","f6f584c60026d685fdc12012fe5b3e498f599ac02d0fb5b56fa5ae85218c8566"),
+        Map.entry("zombie/network/packets/sound/PlayWorldSoundPacket","653a0ceb2325ed167d861f85d98e8e316b61a80178196743360d730dc0a2ca33"),
         Map.entry("zombie/vehicles/VehiclePart","27febf9f1cbc8c057bf34e400c743f1e19e70638f6553b45f0140d086e329311"),
         Map.entry("zombie/network/RCONServer","c31a83c6868d6c88da96db66db10a3d3414ae39947b13e3d800afbb2c034c645"),
         Map.entry("zombie/Lua/Event","cf4b0ba953b8f965fbcacb73ebb5d1a173dc3ed140656e15b90ad932eff0e952"),
@@ -50,7 +53,7 @@ final class BuildGuard {
                 throw new IllegalStateException("Unsupported game class: "+e.getKey());
         }
     }
-    /** The native server-cell layout is an ABI contract independent of class hashes. */
+    /** The native terrain and collision-filter behavior is an ABI contract independent of class hashes. */
     static Path verifyServerPhysics(Instrumentation instrumentation) throws Exception {
         if(Runtime.version().feature()!=25)throw new IllegalStateException("Native lookup guard requires Java 25");
         String os=System.getProperty("os.name","").toLowerCase(Locale.ROOT);

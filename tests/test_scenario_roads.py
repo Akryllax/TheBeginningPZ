@@ -7,7 +7,22 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from scenario_roads import corridor_cells, explicit_road_floor, ground_stacks, probe_waypoints, tile_properties
+from scenario_roads import RoadSurface, corridor_cells, explicit_road_floor, ground_stacks, probe_waypoints, tile_properties
+
+
+def test_explicit_supplement_resolves_overlay_but_ambiguous_and_unknown_tiles_stay_blocked(tmp_path):
+    (tmp_path/'worldmap.xml.bin').write_bytes(b'IGMB'+struct.pack('<8i',2,256,1,1,0,0,0,0))
+    base=tmp_path/'base.tiles.txt';extra=tmp_path/'erosion.tiles.txt'
+    base.write_text('// asphalt\ntile\n{\nFloorMaterial = Road_06\nsolidfloor =\n}\n'
+                    '// ambiguous\ntile\n{\nFloorOverlay =\n}\n')
+    extra.write_text('// crack\ntile\n{\nFloorOverlay =\n}\n'
+                     '// ambiguous\ntile\n{\nsolid =\n}\n')
+    ordinary=RoadSurface(tmp_path,tmp_path/'cache',base)
+    assert not explicit_road_floor(['asphalt','crack'],ordinary.properties)
+    supplied=RoadSurface(tmp_path,tmp_path/'cache',base,[extra,extra])
+    assert explicit_road_floor(['asphalt','crack'],supplied.properties)
+    for overlay in ['ambiguous','unlisted']:
+        assert not explicit_road_floor(['asphalt',overlay],supplied.properties)
 
 
 @pytest.mark.parametrize('rows', [
@@ -63,6 +78,47 @@ def test_asphalt_under_sidewalk_or_curb_is_not_a_vehicle_corridor():
     assert explicit_road_floor(['asphalt', 'traffic_line'], props)
     for overlay in ['sidewalk', 'street_curbs_01_test', 'wall', 'unknown']:
         assert not explicit_road_floor(['asphalt', overlay], props)
+
+
+@pytest.mark.parametrize('obstacle', [
+    {'PhysicsShape': shape} for shape in ['Tree', 'Solid', 'WallN', 'WallS', 'WallE', 'WallW', '', 'Unknown']
+] + [
+    {'PhysicsMesh': mesh} for mesh in ['Base.Pole', 'Floor', '', 'Unknown']
+] + [{'StopCar': ''}, {'HitByCar': ''}])
+def test_walkable_physical_object_blocks_road_and_shoulder_routes(obstacle):
+    props = {'road': {'FloorMaterial': 'Road_06', 'solidfloor': ''},
+             'grass': {'FloorMaterial': 'Grass_Dark', 'solidfloor': ''},
+             'pole': obstacle}
+    assert not explicit_road_floor(['road', 'pole'], props)
+    assert not explicit_road_floor(['grass', 'pole'], props, {'Grass_Dark'})
+
+
+def test_floor_exemption_does_not_hide_mesh_or_car_collision():
+    props = {'road': {'FloorMaterial': 'Road_06', 'solidfloor': '', 'PhysicsShape': 'Floor'}}
+    assert explicit_road_floor(['road'], props)
+    props['road']['PhysicsMesh'] = 'Base.Pole'
+    assert not explicit_road_floor(['road'], props)
+
+
+@pytest.mark.parametrize('sprite', ['lighting_outdoor_01_0', 'recreational_sports_01_19',
+                                    'recreational_sports_01_21', 'recreational_sports_01_32'])
+def test_legacy_native_columns_block_swept_road_footprint(sprite):
+    props = {'road': {'FloorMaterial': 'Road_06', 'solidfloor': ''}, sprite: {}}
+    assert not explicit_road_floor(['road', sprite], props)
+    props[sprite]['MoveType'] = 'WallObject'
+    assert explicit_road_floor(['road', sprite], props)
+    props[sprite]['PhysicsShape'] = 'Tree'
+    assert not explicit_road_floor(['road', sprite], props)
+
+
+def test_pole_outside_centerline_still_rejects_the_swept_vehicle_corridor():
+    props = {'road': {'FloorMaterial': 'Road_06', 'solidfloor': ''},
+             'pole': {'PhysicsShape': 'Tree', 'StopCar': '', 'HitByCar': ''}}
+    # The car center never occupies (1, 5), but its edge would hit this pole.
+    corridor = corridor_cells([(0.5, 0.5), (0.5, 10.5)], radius=1)
+    assert all(explicit_road_floor(['road'], props) for y in range(11))
+    assert any(not explicit_road_floor(['road', 'pole'] if tile == (1, 5) else ['road'], props)
+               for tile in corridor)
 
 
 def test_ground_stacks_decode_skip_runs_and_do_not_confuse_basement_with_ground():

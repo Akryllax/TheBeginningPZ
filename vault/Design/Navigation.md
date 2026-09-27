@@ -200,7 +200,10 @@ reader's unknown-surface rejection was preserved and a fully classified strip se
 The probe leaves a four-tile margin behind the conservative parked-car contact envelope
 to preserve steering room. After waiting, a detached thread proposes left/right three-part
 cubic maneuvers and a continuation to the original destination, bounded to retained native
-chunks and 256 candidate road tiles. It neither reads live game objects nor controls physics.
+chunks and 256 candidate road tiles. Passing routes retain a thirteen-tile loading margin
+instead of nine, so detours can preserve their own normal observation margin near chunk
+boundaries. The existing chunk/cell/width bounds remain enforced. The worker neither reads
+live game objects nor controls physics.
 The game thread validates at most 24 candidate tiles per update with a 0.5 ms cooperative
 budget, rejects stale generation/position evidence, rechecks parked rectangles and obtains
 a corridor reservation before switching the control trajectory. Road passing is capped at
@@ -216,8 +219,15 @@ are recorded separately from control work.
 An optional second tier considers known dirt/grass and paved edges according to a stable
 driver/episode choice after road candidates fail. It keeps the same actors, walls, floor
 support and loaded-chunk checks, requires a rejoin, and lowers speed and planning grip
-preferences. It does not treat every non-road tile as traversable. The initial native proof
-covers asphalt passing only; off-road behavior and moving traffic need their own receipts.
+preferences. It does not treat every non-road tile as traversable. A separate empty-server
+shoulder refusal/pass executes. A client confirmed road-obstacle avoidance but observed
+pole ghosting on the detour. The corrected live/offline checks reject PhysicsShape,
+PhysicsMesh, StopCar/HitByCar and legacy column objects. Native terrain now activates through
+an owned Bullet collision map, with a measured empty-server pole impact and stock damage.
+Client presentation/audio, moving traffic and native parked-car registration remain pending.
+`--shoulder` bakes that separate course, explicitly hashing installed erosion definitions
+alongside base definitions. Conflicting duplicates stay unknown; unknown surfaces are not
+silently reclassified as decorative overlays.
 
 Reproduce the original isolated turn course after building the agent and stopping the probe:
 

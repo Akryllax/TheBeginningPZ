@@ -97,12 +97,30 @@ def ground_stacks(data: bytes, header: dict) -> dict[tuple[int, int], tuple[str,
     return stacks
 
 
+def physical_tile_obstacle(name, props):
+    """Reject physical objects even when their square is walkable by a person.
+
+    Only the built-in floor shape is a planning exemption. Custom meshes and
+    unknown/empty declarations require clearance rather than guessed geometry.
+    Native physics is still required to handle unplanned contact correctly.
+    """
+    if "PhysicsMesh" in props or "StopCar" in props or "HitByCar" in props:
+        return True
+    if "PhysicsShape" in props:
+        return props["PhysicsShape"] != "Floor"
+    return props.get("MoveType") != "WallObject" and (
+        "lighting_outdoor_" in name or name in {
+            "recreational_sports_01_19", "recreational_sports_01_21", "recreational_sports_01_32"})
+
+
 def explicit_road_floor(names, properties, materials=frozenset({"Road_06"})):
-    """Reject sidewalk/curb overlays even when an asphalt tile lies underneath."""
+    """Reject physical objects and curb overlays above an otherwise valid floor."""
     floors = []
     for name in names:
         props = properties.get(name)
         if props is None:
+            return False
+        if physical_tile_obstacle(name, props):
             return False
         if any(flag in props for flag in ("solid", "solidtrans", "collideN", "collideW")):
             return False
@@ -119,9 +137,22 @@ def explicit_road_floor(names, properties, materials=frozenset({"Road_06"})):
 
 
 class RoadSurface:
-    def __init__(self, map_root: Path, cache: Path, definitions: Path):
+    def __init__(self, map_root: Path, cache: Path, definitions: Path, supplemental_definitions=()):
         self.root, self.definitions = Path(map_root), Path(definitions)
         self.properties = tile_properties(self.definitions.read_text())
+        self.ambiguous_definitions = set()
+        for source in supplemental_definitions:
+            additions = tile_properties(Path(source).read_text())
+            for name, properties in additions.items():
+                if name in self.ambiguous_definitions:
+                    continue
+                if name in self.properties and self.properties[name] != properties:
+                    # Do not guess the engine's override order. A used ambiguous
+                    # tile remains unknown and fails the normal surface checks.
+                    self.ambiguous_definitions.add(name)
+                    del self.properties[name]
+                else:
+                    self.properties[name] = properties
         self.roads = Roads(self.root, cache)
 
     @lru_cache(maxsize=32)

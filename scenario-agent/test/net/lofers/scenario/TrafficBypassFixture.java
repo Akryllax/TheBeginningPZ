@@ -7,6 +7,7 @@ final class TrafficBypassFixture {
     static ProbeRoute line(){return new ProbeRoute(new BezierPath(List.of(BezierPath.line(new ProbeRoute.Point(-18.5,0),new ProbeRoute.Point(7,0)),BezierPath.line(new ProbeRoute.Point(7,0),new ProbeRoute.Point(32.5,0)))));}
     static void run(){
         terrain();
+        shoulderAtChunkBoundary();
         var a=new TrafficFootprint(1,0,0,Math.PI/2,.69,1.68);
         check(!TrafficFootprint.overlaps(a,a.at(0,2.5,Math.PI/2),.25),"Parallel cars incorrectly collide like circles");
         check(TrafficFootprint.overlaps(a,a.at(2,0,Math.PI/2),.25),"Longitudinal overlap missed");
@@ -26,6 +27,20 @@ final class TrafficBypassFixture {
         check(!TrafficBypass.straight(new ProbeRoute(BezierFixture.course())),"Curved junction accepted as passing road");
         check(TrafficBypass.plan(new TrafficBypass.Job(1,3,base,18.5,a,a.at(24,0,0),List.of(b))).candidates().isEmpty(),"Too distant blocker accepted");
         System.out.println("Bypass fixtures passed: oriented clearance, bounded left/right proposals, blocked denial and independent physical approach/rejoin simulation");
+    }
+    private static void shoulderAtChunkBoundary(){
+        var start=new ProbeRoute.Point(10732.5,9861.5);var mid=new ProbeRoute.Point(10754.5,9861.5);var end=new ProbeRoute.Point(10776.5,9861.5);
+        var path=new BezierPath(List.of(BezierPath.line(start,mid),BezierPath.line(mid,end)));
+        var narrow=new ProbeRoute(path);var retained=new ProbeRoute(path,13);
+        var ego=new TrafficFootprint(1,10745.23828125,9861.5,Math.PI/2,.69,1.68);
+        var blocker=new TrafficFootprint(2,10754,9862,Math.PI/2,.69,1.68);
+        var opposite=new TrafficFootprint(3,10754,9858,Math.PI/2,.69,1.68);
+        var denial=new TrafficFootprint(4,10758,9864,Math.PI/2,.69,1.68);
+        check(TrafficBypass.plan(new TrafficBypass.Job(1,1,narrow,12.73828125,ego,blocker,List.of(blocker,opposite))).candidates().isEmpty(),"Unloaded shoulder candidate accepted");
+        var clear=TrafficBypass.plan(new TrafficBypass.Job(1,2,retained,12.73828125,ego,blocker,List.of(blocker,opposite)));
+        check(clear.candidates().size()==1&&clear.candidates().getFirst().side().equals("right"),"Retained shoulder not proposed at chunk boundary");
+        check(TrafficBypass.plan(new TrafficBypass.Job(1,3,retained,12.73828125,ego,blocker,List.of(blocker,opposite,denial))).candidates().isEmpty(),"Occupied shoulder accepted");
+        simulate(clear.candidates().getFirst(),ego,blocker);
     }
     private static void terrain(){
         for(String surface:List.of("Grass_Medium","Grass_Dark","Dirt","Dirt_Grass","Road_04")){

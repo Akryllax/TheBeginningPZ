@@ -52,7 +52,17 @@ straight-road bypass passed two empty-server runs and one ordinary-client observ
 the user confirmed a smooth pass, return to lane and audible honk after about 21 seconds
 waiting. Candidate geometry runs off the game thread; loaded clearance and a reserved
 entry/pass/rejoin corridor gate execution. Temperament can admit a slow dirt/grass shoulder
-fallback after road candidates fail, but native shoulder driving remains untested.
+fallback after road candidates fail. The first shoulder trial
+avoided the road obstacles but phased through a pole, failing physical collision acceptance.
+The planner now rejects declared vehicle-collision objects, including walkable poles.
+Native headless server cells stored obstacle shapes without activating bodies; the probe
+now owns a bounded ordinary Bullet collision map while Java remains a dedicated server.
+An empty-server 5 km/h pole contact stopped physically, caused stock hood/windshield damage,
+and requested one crash sound; a client must still verify its presentation/audio. Ordinary
+parked Java cars are not yet registered as native bodies, so do not claim car-to-car impact
+support. Keep existing global offsets when initializing physics: an older initializer shifted
+preloaded parked vehicles. The old disposable save is retained. All test fixtures are
+recorded separately and removed through the original game lifecycle.
 Passing reservations have detached conflict/expiry tests; managed multi-car traffic,
 NPC boarding and two-client consistency remain unvalidated. See the implementation ledger
 and traffic design for evidence, limits and next gates.

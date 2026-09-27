@@ -97,7 +97,7 @@ python3 scripts/build_scenario_agent.py --test
 ./dayone vehicle-probe-status
 ```
 
-Once status reports the current server epoch, `./dayone vehicle-probe-control start` requests the driving experiment; `./dayone vehicle-probe-control stop` requests braking/stopping that experiment. These controls do not start or shut down the server container. Use `./dayone vehicle-probe-stop` for graceful server shutdown. Control requests are bound to the current server epoch. A missing status file means initialization has not yet produced evidence.
+Once status reports the current server epoch, `./dayone vehicle-probe-control start` requests the driving experiment; `./dayone vehicle-probe-control stop` requests braking/stopping that experiment. `./dayone vehicle-probe-control inspect` retains the bounded route area for up to two minutes without creating a car or initializing physics, for read-only scene inspection. These controls do not start or shut down the server container. Use `./dayone vehicle-probe-stop` for graceful server shutdown. Control requests are bound to the current server epoch. A missing status file means initialization has not yet produced evidence.
 
 Road probes hold the car stationary for 20 seconds after route completion or a terminal
 safety stop. A known static parked obstacle now creates a planned stopping point and
@@ -111,7 +111,14 @@ The artifact's `bypass` flag enables detached left/right candidate generation, l
 a reserved corridor and a 15 km/h passing ceiling. Its optional `shoulder` flag permits a
 temperament-dependent dirt/grass or paved-edge fallback after road options fail; that path
 uses a lower speed and conservative planning grip preferences. It still rejects obstacles,
-unsupported ground and uncertain observations. Native shoulder driving is not yet validated.
+unsupported ground and uncertain observations. An empty-server shoulder refusal/pass now
+executes, but the client observed pole ghosting despite successful road-obstacle avoidance.
+The corrected planner rejects the original pole detour. Empty-server native pole contact
+now works; client presentation/audio remains a separate check. Its artifact is prepared with
+`.tooling/venv/bin/python scripts/scenario_lanes.py --shoulder`. It records road-parallel
+fixture tiles/headings, not equivalent raw `/addvehicle` commands with their default rotation.
+This course explicitly hashes the installed erosion tile definitions; unknown or conflicting
+definitions still reject the surface. Passing courses retain the detours' loading margins.
 Omitting the flags resets both features to disabled when configuring a different route.
 Current scope is one parked obstacle on a short straight block; nearby moving traffic
 still stops the experiment. This does not enable bypasses on the earlier junction course.
@@ -120,6 +127,15 @@ presence from a client visibility report. These are diagnostics, not measured pa
 Moving/unknown hazards may still terminate with `predicted_vehicle_contact`; assess the
 trace and actual client report separately. Remove only exact, recorded parked fixtures
 after each obstacle trial. This disposable harness is not the persistent traffic lifecycle.
+Remove recorded fixtures during the terminal viewing hold while their chunks remain loaded.
+Before restarting, wait for `body_registered=false` and terminal probe status so the managed
+test car has completed native/world cleanup. The shoulder validation world preserves the
+server's existing physics coordinate frame; do not restore the earlier late global rebase.
+The probe owns one bounded Bullet collision map, with Java dedicated-server authority
+unchanged. Native headless ServerCells did not activate obstacle bodies. Missing custom mesh
+registrations fail chunk preparation. Remove managed bodies before deactivating the map.
+Do not infer native collision support for ordinary parked Java cars: registration/lifetime
+for those bodies is still a separate gate.
 
 Route configuration requires the probe server to be stopped. It validates bounded numeric
 waypoints, keeps the previous private configuration and source artifact, and shares an

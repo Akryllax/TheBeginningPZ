@@ -55,8 +55,15 @@ blocker forecasting and braking. Extend persistent queues with temperament-depen
 honking and patience, bounded attempts to find a drivable bypass, and authoritative
 reservations when two cars want the same gap. The single-car straight-road bypass now uses
 detached candidate generation, live oriented clearance and an entry/pass/rejoin reservation;
-two empty-server runs and one ordinary-client observation passed. Shoulder maneuvers
-and managed multi-car wiring are next. Temperament may admit short off-road attempts after
+two empty-server runs and one ordinary-client observation passed. The first shoulder run avoided road
+obstacles but phased through a pole. The corrected planner rejects that detour; native
+terrain activation now uses an owned collision map and a low-speed pole contact has produced
+real stopping, stock damage and one sound broadcast on an empty server. Validate this with
+one client, then register managed/parked collision bodies and test real two-car contact.
+Extract one shared native-world/map lifetime and batch all reservation offers before
+allowing two moving cars; independent single-car probes cannot share their current cleanup.
+Keep the existing global coordinate frame when initializing headless physics, and verify
+preloaded parked vehicles across startup. Temperament may admit short off-road attempts after
 road options fail, with slower motion and the same physical obstacle checks.
 Allow bounded imperfect driving through normal physics, without disabling actor checks
 or manufacturing ordinary crashes by random emergency-brake failures. Validate native

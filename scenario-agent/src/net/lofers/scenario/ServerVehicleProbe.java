@@ -2,6 +2,7 @@ package net.lofers.scenario;
 
 import java.util.*;
 import org.joml.Vector3f;
+import zombie.GameTime;
 import zombie.core.physics.Bullet;
 import zombie.core.physics.WorldSimulation;
 import zombie.iso.*;
@@ -14,7 +15,8 @@ import zombie.vehicles.*;
 /** One opt-in empty car in a disposable world. Physics and game state stay on the game thread. */
 final class ServerVehicleProbe {
     private static final Set<String> PREPARING=Set.of("loading","validating_road","preparing_terrain","preparing_physics");
-    private static final Set<String> ACTIVE=Set.of("loading","validating_road","preparing_terrain","preparing_physics","settling","driving","waiting_obstacle","braking","stopped_visible");
+    private static final Set<String> ACTIVE=Set.of("loading","validating_road","preparing_terrain","preparing_physics","settling","driving","waiting_obstacle","braking","stopped_visible","inspecting");
+    private boolean inspectionOnly;
     private final ProbeControl.Config config;
     private final ProbeControl io;
     private final String world,epoch;
@@ -57,10 +59,10 @@ final class ServerVehicleProbe {
     private ProbeDriver.Output control;
     private BaseVehicle vehicle;
     private boolean nativeBody,worldAdded,nativeTerrain,ownsNativeWorld;
-    private int terrainMinX,terrainMinY;
+    private int terrainMinX,terrainMinY,terrainWidth;
     private int terrainCreated,terrainRemoved;
-    private final ArrayList<int[]> nativeCells=new ArrayList<>();
-    private int nativeBefore=-1,nativeAfter=-1,vehicleId=-1,chunkCursor,validationCursor,cellCursor;
+
+    private int nativeBefore=-1,nativeAfter=-1,vehicleId=-1,chunkCursor,validationCursor;
     private long commandId,ticks,publications,started,bodyStarted,phaseAt,nextStatus,physicsFrameStart,physicsFrames;
     private String phase="waiting_for_world",error="",finishReason="";
     private double distance,displacement,maxSpeed,lastX,lastY,lastZ,speed,stopDistance,goalDistance,heading,bodyRadius,wheelbase;
@@ -88,7 +90,8 @@ final class ServerVehicleProbe {
                 commandId=command.id();
                 if(command.action().equals("stop")){finishReason="operator_stop";if(vehicle!=null)phase("braking");else{cleanup();phase("stopped");}}
                 else if(vehicle==null&&!PREPARING.contains(phase)) {
-                    error="";finishReason="";distance=0;maxSpeed=0;publications=0;physicsFrames=0;chunkCursor=0;validationCursor=0;cellCursor=0;control=null;
+                    inspectionOnly=command.action().equals("inspect");
+                    error="";finishReason="";distance=0;maxSpeed=0;publications=0;physicsFrames=0;chunkCursor=0;validationCursor=0;control=null;
                     warmTiming=new ProbeTiming();coldTiming=new ProbeTiming();coldOperations.clear();stepMaxNanos=0;applied=null;carLimits=null;
                     safetyScanNanos=safetyScanMaxNanos=safetyScanOver1ms=0;safetyStatus="";
                     waitingNanos=0;parkedStop=Double.POSITIVE_INFINITY;parkedBlocker=-1;bypassRequests=0;blockageDecision=null;
@@ -110,7 +113,11 @@ final class ServerVehicleProbe {
             if(phase.equals("loading")) {
                 if(System.nanoTime()-started>120_000_000_000L){fail("loaded_area_timeout");return;}
                 if(!loadedCorridor())return;
-                phase("validating_road");
+                phase(inspectionOnly?"inspecting":"validating_road");
+            }
+            if(phase.equals("inspecting")){
+                if(System.nanoTime()-phaseAt>120_000_000_000L){finishReason="inspection_complete";phase("complete");}
+                return;
             }
             if(phase.equals("validating_road")){
                 long deadline=System.nanoTime()+1_000_000L;int count=0;
@@ -126,36 +133,52 @@ final class ServerVehicleProbe {
                     // the client-only vehicle constructor. Explicit operator start
                     // initializes it after the map exists; never during premain.
                     if(Bullet.cmdBuf==null)Bullet.init();
-                    WorldSimulation.instance.create();nativeWorldReady=WorldSimulation.instance.created;
+                    // Headless vehicles already have transforms in the server's
+                    // existing frame. WorldSimulation.create() changes that frame
+                    // to the map minimum, shifting every preloaded parked car.
+                    // Initialize only our native server world in the SAME frame;
+                    // never rebase unrelated vehicles or write their positions.
+                    var simulation=WorldSimulation.instance;
+                    if(Bullet.isWorldInit())throw new IllegalStateException("unowned_native_world_already_initialized");
+                    if(!ProbeRoute.finite(simulation.offsetX,simulation.offsetY)||
+                       simulation.offsetX!=(int)simulation.offsetX||simulation.offsetY!=(int)simulation.offsetY)
+                        throw new IllegalStateException("unsupported_native_coordinate_frame");
+                    var meta=IsoWorld.instance.metaGrid;
+                    Bullet.initWorld(meta.getMinX(),meta.getMinY(),meta.getMaxX(),meta.getMaxY(),
+                        (int)simulation.offsetX,(int)simulation.offsetY,false);
+                    simulation.time=GameTime.getServerTimeMills();
+                    simulation.created=Bullet.isWorldInit();nativeWorldReady=simulation.created;
                     if(!nativeWorldReady||!Bullet.isWorldInit())throw new IllegalStateException("native_world_initialization_failed");
                     ownsNativeWorld=true;
                     System.out.println("[LofersVehicleProbe] native_world_initialized");
                 }
-                // Pinned headless native server mode ignores client chunk maps.
-                // Its ServerCell owns 5x5 eight-tile chunks (not Java's 64-tile
-                // ServerMap cells). Own a fresh native world before using this
-                // lifecycle, so cleanup cannot remove another caller's cells.
-                if(!ownsNativeWorld||Bullet.getVehicleCount()!=0||!nativeCells.isEmpty())
+                // Java remains a dedicated server. The native server-cell mode only
+                // stores shapes, never activates their bodies, and excludes car/car
+                // contacts. Own one ordinary native collision map instead. The
+                // stock callback still reads Java ServerMap because server=true there.
+                if(!ownsNativeWorld||Bullet.getVehicleCount()!=0||nativeTerrain)
                     throw new IllegalStateException("probe_requires_owned_empty_native_world");
                 terrainCreated=0;terrainRemoved=0;
                 terrainMinX=route.chunks.stream().mapToInt(ProbeRoute.Tile::x).min().orElseThrow();
                 terrainMinY=route.chunks.stream().mapToInt(ProbeRoute.Tile::y).min().orElseThrow();
+                terrainWidth=Math.max(route.chunks.stream().mapToInt(ProbeRoute.Tile::x).max().orElseThrow()-terrainMinX,
+                    route.chunks.stream().mapToInt(ProbeRoute.Tile::y).max().orElseThrow()-terrainMinY)+1;
+                if(terrainWidth>13)throw new IllegalStateException("native_collision_map_extent");
                 }finally{coldCost("native_world",coldStart);}
                 phase("preparing_terrain");
             }
             if(phase.equals("preparing_terrain")){
-                if(cellCursor<route.cells.size()){
-                    ProbeRoute.Tile cell=route.cells.get(cellCursor);long coldStart=System.nanoTime();
-                    try{Bullet.createServerCell(cell.x(),cell.y());nativeCells.add(new int[]{cell.x(),cell.y()});nativeTerrain=true;terrainCreated++;cellCursor++;}
-                    finally{coldCost("terrain_cell",coldStart);}return;
-                }
-                System.out.println("[LofersVehicleProbe] native_server_cells_created count="+terrainCreated);phase("preparing_physics");
+                long coldStart=System.nanoTime();
+                try{Bullet.activateChunkMap(0,terrainMinX,terrainMinY,terrainWidth);nativeTerrain=true;terrainCreated++;}
+                finally{coldCost("terrain_map",coldStart);}
+                System.out.println("[LofersVehicleProbe] native_collision_map_created width="+terrainWidth);phase("preparing_physics");
+                return;
             }
             if(phase.equals("preparing_physics")) {
                 if(chunkCursor<route.chunks.size()) {
                     ProbeRoute.Tile xy=route.chunks.get(chunkCursor);IsoChunk chunk=ServerMap.instance.getChunk(xy.x(),xy.y());
                     if(chunk==null||!chunk.loaded){fail("physics_chunk_unloaded");return;}
-                    long coldStart=System.nanoTime();try{chunk.updatePhysicsForLevel(0);chunkCursor++;}finally{coldCost("chunk_upload",coldStart);}return;
+                    long coldStart=System.nanoTime();try{ProbeTerrainMeshGuard.validate(chunk);Bullet.setChunkMinMaxLevel(chunk.wx,chunk.wy,chunk.minLevel,chunk.maxLevel);chunk.updatePhysicsForLevel(0);chunkCursor++;}finally{coldCost("chunk_upload",coldStart);}return;
                 }
                 long coldStart=System.nanoTime();try{create();}finally{coldCost("vehicle_create",coldStart);}phase("settling");
             }
@@ -244,15 +267,27 @@ final class ServerVehicleProbe {
     private boolean loadedCorridor(){
         for(ProbeRoute.Tile c:route.chunks) {IsoChunk chunk=ServerMap.instance.getChunk(c.x(),c.y());if(chunk==null||!chunk.loaded)return false;}return true;
     }
+    private static String declared(zombie.core.properties.PropertyContainer properties,String name){
+        String value=properties.get(name);return value==null&&properties.has(name)?"":value;
+    }
     private String tileProblem(int x,int y,boolean requireRoad,boolean actors){
         return tileProblem(x,y,requireRoad,actors,false);
     }
     private String tileProblem(int x,int y,boolean requireRoad,boolean actors,boolean shoulder){
         IsoGridSquare square=ServerMap.instance.getGridSquare(x,y,0);
         if(square==null||square.getFloor()==null||!square.TreatAsSolidFloor()||!square.isOutside()||!square.isFree(false)||square.HasStairs())return "road_not_clear";
+        var merged=square.getProperties();
+        String physics=TrafficTileObstacle.problem(declared(merged,"PhysicsShape"),declared(merged,"PhysicsMesh"),null,merged.get("MoveType"),merged.has("StopCar"),merged.has("HitByCar"));
+        if(!physics.isEmpty())return physics;
+        var objects=square.getObjects();if(objects.size()>32)return "road_object_limit";
+        for(int i=0;i<objects.size();i++){
+            var object=objects.get(i);var properties=object.getProperties();
+            if(properties==null)return "object_properties_unavailable";
+            physics=TrafficTileObstacle.problem(declared(properties,"PhysicsShape"),declared(properties,"PhysicsMesh"),object.sprite==null?null:object.sprite.name,properties.get("MoveType"),properties.has("StopCar"),properties.has("HitByCar"));
+            if(!physics.isEmpty())return physics;
+        }
         if(requireRoad||shoulder){
             if(!BypassTerrain.allows(square.getFloor().getProperties().get("FloorMaterial"),shoulder))return shoulder?"unsuitable_shoulder_surface":"not_asphalt_road";
-            var objects=square.getObjects();if(objects.size()>32)return "road_object_limit";
             for(int i=0;i<objects.size();i++){
                 var properties=objects.get(i).getProperties();String material=properties==null?null:properties.get("FloorMaterial");
                 if(material!=null&&!BypassTerrain.allows(material,shoulder))return "conflicting_surface_overlay";
@@ -451,6 +486,7 @@ final class ServerVehicleProbe {
         vehicle.updateBulletStats();Bullet.setVehicleStatic(vehicle,false);Bullet.setVehicleActive(vehicle,true);
         float[] nativeState=new float[27];
         if(Bullet.getOwnVehiclePhysics(vehicleId,nativeState)!=0||Bullet.getVehicleCount()!=nativeBefore+1)throw new IllegalStateException("native_body_registration_failed");
+        ProbeCrashFeedback.register(vehicle);
         vehicle.setPhysicsActive(true);vehicle.updateFlags=(short)(vehicle.updateFlags|2|8192);
         bodyStarted=System.nanoTime();lastControlAt=bodyStarted;physicsFrameStart=WorldSimulation.instance.getBulletFrameNo();lastX=vehicle.getX();lastY=vehicle.getY();lastZ=vehicle.jniTransform.origin.y;
         System.out.println("[LofersVehicleProbe] native_body_registered id="+vehicleId+" count="+Bullet.getVehicleCount());
@@ -465,6 +501,7 @@ final class ServerVehicleProbe {
     private void cleanupInternal(){
         if(vehicle==null){releaseTerrain();return;}
         if(vehicle.soundHornOn)vehicle.onHornStop();
+        ProbeCrashFeedback.unregister(vehicle);
         try{if(nativeBody){Bullet.controlVehicle(vehicleId,0,100,0);Bullet.setVehicleActive(vehicle,false);Bullet.removeVehicle(vehicleId);nativeBody=false;}}
         catch(Throwable t){error="native_cleanup_failed:"+t.getClass().getSimpleName();}
         try{
@@ -481,15 +518,18 @@ final class ServerVehicleProbe {
     private void releaseTerrain(){
         if(!nativeTerrain||nativeBody)return;
         try{
-            while(!nativeCells.isEmpty()){
-                int[] xy=nativeCells.getLast();Bullet.removeServerCell(xy[0],xy[1]);nativeCells.removeLast();terrainRemoved++;
-            }
+            Bullet.deactivateChunkMap(0);terrainRemoved++;
             nativeTerrain=false;
         }
         catch(Throwable t){error="terrain_cleanup_failed:"+t.getClass().getSimpleName();}
     }
     private void publish(){
         Map<String,String> s=new LinkedHashMap<>();
+        var impacts=ProbeCrashFeedback.snapshot();
+        s.put("native_crashes",Long.toString(impacts.crashes()));s.put("crash_sound_requests",Long.toString(impacts.soundRequests()));
+        s.put("crash_feedback_failures",Long.toString(impacts.failures()));s.put("crash_feedback_error",impacts.failure());
+        s.put("last_crash_amount",Float.toString(impacts.amount()));s.put("last_crash_front",Boolean.toString(impacts.front()));
+        s.put("last_crash_sound",impacts.sound());s.put("last_crash_x",Float.toString(impacts.x()));s.put("last_crash_y",Float.toString(impacts.y()));
         s.put("world",world);s.put("server_epoch",epoch);s.put("phase",phase);s.put("error",error);s.put("finish_reason",finishReason);
         s.put("command_id",Long.toString(commandId));s.put("body_registered",Boolean.toString(nativeBody));s.put("vehicle_id",Integer.toString(vehicleId));
         s.put("world_present",Boolean.toString(vehicle!=null&&worldPresent));
@@ -502,7 +542,8 @@ final class ServerVehicleProbe {
         s.put("bypass_reservation_active",Boolean.toString(passGrant!=null));s.put("drive_route_length",Double.toString(driveRoute.length));
         s.put("driver_seed",Long.toString(commandId));
         s.put("horn_on",Boolean.toString(vehicle!=null&&vehicle.soundHornOn));
-        if(blockageDecision!=null)s.put("blockage_state",blockageDecision.state());
+        if(blockageDecision!=null){s.put("blockage_state",blockageDecision.state());s.put("driver_offroad_selected",Boolean.toString(blockageDecision.tryOffroad()));}
+        s.put("physics_offset_x",Float.toString(WorldSimulation.instance.offsetX));s.put("physics_offset_y",Float.toString(WorldSimulation.instance.offsetY));
         if(temperament!=null){s.put("driver_patience_seconds",Double.toString(temperament.patienceSeconds()));s.put("driver_horn_chance",Double.toString(temperament.hornChance()));s.put("driver_offroad_chance",Double.toString(temperament.offroadWillingness()));}
         s.put("x",Double.toString(lastX));s.put("y",Double.toString(lastY));s.put("physics_z",Double.toString(lastZ));
         s.put("speed_kmh",Double.toString(speed));s.put("max_speed_kmh",Double.toString(maxSpeed));s.put("distance",Double.toString(distance));s.put("stop_distance",Double.toString(stopDistance));
@@ -563,8 +604,11 @@ final class ServerVehicleProbe {
         s.put("native_library_initialized",Boolean.toString(Bullet.cmdBuf!=null));
         s.put("native_terrain_active",Boolean.toString(nativeTerrain));
         s.put("native_terrain_min_chunk_x",Integer.toString(terrainMinX));s.put("native_terrain_min_chunk_y",Integer.toString(terrainMinY));
-        s.put("native_terrain_mode","server_cells_5x5");s.put("native_terrain_cells_live",Integer.toString(nativeCells.size()));
-        s.put("native_terrain_cells_created",Integer.toString(terrainCreated));s.put("native_terrain_cells_removed",Integer.toString(terrainRemoved));
+        s.put("native_terrain_mode","owned_collision_chunk_map");s.put("native_terrain_maps_live",nativeTerrain?"1":"0");
+        s.put("native_terrain_map_width",Integer.toString(terrainWidth));
+        s.put("native_terrain_cells_live","0");
+        s.put("native_terrain_maps_created",Integer.toString(terrainCreated));s.put("native_terrain_maps_removed",Integer.toString(terrainRemoved));
+        s.put("native_terrain_cells_created","0");s.put("native_terrain_cells_removed","0");
         s.put("client_validation","not_observed");io.status.set(Collections.unmodifiableMap(s));
     }
 }

@@ -60,6 +60,19 @@ def test_source_identity_detects_same_size_map_changes_and_tile_definition_chang
     assert third != fourth
 
 
+def test_supplemental_tile_inputs_invalidate_navigation_identity(tmp_path):
+    root=tmp_path/'map';root.mkdir()
+    definitions=tmp_path/'base.tiles.txt';definitions.write_text('base')
+    extra=tmp_path/'erosion.tiles.txt';extra.write_text('first')
+    first,_=source_identity(root,definitions,(0,0,8,8),[extra])
+    extra.write_text('other')
+    second,_=source_identity(root,definitions,(0,0,8,8),[extra])
+    assert first!=second
+    extra.with_suffix('').write_bytes(b'compiled')
+    third,_=source_identity(root,definitions,(0,0,8,8),[extra])
+    assert third!=second
+
+
 def test_rebake_refreshes_prerequisite_road_mask_when_pack_size_and_mtime_are_preserved(tmp_path):
     """Exercise both caches with real tiny map records, not a mocked mask."""
     root = tmp_path / 'map';root.mkdir()

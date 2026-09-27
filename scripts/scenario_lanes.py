@@ -137,6 +137,22 @@ def muldraugh_bypass_course(surface):
                 'shoulder_scope':'personality-dependent fallback; native ground/wall/actor checks mandatory; not offline-approved grass driving'}}
 
 
+def muldraugh_shoulder_course(surface):
+    """Separate road course beside an open southern verge; live clearance is mandatory."""
+    points=[(10732.5,9861.5),(10754.5,9861.5),(10776.5,9861.5)]
+    bad=[(x,y) for x in range(10730,10779) for y in range(9857,9863) if not surface.asphalt(x,y)]
+    if bad:raise ValueError(f'Reviewed shoulder approach is not clear asphalt: {bad[:8]}')
+    def line(a,b):return [{'x':a[0]+(b[0]-a[0])*t,'y':a[1]+(b[1]-a[1])*t} for t in (0,1/3,2/3,1)]
+    return {'waypoints':[{'x':x,'y':y} for x,y in points], 'lane_mode':True,
+            'beziers':[line(a,b) for a,b in zip(points,points[1:])],
+            'speed_kmh':40,'stops':[],'bypass':True,'shoulder':True,
+            'traffic_evidence':{'scope':'reviewed shoulder test approach; off-road corridor requires live validation',
+                'reviewed_road_bounds':[10730,9857,10779,9863], 'verified_road_tiles':294,
+                'fixture_tiles':[[10754,9862,0],[10754,9858,0]], 'fixture_heading_degrees':90,
+                'observer_xy':[10753.5,9854.5], 'shoulder_limit_kmh':8,
+                'denial_fixture_tile':[10758,9864,0]}}
+
+
 if __name__=='__main__':
     import argparse
     import hashlib
@@ -145,16 +161,20 @@ if __name__=='__main__':
     from scenario_roads import RoadSurface
     from scenario_navigation import source_identity
     root=Path(__file__).resolve().parents[1]
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--bypass',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__)
+    modes=parser.add_mutually_exclusive_group()
+    modes.add_argument('--bypass',action='store_true');modes.add_argument('--shoulder',action='store_true');args=parser.parse_args()
     source=root/'data/game-files/media/maps/Muldraugh, KY'
     definitions=root/'data/game-files/media/newtiledefinitions.tiles.txt'
-    bounds=(10664,9855,10713,9866) if args.bypass else (10780,9835,10828,9870)
-    identity,_=source_identity(source,definitions,bounds)
-    surface=RoadSurface(source,root/'.tooling/scenario-roads'/identity,definitions)
-    result=muldraugh_bypass_course(surface) if args.bypass else muldraugh_lane_course(surface)
+    bounds=(10730,9854,10779,9867) if args.shoulder else (10664,9855,10713,9866) if args.bypass else (10780,9835,10828,9870)
+    supplemental=[definitions.with_name('tiledefinitions_erosion.tiles.txt')] if args.shoulder else []
+    identity,inputs=source_identity(source,definitions,bounds,supplemental)
+    surface=RoadSurface(source,root/'.tooling/scenario-roads'/identity,definitions,supplemental)
+    result=muldraugh_shoulder_course(surface) if args.shoulder else muldraugh_bypass_course(surface) if args.bypass else muldraugh_lane_course(surface)
+    if supplemental:result['supplemental_definitions']={str(path.relative_to(root)):inputs['sources'][str(path.resolve())] for path in supplemental}
     result['source_identity']=identity
     result['baker_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
-    output=root/'artifacts/scenario-map'/('vehicle-bypass-course.json' if args.bypass else 'vehicle-lane-course.json')
+    output=root/'artifacts/scenario-map'/('vehicle-shoulder-course.json' if args.shoulder else 'vehicle-bypass-course.json' if args.bypass else 'vehicle-lane-course.json')
     output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps(result,indent=2)+'\n')
     print(output)

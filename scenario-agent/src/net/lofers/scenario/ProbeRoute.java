@@ -17,7 +17,10 @@ final class ProbeRoute {
     ProbeRoute(List<Point> input) {this(input,false);}
     ProbeRoute(List<Point> input,boolean laneMode) {this(input,laneMode,null);}
     ProbeRoute(BezierPath trajectory){this(trajectory.knots(),true,trajectory);}
-    private ProbeRoute(List<Point> input,boolean laneMode,BezierPath trajectory) {
+    ProbeRoute(BezierPath trajectory,double loadingMargin){this(trajectory.knots(),true,trajectory,loadingMargin);}
+    private ProbeRoute(List<Point> input,boolean laneMode,BezierPath trajectory) {this(input,laneMode,trajectory,9);}
+    private ProbeRoute(List<Point> input,boolean laneMode,BezierPath trajectory,double loadingMargin) {
+        if(!Double.isFinite(loadingMargin)||loadingMargin<9||loadingMargin>13)throw new IllegalArgumentException("Invalid loading margin");
         this.laneMode=laneMode;this.trajectory=trajectory;
         if(input.size()<2||input.size()>16)throw new IllegalArgumentException("Route requires2..16points");
         points=List.copyOf(input);cumulative=new double[input.size()];
@@ -39,8 +42,8 @@ final class ProbeRoute {
                 double dx=Math.max(Math.max(x-p.x,0),p.x-(x+1.0)),dy=Math.max(Math.max(y-p.y,0),p.y-(y+1.0));
                 if(Math.hypot(dx,dy)<=2.375)swept.add(new Tile(x,y));
             }
-            for(int cy=(int)Math.floor((p.y-9)/8);cy<=(int)Math.floor((p.y+9)/8);cy++)
-                for(int cx=(int)Math.floor((p.x-9)/8);cx<=(int)Math.floor((p.x+9)/8);cx++)coverage.add(new Tile(cx,cy));
+            for(int cy=(int)Math.floor((p.y-loadingMargin)/8);cy<=(int)Math.floor((p.y+loadingMargin)/8);cy++)
+                for(int cx=(int)Math.floor((p.x-loadingMargin)/8);cx<=(int)Math.floor((p.x+loadingMargin)/8);cx++)coverage.add(new Tile(cx,cy));
         }
         if(laneMode)swept=trajectory==null?ProbeFootprint.swept(points):ProbeFootprint.swept(trajectory);
         if(swept.size()>1500||coverage.size()>96)throw new IllegalArgumentException("Route spatial work exceeds bounds");

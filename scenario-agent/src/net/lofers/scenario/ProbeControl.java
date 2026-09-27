@@ -38,6 +38,7 @@ final class ProbeControl implements Runnable {
             new ProbeDriver(route,speed,2,stops); // Validate bounded stop contract before startup.
             boolean bypass=Boolean.parseBoolean(p.getProperty("vehicle_probe.bypass","false"));
             if(bypass&&(!roadMode||!laneMode||!stops.isEmpty()||!TrafficBypass.straight(route)))throw new IllegalArgumentException("Bypass requires a reviewed straight road without junction stops");
+            if(bypass)route=new ProbeRoute(route.trajectory,13); // Retain both detours' normal nine-tile observation margins.
             boolean shoulder=Boolean.parseBoolean(p.getProperty("vehicle_probe.shoulder","false"));
             if(shoulder&&!bypass)throw new IllegalArgumentException("Shoulder choice requires a reviewed bypass route");
             return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),List.copyOf(stops),bypass,shoulder);
@@ -67,7 +68,7 @@ final class ProbeControl implements Runnable {
         if(!epoch.equals(p.getProperty("server_epoch")))throw new IOException("Control server_epoch mismatch");
         long id;try{id=Long.parseLong(p.getProperty("command_id",""));}catch(NumberFormatException e){throw new IOException("Invalid command_id");}
         if(id<=last)return null;
-        String action=p.getProperty("action","");if(!Set.of("start","stop").contains(action))throw new IOException("Action must be start or stop");
+        String action=p.getProperty("action","");if(!Set.of("start","stop","inspect").contains(action))throw new IOException("Action must be start, stop or inspect");
         return new Command(id,action);
     }
     public void run() {

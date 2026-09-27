@@ -87,12 +87,21 @@ grass and dirt materials; ordinary paved surfaces permit transitions. Missing ma
 water, sand, clay and burnt surfaces are rejected initially. A shoulder attempt uses a
 6–8 km/h ceiling and 60% of the ordinary planning braking/lateral preferences; these are
 conservative preferences, not calibrated native terrain coefficients. Existing wall,
-occupancy, physics-loading and road-rejoin checks remain mandatory. Passing through grass
-has not been established by the road test.
+occupancy, physics-loading and road-rejoin checks remain mandatory. A separate empty-server
+test now refuses an occupied shoulder, then passes on the cleared verge at up to 7.43 km/h
+and rejoins while both road obstacles remain. A client confirmed road-obstacle avoidance, but the car phased through a pole on the
+avoidance path. The corrected planner blocks that tile. Native server cells did not
+activate uploaded terrain bodies, so the probe now owns one bounded ordinary Bullet
+collision map while Java/network authority stays on the server. A 5 km/h test hit a
+Tree-shaped pole, stopped, damaged the stock hood/windshield, and requested one existing
+crash sound. This is empty-server proof; audible/client presentation remains pending.
+Missing custom mesh definitions fail preparation rather than silently omitting geometry.
+Ordinary parked Java cars still need registered native bodies before actual car-to-car
+contact can be claimed. The restored native collision mask alone does not establish that.
 
 `TrafficPassReservations` now gates the single probe's maneuver and has detached conflict,
 stale-occupancy, priority and generation tests. It is **not yet connected to a managed
-multi-car executor**. Required follow-up evidence: real shoulder attempt/denial,
+multi-car executor**. Required follow-up evidence: client-observed shoulder attempt/denial,
 opposing contenders, new obstacle during a pass, blocked rejoin, stale-owner
 recovery, native contact and two ordinary clients. A single-car test does not prove those.
 

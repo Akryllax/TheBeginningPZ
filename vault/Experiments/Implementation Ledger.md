@@ -10,6 +10,133 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Pole collision activation, planning exclusion and crash feedback — 2026-09-27
+
+The original map and live square at (10753,9864,0) both identify the pole as
+`appliances_com_01_94`, with `PhysicsShape=Tree`, `StopCar` and `HitByCar`; the live
+square has no `CarSlowFactor`. The planning bug was ignoring vehicle-collision metadata
+on otherwise walkable tiles. Live and offline checks now reject those declarations and
+legacy column sprites, while retaining the exact Floor exemption. The approved asphalt
+approach remains valid; the original shoulder path is blocked by the pole.
+
+Native inspection independently found that headless ServerCells store uploaded shapes but
+never activate their obstacle bodies. Their separate flat ground supported driving and
+masked the missing obstacles. The native server collision mask also excluded vehicle-to-
+vehicle contact. The isolated probe now initializes its exclusively owned Bullet world
+with the ordinary collision mode and one bounded ChunkMap; Java remains a dedicated server,
+using ServerMap and normal authoritative replication. Existing global offsets are preserved.
+No native/core files or client JVM flags changed. Missing custom mesh registrations fail
+bounded chunk preparation; loading arbitrary mesh assets is not implemented here.
+
+Actual stock crash calls already apply server damage. Their SoundManager path was silent
+on a dedicated server. An identity-, thread- and authority-scoped hook now broadcasts the
+matching existing sound only when the managed body's stock crash method executes. It does
+not inject collision, change speed/pose, or apply duplicate damage. Exact class hashes and
+bytecode/scope fixtures guard this integration. The `inspect` control loads the reviewed
+area without creating a body, for bounded read-only scene inspection.
+
+Native runtime evidence:
+- `artifacts/scenario-agent/pole-native-baseline/`, agent `7b1201959ca35b5b2f731dec63df8202f5ab689fde98674b4ea197363d397030`:
+  ordinary 44-tile route arrived, peak 33.34 km/h, no crashes, native cleanup zero;
+  measured warm hook maximum 1.74 ms. This is a short-course peak, not sustained cruise.
+- `artifacts/scenario-agent/pole-contact-proof/`, same agent: an empty-server private
+  low-speed experiment inserted one marked temporary pole after initial road validation.
+  At 5 km/h the car made real native contact and stopped at X=10738.82, before the pole
+  at X=10740.5. Stock crash count 1, severity 1.487, hood 100->99, windshield 100->96;
+  one `VehicleCrash1` broadcast requested, feedback errors 0. The exact tagged pole and
+  managed car were removed, native bodies returned to zero. No sound was heard/validated
+  by a client during this empty-server run.
+- `artifacts/scenario-agent/pole-bypass-denial/`, agent `c31d20bea002e106ba6060c9d894b478bb8f7b2fafe3b38464bab41398a0c15b`:
+  willing driver approached two road obstructions, waited, then rejected the shoulder
+  with `candidate_physical_shape_obstacle`. No pass or crash occurred. All three preloaded
+  cars retained exact coordinates through native initialization and the test; all fixtures
+  cleaned. One native map created/removed, native bodies zero. Warm hook p95 <=1.1 ms,
+  p99 <=1.8 ms, maximum 11.54 ms; this does not measure all engine physics work.
+
+Automated checks: 190 Python tests and the complete Java fixture/build suite passed,
+including missing-mesh rejection outside the planned route and crash-hook scope/bytecode
+checks. Logs: `artifacts/pole-project-tests.log`, `artifacts/pole-agent-tests.log`.
+Final agent SHA256: `36971f0a24ebb65e8c2d25eadcf442a7a74391d3cd7bcfb8ff1e0f3883bde157`.
+Final-build runtime smoke: `artifacts/scenario-agent/pole-native-final/`; route arrived,
+no crashes/errors, native bodies/maps cleaned to zero. Warm hook p95 <=0.4 ms,
+p99 <=0.5 ms, maximum 1.79 ms. The later container shutdown occurred after completion
+and logged save completion; it is separate from the successful drive receipt.
+Private native and bytecode evidence is retained under `artifacts/`; no proprietary code
+belongs in the source commit. Ordinary parked Java vehicles still need separately owned
+native bodies, so physical car-to-car impact and fleet cleanup remain pending. Client
+presentation/audio and two-client consistency are separate, unperformed checks.
+
+## Client correction: road avoidance works, pole collision fails — 2026-09-27
+
+The client clarified the outcome of `shoulder-denial-pass-20260927_000818`: the moving
+car successfully avoided the road obstacles, but phased through a pole on its avoidance
+path. Preserve this distinction: the maneuver worked; physical collision acceptance failed.
+Do not infer collision safety from route arrival, no client errors, or geometric fixtures.
+Further shoulder trials are on hold pending collider investigation; this is an operational
+hold, not evidence that the runtime shoulder option has been removed or disabled.
+
+Read-only inspection shows chunk upload handles built-in `PhysicsShape` values separately
+from custom `PhysicsMesh` values. Custom mesh upload depends on a registered Bullet mesh
+index; a missing index skips that mesh. The probe calls chunk upload, but does not explicitly
+initialize the mesh registry. This is a candidate cause, not a confirmed diagnosis of this
+particular pole. Private research: `artifacts/decompiled/collision-shapes/`.
+
+The same client-present run independently preserved all 17 preloaded vehicle coordinates
+(maximum displacement 0.0). The saved control car and all test fixtures were removed.
+A single warm hook outlier reached 145.906 ms (p95 <=0.4 ms, p99 <=0.8 ms); its cause is
+unresolved. Collision shapes, native contact response and impact feedback must be verified
+before further shoulder acceptance or managed multi-car trials.
+
+## Shoulder refusal/pass and server coordinate frame — 2026-09-27
+
+The next native shoulder test exposed two limitations in the original fixed detours.
+First, the original route retained a nine-tile observation margin, while a shoulder detour
+needed another chunk row. Passing routes now retain a bounded thirteen-tile margin up front;
+candidate geometry still must fit entirely within that retained coverage. Second, the
+RCON-created parked cars faced across the road. The inflated footprint correctly rejected
+the narrow gap beside one of those cars. The revised fixture uses the game's debug factory
+and sets a road-parallel heading before its first update; clearance was not weakened.
+Evidence of the failed trial and exact fixture recovery is retained at
+`artifacts/scenario-agent/shoulder-denial-pass-20260926_235516/`. Two fixtures had unloaded
+before cleanup; their exact saved locations were reloaded and checked before native removal.
+The successful harness removes fixtures during its terminal viewing hold, before unloading.
+
+An independent inspection found unrelated parked vehicles with invalid coordinates in the
+older disposable world. Its private historical database snapshots show repeated 64,000-tile
+shifts. The late `WorldSimulation.create()` call changes global offsets after headless
+vehicle transforms already exist. The probe now initializes its own native server world
+in the existing coordinate frame, without changing global offsets or any vehicle pose.
+It rejects a preexisting unowned native world. Source/bytecode evidence is under
+`artifacts/decompiled/physics-world-offset/`; historical rows are recorded in
+`artifacts/scenario-agent/frame-offset-investigation.json`. The old disposable world is
+preserved, not repaired or reused for this proof. No playable or production world was touched.
+
+Fresh world: `LofersVehicleProbe_20260926_235220_a91875`. Final tested agent SHA256:
+`b13b83912a67839c1c96d01e7e42c86faa4c3734eafa634ade45f4407fd7a090`.
+The new shoulder course at X=10732.5–10776.5, Y=9861.5 uses explicitly supplied installed
+erosion definitions to resolve decorative road cracks. Text and binary inputs are hashed;
+conflicting duplicate tile definitions remain unknown and fail surface validation.
+Automated checks: **170 project tests** plus all Java fixtures, including the actual
+chunk-boundary regression and blocked-shoulder geometry. Logs:
+`artifacts/shoulder-project-tests.log`, `artifacts/shoulder-agent-tests.log`.
+
+Empty-server evidence: `artifacts/scenario-agent/shoulder-denial-pass-20260927_000257/`,
+epoch `a20db534-c1f3-47df-9d12-cdd7cbac5184`. A deliberately selected willing test personality
+first refused the blocked shoulder. After two unsuccessful requests, only the shoulder
+obstruction was removed. Both road fixtures remained. The next request passed along the
+right shoulder, rejoined the lane and reached the destination. Shoulder peak was 7.43 km/h,
+maximum Y=9864.6182; full-course approach peak was 17.55 km/h. Both retained parked fixtures
+kept identical positions. All sampled coordinate offsets stayed zero. Warm hook p95 <=0.4 ms,
+p99 <=0.6 ms, max 2.975 ms. Native body count returned to zero; all three obstruction
+fixtures were removed. One separately recorded stationary control car was saved at
+(10735,9855) for a restart/client-present initialization check. This is not client visual
+acceptance or a complete preloaded-vehicle preservation proof; those checks are pending.
+
+Two-car execution still requires a shared native-world/cell lifetime and one batched
+reservation coordinator. Do not instantiate two independent copies of the single-car probe:
+its body-count and terrain-ownership assumptions deliberately exclude that use. Moving
+managed-car clearance, changes during a pass and opposing-driver fairness remain live gates.
+
 ## Parked-car passing, audible horn and optional shoulders — 2026-09-27
 
 The user requested temperament-dependent passing, then clarified that willing drivers may
