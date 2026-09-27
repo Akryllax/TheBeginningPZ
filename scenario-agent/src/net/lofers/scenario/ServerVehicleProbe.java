@@ -201,6 +201,9 @@ final class ServerVehicleProbe {
             long now=System.nanoTime();
             if(phase.equals("waiting_obstacle"))waitingNanos+=Math.max(0,now-lastControlAt);
             if(now-bodyStarted-waitingNanos>config.deadlineSeconds()*1_000_000_000L){fail("absolute_deadline");return;}
+            if(config.impact()!=null&&(phase.equals("driving")||phase.equals("settling"))&&ProbeCrashFeedback.snapshot().crashes()>0){
+                finishReason="native_impact";phase("braking");
+            }
             if(phase.equals("settling")&&now-phaseAt>2_000_000_000L)phase("driving");
             double delta=lastControlAt==0?0.1:(now-lastControlAt)/1_000_000_000.0;lastControlAt=now;
             float force=0,brake=80,steering=0;
@@ -209,7 +212,8 @@ final class ServerVehicleProbe {
                     carLimits=NativeProbeControls.limits(vehicle,speed);if(bypassOffroad)carLimits=BypassTerrain.cautious(carLimits);driver.limits(carLimits);
                     if(nativeMass!=vehicle.getMass()){nativeMass=vehicle.getMass();Bullet.setVehicleMass(vehicleId,nativeMass);}
                 }
-                String danger=config.roadMode()?warmSafety():"";
+                String danger=impactObserverProblem();
+                if(danger.isEmpty())danger=config.roadMode()?warmSafety():"";
                 if(passGrant!=null&&danger.isEmpty()){
                     passReservations.resolve(List.of(passRequest),now/1e9);
                     if(!passReservations.mayProceed(passGrant,now/1e9))danger="passing_reservation_lost";
@@ -278,14 +282,18 @@ final class ServerVehicleProbe {
         if(square==null||square.getFloor()==null||!square.TreatAsSolidFloor()||!square.isOutside()||!square.isFree(false)||square.HasStairs())return "road_not_clear";
         var merged=square.getProperties();
         String physics=TrafficTileObstacle.problem(declared(merged,"PhysicsShape"),declared(merged,"PhysicsMesh"),null,merged.get("MoveType"),merged.has("StopCar"),merged.has("HitByCar"));
-        if(!physics.isEmpty())return physics;
+        boolean target=config.impact()!=null&&config.impact().tile(x,y);
+        if(!physics.isEmpty()&&!target)return physics;
+        boolean targetFound=false;
         var objects=square.getObjects();if(objects.size()>32)return "road_object_limit";
         for(int i=0;i<objects.size();i++){
             var object=objects.get(i);var properties=object.getProperties();
             if(properties==null)return "object_properties_unavailable";
+            if(target&&config.impact().matches(object)){if(targetFound)return "duplicate_impact_target";targetFound=true;continue;}
             physics=TrafficTileObstacle.problem(declared(properties,"PhysicsShape"),declared(properties,"PhysicsMesh"),object.sprite==null?null:object.sprite.name,properties.get("MoveType"),properties.has("StopCar"),properties.has("HitByCar"));
             if(!physics.isEmpty())return physics;
         }
+        if(target&&!targetFound)return "impact_target_missing";
         if(requireRoad||shoulder){
             if(!BypassTerrain.allows(square.getFloor().getProperties().get("FloorMaterial"),shoulder))return shoulder?"unsuitable_shoulder_surface":"not_asphalt_road";
             for(int i=0;i<objects.size();i++){
@@ -297,6 +305,15 @@ final class ServerVehicleProbe {
         }
         if(actors){var moving=square.getMovingObjects();if(moving.size()>16)return "road_actor_limit";
             for(IsoMovingObject object:moving)if(object!=vehicle)return "actor_in_vehicle_path";}
+        return "";
+    }
+    private String impactObserverProblem(){
+        if(config.impact()==null)return "";
+        if(GameServer.Players.size()>16)return "impact_observer_limit";
+        for(var player:GameServer.Players){
+            if(player==null||!ProbeRoute.finite(player.getX(),player.getY())||
+               route.project(player.getX(),player.getY()).distance()<12)return "observer_inside_impact_envelope";
+        }
         return "";
     }
     private final long[] checkedRoadTiles=new long[256];
@@ -443,6 +460,7 @@ final class ServerVehicleProbe {
     }
     private void create(){
         if(!loadedCorridor())throw new IllegalStateException("route_chunks_unloaded_before_spawn");
+        String observerProblem=impactObserverProblem();if(!observerProblem.isEmpty())throw new IllegalStateException(observerProblem);
         // No body may appear on an actor that entered after the staged road scan.
         for(int y=(int)Math.floor(config.y()-3);y<=(int)Math.floor(config.y()+3);y++)for(int x=(int)Math.floor(config.x()-3);x<=(int)Math.floor(config.x()+3);x++){
             double dx=Math.max(Math.max(x-config.x(),0),config.x()-(x+1.0)),dy=Math.max(Math.max(y-config.y(),0),config.y()-(y+1.0));
@@ -530,6 +548,7 @@ final class ServerVehicleProbe {
         s.put("crash_feedback_failures",Long.toString(impacts.failures()));s.put("crash_feedback_error",impacts.failure());
         s.put("last_crash_amount",Float.toString(impacts.amount()));s.put("last_crash_front",Boolean.toString(impacts.front()));
         s.put("last_crash_sound",impacts.sound());s.put("last_crash_x",Float.toString(impacts.x()));s.put("last_crash_y",Float.toString(impacts.y()));
+        s.put("impact_test",Boolean.toString(config.impact()!=null));
         s.put("world",world);s.put("server_epoch",epoch);s.put("phase",phase);s.put("error",error);s.put("finish_reason",finishReason);
         s.put("command_id",Long.toString(commandId));s.put("body_registered",Boolean.toString(nativeBody));s.put("vehicle_id",Integer.toString(vehicleId));
         s.put("world_present",Boolean.toString(vehicle!=null&&worldPresent));

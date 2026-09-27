@@ -263,7 +263,8 @@ def configure_route(m, source):
         if any(abs((p['x']-points[0][0])*dy-(p['y']-points[0][1])*dx)>span*.001 for curve in curves for p in curve):
             raise ValueError('Bypass requires a straight road')
     dx, dy = points[1][0] - points[0][0], points[1][1] - points[0][1]
-    changes = {'vehicle_probe.x': points[0][0], 'vehicle_probe.y': points[0][1],
+    changes = {'vehicle_probe.impact_target': '', 'vehicle_probe.impact_token': '',
+               'vehicle_probe.x': points[0][0], 'vehicle_probe.y': points[0][1],
                'vehicle_probe.heading_degrees': math.degrees(math.atan2(dx, dy)) % 360,
                'vehicle_probe.lane_mode': str(lane).lower(),
                'vehicle_probe.beziers': curve_text,

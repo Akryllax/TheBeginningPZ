@@ -58,7 +58,8 @@ The planner now rejects declared vehicle-collision objects, including walkable p
 Native headless server cells stored obstacle shapes without activating bodies; the probe
 now owns a bounded ordinary Bullet collision map while Java remains a dedicated server.
 An empty-server 5 km/h pole contact stopped physically, caused stock hood/windshield damage,
-and requested one crash sound; a client must still verify its presentation/audio. Ordinary
+and requested one crash sound. One ordinary client has now confirmed collision, damage
+and sound at 5 km/h and again at 38.8 km/h with a marked pole on a reviewed impact course. Ordinary
 parked Java cars are not yet registered as native bodies, so do not claim car-to-car impact
 support. Keep existing global offsets when initializing physics: an older initializer shifted
 preloaded parked vehicles. The old disposable save is retained. All test fixtures are

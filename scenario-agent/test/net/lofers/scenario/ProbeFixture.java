@@ -10,6 +10,7 @@ final class ProbeFixture {
     static void run()throws Exception {
         ProbeDriverFixture.run();
         TrafficTileObstacleFixture.run();
+        ProbeImpactFixture.run();
         Properties p=new Properties();p.setProperty("vehicle_probe.enabled","false");
         ScenarioFixture.check(ProbeControl.Config.read(p,"AKR_DayOne",true)==null,"Disabled probe not inert");
         p.setProperty("vehicle_probe.enabled","true");p.setProperty("vehicle_probe.directory","/private/probe");

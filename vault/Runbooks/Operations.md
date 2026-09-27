@@ -137,6 +137,16 @@ registrations fail chunk preparation. Remove managed bodies before deactivating 
 Do not infer native collision support for ordinary parked Java cars: registration/lifetime
 for those bodies is still a separate gate.
 
+A disposable impact scene can additionally declare `vehicle_probe.impact_target=x,y`
+and a private `vehicle_probe.impact_token=impact-<32 hex digits>`. Only a matching tagged
+`appliances_com_01_94` pole on the centerline of a straight Bézier course is exempted;
+approach and runout must each be at least 15 tiles. Bypasses/stops cannot coexist with it.
+Players within 12 tiles of the route stop the experiment. An actual stock crash enters
+braking and the normal 20-second viewing hold. Native physics and stock damage stay enabled.
+This is operator test tooling, not a general traffic-incident trigger. Configuring an ordinary
+route revokes the target/token automatically. `inspect` can load the scene before creating
+its exact tagged fixture; absent or mismatched fixtures must be reconciled before retry.
+
 Route configuration requires the probe server to be stopped. It validates bounded numeric
 waypoints, keeps the previous private configuration and source artifact, and shares an
 operation lock with preparation/start/stop. The Java runtime separately validates route

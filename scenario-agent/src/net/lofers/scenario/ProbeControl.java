@@ -7,8 +7,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Private operator files, detached diagnostics and bounded route geometry; no game objects. */
 final class ProbeControl implements Runnable {
-    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode,boolean driverModel,List<ProbeDriver.Stop> stops,boolean bypass,boolean shoulder) {
-        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false,false,List.of(),false,false);}
+    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode,boolean driverModel,List<ProbeDriver.Stop> stops,boolean bypass,boolean shoulder,ProbeImpactTarget impact) {
+        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false,false,List.of(),false,false,null);}
         double deadlineSeconds(){return roadMode?120:30;}
         static Config read(Properties p,String world,boolean server) {
             if(!Boolean.parseBoolean(p.getProperty("vehicle_probe.enabled","false")))return null;
@@ -41,7 +41,7 @@ final class ProbeControl implements Runnable {
             if(bypass)route=new ProbeRoute(route.trajectory,13); // Retain both detours' normal nine-tile observation margins.
             boolean shoulder=Boolean.parseBoolean(p.getProperty("vehicle_probe.shoulder","false"));
             if(shoulder&&!bypass)throw new IllegalArgumentException("Shoulder choice requires a reviewed bypass route");
-            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),List.copyOf(stops),bypass,shoulder);
+            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),List.copyOf(stops),bypass,shoulder,ProbeImpactTarget.read(p,route,roadMode,bypass,!stops.isEmpty()));
         }
         private static double bounded(Properties p,String name,double fallback,double min,double max) {
             double n=Double.parseDouble(p.getProperty("vehicle_probe."+name,Double.toString(fallback)));

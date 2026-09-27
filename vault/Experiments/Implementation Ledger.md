@@ -10,6 +10,51 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Confirmed low-speed crash and faster impact preparation — 2026-09-27
+
+The user confirmed the ordinary client saw and heard the 5 km/h pole collision:
+“It did crash, with sound.” Evidence: `artifacts/scenario-agent/pole-client-contact-20260927_094426/`.
+One native crash, one sound request, zero feedback errors; hood 100->96, windshield
+100->97 and left front door/window damage. All 16 other loaded cars retained coordinates,
+no new client error lines, tagged pole and managed body cleaned. This is one-client
+collision/audio acceptance, not two-client consistency or car-to-car contact.
+
+At the user's request, a faster scene now uses the normal drivetrain, a reviewed 60-tile
+straight asphalt route and a 50 km/h ceiling. It explicitly exempts only one marked pole
+at one configured tile from avoidance. Missing/wrong/duplicate targets, other obstacles,
+bypasses and junction stops remain rejected. Every connected player must stay at least
+12 tiles from the route; entering that envelope requests braking. A stock crash stops
+driving immediately, retains physics/braking and holds the damaged car for 20 seconds.
+No velocity, damage or part-condition injection is used. Normal route configuration clears
+both impact target and token so the exemption cannot leak into another course.
+
+Agent `21286219739b4f17157514815136239a02b4f99dac8bc3494c66370a7b81fe21` passed all Java
+fixtures and 190 Python tests. Empty-server evidence:
+`artifacts/scenario-agent/high-speed-impact-empty-20260927_094922/`. Actual peak 35.41 km/h,
+one native impact with stock severity 27.367 and `VehicleCrash2`, hood 100->75,
+windshield 100->84, headlights 100->79 each. The 50 km/h ceiling was not reached on
+this short course. Normal braking/viewing hold completed, exact fixture removed and native
+body count returned to zero.
+
+The client retry at `artifacts/scenario-agent/high-speed-impact-client-20260927_095052/`
+reached **38.81 km/h**, recorded one stock crash (severity 31.122), and broadcast
+`VehicleCrash`. The user confirmed: “Collision, damage and sound look right.” No new
+client error lines; all other loaded cars kept their coordinates. The 20-second viewing
+hold and exact fixture/native cleanup completed. This accepts the one-client faster pole
+impact. It does not validate native car-to-car impacts or two-client consistency.
+
+## One-client pole-detour refusal — 2026-09-27
+
+The ordinary client observed the corrected approach, wait and rejection of the pole-blocked
+shoulder. User report: “Smooth stop; stays visible.” Evidence:
+`artifacts/scenario-agent/pole-client-denial-20260927_093229/`, final agent
+`36971f0a24ebb65e8c2d25eadcf442a7a74391d3cd7bcfb8ff1e0f3883bde157`.
+The willing driver repeatedly rejected `candidate_physical_shape_obstacle`; it did not
+attempt the shoulder. Both exact parked fixtures and the moving probe were cleaned up,
+with native body count zero. This accepts visible avoidance refusal only. A separate
+low-speed pole impact is prepared for client collision/sound validation; no client impact
+acceptance is implied yet.
+
 ## Pole collision activation, planning exclusion and crash feedback — 2026-09-27
 
 The original map and live square at (10753,9864,0) both identify the pole as
