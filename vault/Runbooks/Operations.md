@@ -181,3 +181,19 @@ Game config lives in `data/Zomboid/Server/AKR_DayOne.ini` and `AKR_DayOne_Sandbo
 Credentials are in protected `secrets/` files. Do not paste them into logs, issue descriptions, vault pages, screenshots or shared mod packages. All new tools, caches and image layers use `.tooling/`; `scripts/podman-local` supplies project-local Podman storage. Runtime sockets can use `/run/user`.
 
 When troubleshooting, compare current source/build identity with the last passing [[Experiments/Implementation Ledger|ledger]] entry. A Java-agent guard rejection means inspect the build mismatch before changing hashes; bypassing a guard is not compatibility validation. Source history belongs to `Akryllax/TheBeginningPZ` with its existing GPL-3.0 license; source commits do not imply a tested binary release or Workshop publication.
+
+### Extended brake-failure impact experiment
+
+Only the disposable marked-pole scene can set `vehicle_probe.extended_impact=true`.
+Its reviewed route artifact must include `extended_impact: true`, a tile `impact_target`,
+and `impact_token` matching `impact-` plus 32 lowercase hex characters. Configuration rejects
+curves away from a straight line, bypass, scheduled stops, missing target identity, courses
+over 320 tiles, or speed ceilings above 80 km/h. The stock vehicle limits still apply.
+Ordinary route configuration clears the extended mode and target/token together.
+
+Private brake-failure trials damage only the newly created managed car's four brake part
+and inventory-item conditions, recalculate stock part stats, and transmit the updates. Zero
+condition retains residual stock braking: record available force, driver request, actual
+applied force, approach speed and post-impact part conditions. Do not equate a 0% brake part
+with zero force, peak speed with contact speed, or a decorative driver with a living occupant.
+Require terminal phase, no native body and exact tagged-fixture cleanup before a rerun.

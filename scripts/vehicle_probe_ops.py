@@ -203,7 +203,7 @@ def route_points(payload):
             raise ValueError('Probe waypoints must be at ground level')
         normalized.append(tuple(float(v) for v in xy))
     lengths = [math.dist(a, b) for a, b in zip(normalized, normalized[1:])]
-    if min(lengths) < 0.5 or max(lengths) > 40 or not 2 <= sum(lengths) <= 60:
+    if min(lengths) < 0.5 or max(lengths) > 40 or not 2 <= sum(lengths) <= (320 if payload.get('extended_impact') is True else 60):
         raise ValueError('Probe route needs segments 0.5 to 40 tiles and total length 2 to 60 tiles')
     return normalized
 
@@ -211,7 +211,7 @@ def route_points(payload):
 def traffic_settings(payload, points):
     lane=payload.get('lane_mode',False)
     speed=payload.get('speed_kmh',4)
-    ceiling=50 if lane and payload.get('beziers') else 15 if lane else 5
+    ceiling=(80 if payload.get('extended_impact') is True else 50) if lane and payload.get('beziers') else 15 if lane else 5
     if type(lane) is not bool or type(speed) not in (int,float) or not math.isfinite(speed) or not 1<=speed<=ceiling:
         raise ValueError('Invalid lane mode or bounded speed')
     rows=payload.get('stops',[])
@@ -248,7 +248,7 @@ def configure_route(m, source):
     if curves:
         if not lane:raise ValueError('Bezier path requires lane mode')
         from scenario_lanes import bezier_samples
-        samples=list(bezier_samples(curves))
+        samples=list(bezier_samples(curves, extended_impact=payload.get('extended_impact') is True))
         if math.dist(samples[0][:2],points[0])>.001 or math.dist(samples[-1][:2],points[-1])>.001:
             raise ValueError('Bezier endpoints differ from route')
         curve_text=';'.join(','.join(f'{p[k]:.10f}' for p in curve for k in ('x','y')) for curve in curves)
@@ -262,8 +262,21 @@ def configure_route(m, source):
         span=math.hypot(dx,dy)
         if any(abs((p['x']-points[0][0])*dy-(p['y']-points[0][1])*dx)>span*.001 for curve in curves for p in curve):
             raise ValueError('Bypass requires a straight road')
+    extended=payload.get('extended_impact',False)
+    if type(extended) is not bool:raise ValueError('Extended impact must be boolean')
+    impact_target=payload.get('impact_target');token=payload.get('impact_token','')
+    if extended:
+        import re
+        if not lane or not curves or stops or bypass or shoulder:raise ValueError('Extended impact requires a straight road without stops or bypass')
+        if not isinstance(impact_target,list) or len(impact_target)!=2 or any(type(v) is not int for v in impact_target) or not re.fullmatch(r'impact-[a-f0-9]{32}',token):raise ValueError('Marked impact target required')
+        dx,dy=points[-1][0]-points[0][0],points[-1][1]-points[0][1];span=math.hypot(dx,dy)
+        if any(abs((p['x']-points[0][0])*dy-(p['y']-points[0][1])*dx)>span*.001 for curve in curves for p in curve):raise ValueError('Extended impact must be straight')
+        tx,ty=impact_target[0]+.5-points[0][0],impact_target[1]+.5-points[0][1]
+        progress=(tx*dx+ty*dy)/span
+        if abs(tx*dy-ty*dx)/span>.05 or not 15<=progress<=span-15:raise ValueError('Impact approach/runout insufficient')
     dx, dy = points[1][0] - points[0][0], points[1][1] - points[0][1]
-    changes = {'vehicle_probe.impact_target': '', 'vehicle_probe.impact_token': '',
+    changes = {'vehicle_probe.extended_impact': str(extended).lower(),
+               'vehicle_probe.impact_target': ','.join(map(str,impact_target)) if extended else '', 'vehicle_probe.impact_token': token if extended else '',
                'vehicle_probe.x': points[0][0], 'vehicle_probe.y': points[0][1],
                'vehicle_probe.heading_degrees': math.degrees(math.atan2(dx, dy)) % 360,
                'vehicle_probe.lane_mode': str(lane).lower(),

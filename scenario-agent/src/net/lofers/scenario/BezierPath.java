@@ -15,7 +15,10 @@ final class BezierPath {
     final double length;
     private final double[] arc,xs,ys,ts;
     private final int[] segments;
-    BezierPath(List<Curve> input){
+    final boolean extendedImpact;
+    BezierPath(List<Curve> input){this(input,false);}
+    BezierPath(List<Curve> input,boolean extendedImpact){
+        this.extendedImpact=extendedImpact;
         if(input.isEmpty()||input.size()>MAX_SEGMENTS)throw new IllegalArgumentException("Bezier segment count outside 1..15");
         curves=List.copyOf(input);ends=new double[input.size()+1];
         int count=input.size()*STEPS+1;
@@ -45,7 +48,7 @@ final class BezierPath {
             }
             ends[segment+1]=arc[(segment+1)*STEPS];
         }
-        length=arc[count-1];if(length<2||length>60)throw new IllegalArgumentException("Bezier course outside 2..60 tiles");
+        length=arc[count-1];if(length<2||length>(extendedImpact?320:60))throw new IllegalArgumentException("Bezier course exceeds bounded length");
     }
     static Curve line(ProbeRoute.Point a,ProbeRoute.Point b){return new Curve(a,lerp(a,b,1.0/3),lerp(a,b,2.0/3),b);}
     private static ProbeRoute.Point lerp(ProbeRoute.Point a,ProbeRoute.Point b,double t){return new ProbeRoute.Point(a.x()+(b.x()-a.x())*t,a.y()+(b.y()-a.y())*t);}
@@ -99,7 +102,8 @@ final class BezierPath {
     }
     List<ProbeRoute.Point> knots(){var out=new ArrayList<ProbeRoute.Point>();out.add(curves.getFirst().p0);for(Curve c:curves)out.add(c.p3);return out;}
     List<Sample> samples(){var out=new ArrayList<Sample>(arc.length);for(int i=0;i<arc.length;i++)out.add(evaluate(curves.get(segments[i]),ts[i],segments[i]));return out;}
-    static BezierPath parse(String text){
+    static BezierPath parse(String text){return parse(text,false);}
+    static BezierPath parse(String text,boolean extendedImpact){
         if(text.length()>4096)throw new IllegalArgumentException("Bezier config too long");
         var curves=new ArrayList<Curve>();
         for(String entry:text.split(";",-1)){
@@ -107,6 +111,6 @@ final class BezierPath {
             var p=new ArrayList<ProbeRoute.Point>();for(int i=0;i<8;i+=2)p.add(new ProbeRoute.Point(Double.parseDouble(values[i]),Double.parseDouble(values[i+1])));
             curves.add(new Curve(p.get(0),p.get(1),p.get(2),p.get(3)));
         }
-        return new BezierPath(curves);
+        return new BezierPath(curves,extendedImpact);
     }
 }

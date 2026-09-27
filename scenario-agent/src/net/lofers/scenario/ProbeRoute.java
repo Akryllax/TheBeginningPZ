@@ -11,7 +11,8 @@ final class ProbeRoute {
     final List<Tile> tiles,chunks,cells;
     final double[] cumulative;
     final double length;
-    final boolean laneMode;
+    final boolean laneMode,extendedImpact;
+    final List<Tile> loadingAnchors;
     final BezierPath trajectory;
     final int centerChunkX,centerChunkY,widthChunks;
     ProbeRoute(List<Point> input) {this(input,false);}
@@ -21,7 +22,7 @@ final class ProbeRoute {
     private ProbeRoute(List<Point> input,boolean laneMode,BezierPath trajectory) {this(input,laneMode,trajectory,9);}
     private ProbeRoute(List<Point> input,boolean laneMode,BezierPath trajectory,double loadingMargin) {
         if(!Double.isFinite(loadingMargin)||loadingMargin<9||loadingMargin>13)throw new IllegalArgumentException("Invalid loading margin");
-        this.laneMode=laneMode;this.trajectory=trajectory;
+        this.laneMode=laneMode;this.trajectory=trajectory;extendedImpact=trajectory!=null&&trajectory.extendedImpact;
         if(input.size()<2||input.size()>16)throw new IllegalArgumentException("Route requires2..16points");
         points=List.copyOf(input);cumulative=new double[input.size()];
         for(int i=0;i<points.size();i++){
@@ -33,7 +34,7 @@ final class ProbeRoute {
                 if(Math.abs(turn)>Math.toRadians(100))throw new IllegalArgumentException("Route turn too sharp");}
         }
         if(trajectory!=null)System.arraycopy(trajectory.ends,0,cumulative,0,cumulative.length);
-        length=cumulative[cumulative.length-1];if(length<2||length>60)throw new IllegalArgumentException("Route length outside2..60tiles");
+        length=cumulative[cumulative.length-1];if(length<2||length>(extendedImpact?320:60))throw new IllegalArgumentException("Route length outside2..60tiles");
         LinkedHashSet<Tile> swept=new LinkedHashSet<>(),coverage=new LinkedHashSet<>(),nativeCells=new LinkedHashSet<>();
         // Quarter-tile samples plus a half-sample margin conservatively include
         // every tile touched by the radius2.25 swept disk, including its ends.
@@ -46,17 +47,24 @@ final class ProbeRoute {
                 for(int cx=(int)Math.floor((p.x-loadingMargin)/8);cx<=(int)Math.floor((p.x+loadingMargin)/8);cx++)coverage.add(new Tile(cx,cy));
         }
         if(laneMode)swept=trajectory==null?ProbeFootprint.swept(points):ProbeFootprint.swept(trajectory);
-        if(swept.size()>1500||coverage.size()>96)throw new IllegalArgumentException("Route spatial work exceeds bounds");
+        if(swept.size()>1500||coverage.size()>(extendedImpact?192:96))throw new IllegalArgumentException("Route spatial work exceeds bounds");
         for(Tile t:coverage)nativeCells.add(new Tile(Math.floorDiv(t.x,5),Math.floorDiv(t.y,5)));
-        if(nativeCells.size()>9)throw new IllegalArgumentException("Route native cell limit");
+        if(nativeCells.size()>(extendedImpact?32:9))throw new IllegalArgumentException("Route native cell limit");
         tiles=List.copyOf(swept);chunks=List.copyOf(coverage);cells=List.copyOf(nativeCells);
         int minX=chunks.stream().mapToInt(Tile::x).min().orElseThrow(),maxX=chunks.stream().mapToInt(Tile::x).max().orElseThrow();
         int minY=chunks.stream().mapToInt(Tile::y).min().orElseThrow(),maxY=chunks.stream().mapToInt(Tile::y).max().orElseThrow();
         centerChunkX=Math.floorDiv(minX+maxX,2);centerChunkY=Math.floorDiv(minY+maxY,2);
         int width=Math.max(maxX-minX+1,maxY-minY+1)+2;widthChunks=width+(width%2==0?1:0);
-        if(widthChunks>13)throw new IllegalArgumentException("Route loading extent exceeds13chunks");
+        if(widthChunks>(extendedImpact?47:13))throw new IllegalArgumentException("Route loading extent exceeded");
+        if(extendedImpact){
+            if(!TrafficBypass.straight(this))throw new IllegalArgumentException("Extended impact course must be straight");
+            var anchors=new LinkedHashSet<Tile>();
+            for(double s=0;s<length+32;s+=32){var p=at(Math.min(s,length));anchors.add(new Tile((int)Math.floor(p.x()/8),(int)Math.floor(p.y()/8)));}
+            loadingAnchors=List.copyOf(anchors);
+            if(loadingAnchors.size()>11)throw new IllegalArgumentException("Too many loading anchors");
+        }else loadingAnchors=List.of(new Tile(centerChunkX,centerChunkY));
     }
-    int requestWidth(){return widthChunks;}
+    int requestWidth(){return extendedImpact?9:widthChunks;}
     static ProbeRoute parse(String text){return parse(text,false);}
     static ProbeRoute parse(String text,boolean laneMode){
         if(text.length()>2048)throw new IllegalArgumentException("Route text exceeds2048bytes");

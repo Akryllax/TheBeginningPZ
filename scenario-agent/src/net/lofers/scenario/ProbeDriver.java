@@ -29,7 +29,7 @@ final class ProbeDriver {
     double predictedHeadingError(){return predictedHeadingError;}
     ProbeDriver(ProbeRoute route,double speedLimit,double wheelbase){this(route,speedLimit,wheelbase,List.of());}
     ProbeDriver(ProbeRoute route,double speedLimit,double wheelbase,List<Stop> stops){
-        if(!ProbeRoute.finite(speedLimit,wheelbase)||speedLimit<1||speedLimit>(route.trajectory!=null?50:route.laneMode?15:5)||wheelbase<1.5||wheelbase>4)throw new IllegalArgumentException("Driver configuration outside probe bounds");
+        if(!ProbeRoute.finite(speedLimit,wheelbase)||speedLimit<1||speedLimit>(route.extendedImpact?80:route.trajectory!=null?50:route.laneMode?15:5)||wheelbase<1.5||wheelbase>4)throw new IllegalArgumentException("Driver configuration outside probe bounds");
         this.stops=List.copyOf(stops);
         double prev=0;if(stops.size()>4)throw new IllegalArgumentException("Too many stops");
         for(Stop stop:stops){if(!ProbeRoute.finite(stop.progress(),stop.holdSeconds())||stop.progress()<2||stop.progress()>route.length-3||stop.progress()<=prev||stop.holdSeconds()<1||stop.holdSeconds()>5)throw new IllegalArgumentException("Invalid stop");prev=stop.progress();}
@@ -80,7 +80,7 @@ final class ProbeDriver {
         if(progress>previousProgress+0.08)previousProgress=progress;
         double lookahead=route.trajectory==null?2.3+Math.min(speed/3.6,4.2)*0.2:Math.max(2.3,Math.min(4,1.8+speed/3.6*.4));
         double deceleration=route.trajectory==null?.6:limits.brakingDeceleration();
-        lookaheadDistance=lookahead;previewDistance=Math.min(64,Math.max(10,3+Math.pow(speed/3.6,2)/(2*deceleration)));
+        lookaheadDistance=lookahead;previewDistance=Math.min(route.extendedImpact?220:64,Math.max(10,3+Math.pow(speed/3.6,2)/(2*deceleration)));
         ProbeRoute.Point target=route.at(progress+lookahead);
         double dx=target.x()-x,dy=target.y()-y,targetDistance=Math.hypot(dx,dy);
         double error=ProbeRoute.wrap(Math.atan2(dx,dy)-Math.atan2(forwardX,forwardY));
@@ -102,7 +102,7 @@ final class ProbeDriver {
             if(turn>Math.toRadians(10))targetSpeed=Math.min(targetSpeed,route.laneMode?Math.sqrt(Math.pow(turnSpeed/3.6,2)+2*.6*Math.max(0,route.cumulative[i]-progress-3))*3.6:2.2);
         }
         if(route.trajectory!=null){
-            targetSpeed=Math.min(targetSpeed,Math.min(limits.maxSpeed(),deceleration*10*3.6));
+            targetSpeed=Math.min(targetSpeed,Math.min(limits.maxSpeed(),deceleration*(route.extendedImpact?18:10)*3.6));
             targetSpeed=Math.min(targetSpeed,route.trajectory.speedLimit(progress,previewDistance,targetSpeed,limits.lateralAcceleration(),deceleration));
             // Preview the steering updates across segment joins, rather than
             // extrapolating one fixed steering angle through the entire turn.

@@ -53,7 +53,7 @@ final class ServerVehicleProbe {
     private TrafficBlockage.Decision blockageDecision;
     private boolean worldPresent,registryPresent,chunkPresent;
     private ProbeDriver driver;
-    private final ProbeSafetyWork safetyWork=new ProbeSafetyWork();
+    private final ProbeSafetyWork safetyWork;
     private long safetyScanNanos,safetyScanMaxNanos,safetyScanOver1ms;
     private String safetyStatus="";
     private ProbeDriver.Output control;
@@ -72,7 +72,7 @@ final class ServerVehicleProbe {
     private long stepMaxNanos;
     private boolean readyServer,readyName,readyCell,readyMeta,readyMap,nativeWorldReady;
     ServerVehicleProbe(ProbeControl.Config config,String world,String epoch)throws Exception {
-        this.config=config;route=config.route();driveRoute=route;this.world=world;this.epoch=epoch;io=new ProbeControl(config,epoch);
+        this.config=config;route=config.route();safetyWork=new ProbeSafetyWork(route.extendedImpact);driveRoute=route;this.world=world;this.epoch=epoch;io=new ProbeControl(config,epoch);
         publish();Thread thread=new Thread(io,"lofers-vehicle-probe-files");thread.setDaemon(true);thread.start();
     }
     private void phase(String next){phase=next;phaseAt=System.nanoTime();System.out.println("[LofersVehicleProbe] "+next+" command="+commandId+(error.isEmpty()?"":" error="+error));}
@@ -108,7 +108,7 @@ final class ServerVehicleProbe {
             if(ACTIVE.contains(phase)) {
                 // cellMap is allocated after ServerMap.grid is assigned: never call the
                 // native method's pre-initialization sleep loop on the game thread.
-                ServerMap.instance.characterIn(route.centerChunkX,route.centerChunkY,route.requestWidth());
+                for(var anchor:route.loadingAnchors)ServerMap.instance.characterIn(anchor.x(),anchor.y(),route.requestWidth());
             }
             if(phase.equals("loading")) {
                 if(System.nanoTime()-started>120_000_000_000L){fail("loaded_area_timeout");return;}
@@ -163,7 +163,7 @@ final class ServerVehicleProbe {
                 terrainMinY=route.chunks.stream().mapToInt(ProbeRoute.Tile::y).min().orElseThrow();
                 terrainWidth=Math.max(route.chunks.stream().mapToInt(ProbeRoute.Tile::x).max().orElseThrow()-terrainMinX,
                     route.chunks.stream().mapToInt(ProbeRoute.Tile::y).max().orElseThrow()-terrainMinY)+1;
-                if(terrainWidth>13)throw new IllegalStateException("native_collision_map_extent");
+                if(terrainWidth>(route.extendedImpact?45:13))throw new IllegalStateException("native_collision_map_extent");
                 }finally{coldCost("native_world",coldStart);}
                 phase("preparing_terrain");
             }
@@ -316,12 +316,12 @@ final class ServerVehicleProbe {
         }
         return "";
     }
-    private final long[] checkedRoadTiles=new long[256];
+    private final long[] checkedRoadTiles=new long[4096];
     private int checkOriginX,checkOriginY;
     private String checkRoadOnce(int x,int y){
         int dx=x-checkOriginX,dy=y-checkOriginY;
-        if(dx<0||dx>=128||dy<0||dy>=128)return "road_check_extent";
-        int row=dy*2+(dx>>>6);long bit=1L<<(dx&63);if((checkedRoadTiles[row]&bit)!=0)return "";
+        if(dx<0||dx>=512||dy<0||dy>=512)return "road_check_extent";
+        int row=dy*8+(dx>>>6);long bit=1L<<(dx&63);if((checkedRoadTiles[row]&bit)!=0)return "";
         if(!safetyWork.tile())return "road_check_capacity";
         checkedRoadTiles[row]|=bit;return tileProblem(x,y,!bypassOffroad,true,bypassOffroad);
     }
@@ -337,7 +337,7 @@ final class ServerVehicleProbe {
         forecastContact=Double.POSITIVE_INFINITY;forecastBlocker=-1;
         parkedStop=Double.POSITIVE_INFINITY;parkedBlocker=-1;
         parkedShapes.clear();nearbyTrafficStatic=true;
-        Arrays.fill(checkedRoadTiles,0L);checkOriginX=(int)Math.floor(lastX)-64;checkOriginY=(int)Math.floor(lastY)-64;
+        Arrays.fill(checkedRoadTiles,0L);checkOriginX=(int)Math.floor(lastX)-256;checkOriginY=(int)Math.floor(lastY)-256;
         // The current body footprint, plus conservative stopping-space samples,
         // must remain asphalt and clear. This checks actual native pose, not
         // merely whether the planned centerline belongs to a broad road polygon.
@@ -347,7 +347,7 @@ final class ServerVehicleProbe {
             String problem=checkRoadOnce(x,y);if(!problem.isEmpty())return problem;
         }
         double deceleration=carLimits==null?.6:carLimits.brakingDeceleration();
-        double stopping=Math.min(route.trajectory!=null?64:route.laneMode?18:4,2+Math.pow(speed/3.6,2)/(2*deceleration));
+        double stopping=Math.min(route.extendedImpact?220:route.trajectory!=null?64:route.laneMode?18:4,2+Math.pow(speed/3.6,2)/(2*deceleration));
         if(route.trajectory!=null){
             // The precomputed full-width swept corridor follows the curve; a
             // straight ray would falsely leave asphalt while approaching a turn.
@@ -355,7 +355,7 @@ final class ServerVehicleProbe {
             double radius=stopping+3;
             for(var tile:driveRoute.tiles){
                 double dx=tile.x()+.5-lastX,dy=tile.y()+.5-lastY;
-                if(dx*dx+dy*dy>radius*radius)continue;
+                if(dx*dx+dy*dy>radius*radius||(route.extendedImpact&&dx*forward.x+dy*forward.z< -3))continue;
                 String problem=checkRoadOnce(tile.x(),tile.y());if(!problem.isEmpty())return problem;
             }
         }else for(double along=2;along<=stopping;along+=0.5)for(int side=-1;side<=1;side++){
@@ -363,7 +363,7 @@ final class ServerVehicleProbe {
                 String problem=checkRoadOnce(x,y);if(!problem.isEmpty())return problem;
         }
         double progress=control==null?0:control.progress();
-        double horizon=Math.min(12,2+speed/3.6/deceleration);
+        double horizon=Math.min(route.extendedImpact?20:12,2+speed/3.6/deceleration);
         var predicted=CollisionForecast.following(driveRoute,progress,lastX,lastY,speed/3.6,horizon);
         String snapshotProblem=nativeSamples.refresh(nativeSource);if(!snapshotProblem.isEmpty())return snapshotProblem;
         if(nativeSamples.get(vehicleId)==null)return "own_native_vehicle_missing";
@@ -392,7 +392,7 @@ final class ServerVehicleProbe {
                     }
                 }else{nearbyTrafficStatic=false;if(bypassUsed)return "moving_vehicle_during_bypass";}
                 var obstacle=new CollisionForecast.Obstacle(other.getX(),other.getY(),vx,vy,radius,0);
-                double contact=CollisionForecast.firstContact(predicted,bodyRadius+.65,obstacle);
+                double contact=CollisionForecast.firstContact(predicted,bodyRadius+.65,obstacle,route.extendedImpact);
                 if(contact<forecastContact){forecastContact=contact;forecastBlocker=other.getId();}
                 if(contact==0)return "immediate_vehicle_contact";
                 if(parked){

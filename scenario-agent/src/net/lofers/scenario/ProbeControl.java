@@ -21,9 +21,10 @@ final class ProbeControl implements Runnable {
             String curves=p.getProperty("vehicle_probe.beziers","").strip();
             boolean laneMode=Boolean.parseBoolean(p.getProperty("vehicle_probe.lane_mode","false"));
             if(laneMode&&!roadMode)throw new IllegalArgumentException("Lane mode requires road route");
-            double yaw=bounded(p,"heading_degrees",90,0,360),distance=bounded(p,"distance",10,2,12),speed=bounded(p,"speed_kmh",4,1,!curves.isEmpty()?50:laneMode?15:5);
+            boolean extendedImpact=Boolean.parseBoolean(p.getProperty("vehicle_probe.extended_impact","false"));
+            double yaw=bounded(p,"heading_degrees",90,0,360),distance=bounded(p,"distance",10,2,12),speed=bounded(p,"speed_kmh",4,1,!curves.isEmpty()?(extendedImpact?80:50):laneMode?15:5);
             if(!curves.isEmpty()&&(!roadMode||!laneMode))throw new IllegalArgumentException("Bezier course requires lane mode");
-            ProbeRoute route=!curves.isEmpty()?new ProbeRoute(BezierPath.parse(curves)):(roadMode?ProbeRoute.parse(points,laneMode):ProbeRoute.straight(x,y,yaw,distance));
+            ProbeRoute route=!curves.isEmpty()?new ProbeRoute(BezierPath.parse(curves,extendedImpact)):(roadMode?ProbeRoute.parse(points,laneMode):ProbeRoute.straight(x,y,yaw,distance));
             if(Math.hypot(route.points.getFirst().x()-x,route.points.getFirst().y()-y)>0.01)throw new IllegalArgumentException("Route must start at configured spawn");
             if(Math.abs(ProbeRoute.wrap(route.heading()-Math.toRadians(yaw)))>Math.toRadians(10))throw new IllegalArgumentException("Spawn heading differs from route");
             String script=p.getProperty("vehicle_probe.script","Base.SmallCar");
@@ -41,7 +42,9 @@ final class ProbeControl implements Runnable {
             if(bypass)route=new ProbeRoute(route.trajectory,13); // Retain both detours' normal nine-tile observation margins.
             boolean shoulder=Boolean.parseBoolean(p.getProperty("vehicle_probe.shoulder","false"));
             if(shoulder&&!bypass)throw new IllegalArgumentException("Shoulder choice requires a reviewed bypass route");
-            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),List.copyOf(stops),bypass,shoulder,ProbeImpactTarget.read(p,route,roadMode,bypass,!stops.isEmpty()));
+            ProbeImpactTarget impact=ProbeImpactTarget.read(p,route,roadMode,bypass,!stops.isEmpty());
+            if(extendedImpact&&(impact==null||!route.extendedImpact))throw new IllegalArgumentException("Extended course requires marked impact scene");
+            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),List.copyOf(stops),bypass,shoulder,impact);
         }
         private static double bounded(Properties p,String name,double fallback,double min,double max) {
             double n=Double.parseDouble(p.getProperty("vehicle_probe."+name,Double.toString(fallback)));

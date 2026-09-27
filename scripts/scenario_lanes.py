@@ -37,7 +37,7 @@ def swept_lane_cells(points):
 
 
 
-def bezier_samples(curves):
+def bezier_samples(curves, *, extended_impact=False):
     if not isinstance(curves,list) or not 1<=len(curves)<=15:raise ValueError('Bezier curve count outside 1..15')
     previous=None;length=0;last_point=None;last_tangent=None
     for curve in curves:
@@ -75,7 +75,7 @@ def bezier_samples(curves):
             last_point=point;last_tangent=tangent
             yield (*point,*tangent)
         previous=(point,tangent)
-    if not 2<=length<=60:raise ValueError('Bezier length outside 2..60')
+    if not 2<=length<=(320 if extended_impact else 60):raise ValueError('Bezier length exceeds bounded course')
 
 
 def bezier_cells(curves):

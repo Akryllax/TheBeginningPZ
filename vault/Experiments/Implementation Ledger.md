@@ -10,6 +10,39 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Brake failure on a longer clear-view course — 2026-09-27
+
+Requested: a faster native crash on a different street, then damage the brakes while the
+controller still attempts to stop. The isolated experiment now supports an explicitly marked,
+straight extended impact course (maximum 320 tiles, 80 km/h ceiling). Ordinary routes retain
+60 tiles / 50 km/h limits. Eleven or fewer 9-chunk loading anchors retain the corridor; native
+map width is capped at 45, retained chunks at 192, road tiles at 1500. Forward safety work has
+an explicit 1024-tile ceiling and 20-second forecast in this experiment only. No engine power,
+velocity, impact damage, core files or client Java agent were modified.
+
+Empty-server evidence: `artifacts/scenario-agent/brake-failure-impact-empty-20260927_100456/`.
+JAR `e38ec046e2066ae2baaeadf5f8d8acfaca3729918836c561d79a0e513532e28e`.
+Course: X 10588.5, Y 9900.5 to 10220.5; tagged pole at 10588,10060; observer
+10605.5,10060.5. Original ground data and a bounded live inspection found no trees, walls or
+fences across the side-view area. Real client visibility remains pending.
+
+The car reached its observed stock 70 km/h maximum. At progress 129.56, speed 69.81 km/h,
+all four brake part/item conditions were set to zero through stock APIs; available braking
+force fell from 80 to 20. Zomboid retains residual braking at zero condition. The controller
+requested 80% braking and native force was 16. Last pre-impact sample was 51.50 km/h;
+this is a sampled approach speed, not an exact contact-speed measurement. One real crash
+registered severity 40.43606 and one `VehicleCrash` sound request. Hood/windshield fell
+100->72; headlights 100->69. Engine remained 100: **this was not a destroyed car or NPC death**.
+There is still no living occupant in this fixture.
+
+The damaged vehicle remained for 20 seconds. Tagged pole and native body were cleaned;
+three other loaded vehicles retained their coordinates. Warm mean 0.219 ms, p99 upper bound
+0.7 ms, maximum safety scan 0.759 ms; cold vehicle creation reached 17.01 ms. Full Java
+fixtures and 191 Python tests passed; logs `artifacts/brake-failure-agent-tests.log` and
+`artifacts/brake-failure-python-tests.log`. Private operator harness and receipts are under
+`artifacts/`; brake degradation is an operator test, not an enabled ambient incident feature.
+Ordinary-client observation of this particular run remains pending.
+
 ## Confirmed low-speed crash and faster impact preparation — 2026-09-27
 
 The user confirmed the ordinary client saw and heard the 5 km/h pole collision:
