@@ -25,12 +25,12 @@ final class ProbeImpactFixture {
         p.setProperty("vehicle_probe.impact_target","55,0");
         ScenarioFixture.rejects(()->ProbeImpactTarget.read(p,centered,true,false,false),"Insufficient runout accepted");
         var curves=new java.util.ArrayList<BezierPath.Curve>();
-        for(int i=0;i<8;i++)curves.add(BezierPath.line(new ProbeRoute.Point(.5+i*40,.5),new ProbeRoute.Point(.5+(i+1)*40,.5)));
+        for(int i=0;i<12;i++)curves.add(BezierPath.line(new ProbeRoute.Point(.5+i*40,.5),new ProbeRoute.Point(.5+(i+1)*40,.5)));
         ScenarioFixture.rejects(()->new BezierPath(curves),"Ordinary road length limit bypassed");
         var extended=new ProbeRoute(new BezierPath(curves,true));
-        ScenarioFixture.check(extended.length==320&&extended.loadingAnchors.size()<=11&&extended.requestWidth()==9,"Extended course loading is unbounded");
+        ScenarioFixture.check(extended.length==480&&extended.loadingAnchors.size()<=16&&extended.requestWidth()==9,"Extended course loading is unbounded");
         for(var chunk:extended.chunks)ScenarioFixture.check(extended.loadingAnchors.stream().anyMatch(a->Math.abs(a.x()-chunk.x())<=4&&Math.abs(a.y()-chunk.y())<=4),"Loading anchors miss a retained chunk");
-        var forecast=CollisionForecast.following(extended,0,.5,.5,80/3.6,20);
+        var forecast=CollisionForecast.following(extended,0,.5,.5,100/3.6,20);
         ScenarioFixture.check(Double.isFinite(CollisionForecast.firstContact(forecast,2,new CollisionForecast.Obstacle(300,.5,0,0,2,0),true)),"Extended horizon missed blocker");
         ScenarioFixture.rejects(()->CollisionForecast.following(centered,0,.5,.5,10,20),"Normal forecast horizon silently expanded");
         var work=new ProbeSafetyWork(true);for(int i=0;i<1024;i++)ScenarioFixture.check(work.tile(),"Extended scan capacity too small");
@@ -39,11 +39,13 @@ final class ProbeImpactFixture {
         config.setProperty("vehicle_probe.x",".5");config.setProperty("vehicle_probe.y",".5");config.setProperty("vehicle_probe.heading_degrees","90");
         config.setProperty("vehicle_probe.lane_mode","true");config.setProperty("vehicle_probe.waypoints",".5,.5;40.5,.5");
         var encoded=new java.util.ArrayList<String>();for(var c:curves)encoded.add(c.p0().x()+",.5,"+c.p1().x()+",.5,"+c.p2().x()+",.5,"+c.p3().x()+",.5");
-        config.setProperty("vehicle_probe.beziers",String.join(";",encoded));config.setProperty("vehicle_probe.extended_impact","true");config.setProperty("vehicle_probe.speed_kmh","80");
+        config.setProperty("vehicle_probe.beziers",String.join(";",encoded));config.setProperty("vehicle_probe.extended_impact","true");config.setProperty("vehicle_probe.speed_kmh","100");config.setProperty("vehicle_probe.script","Base.SportsCar");
         ScenarioFixture.rejects(()->ProbeControl.Config.read(config,"LofersVehicleProbe_fixture",true),"Extended course without target accepted");
-        config.setProperty("vehicle_probe.impact_target","160,0");config.setProperty("vehicle_probe.impact_token","impact-0123456789abcdef0123456789abcdef");
+        config.setProperty("vehicle_probe.impact_target","240,0");config.setProperty("vehicle_probe.impact_token","impact-0123456789abcdef0123456789abcdef");
         ScenarioFixture.check(ProbeControl.Config.read(config,"LofersVehicleProbe_fixture",true).route().extendedImpact,"Reviewed extended impact rejected");
-        config.setProperty("vehicle_probe.speed_kmh","81");
+        ScenarioFixture.check(ProbeControl.Config.read(config,"LofersVehicleProbe_fixture",true).vehicleScript().equals("Base.SportsCar"),"Stock sports car selection lost");
+        ScenarioFixture.check(ProbeFootprint.touches(0,2,.5,.5,0,1,true),"Extended footprint missed sports car nose");
+        config.setProperty("vehicle_probe.speed_kmh","101");
         ScenarioFixture.rejects(()->ProbeControl.Config.read(config,"LofersVehicleProbe_fixture",true),"Extended speed ceiling bypassed");
         System.out.println("Impact config fixtures passed: explicit target, identity token, straight route and approach/runout bounds");
     }

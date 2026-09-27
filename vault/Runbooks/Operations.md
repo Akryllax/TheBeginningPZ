@@ -188,8 +188,11 @@ Only the disposable marked-pole scene can set `vehicle_probe.extended_impact=tru
 Its reviewed route artifact must include `extended_impact: true`, a tile `impact_target`,
 and `impact_token` matching `impact-` plus 32 lowercase hex characters. Configuration rejects
 curves away from a straight line, bypass, scheduled stops, missing target identity, courses
-over 320 tiles, or speed ceilings above 80 km/h. The stock vehicle limits still apply.
+over 480 tiles, or speed ceilings above 100 km/h. The stock vehicle limits still apply.
 Ordinary route configuration clears the extended mode and target/token together.
+Only this marked extended scene additionally accepts `vehicle_script: "Base.SportsCar"`;
+it uses the installed stock script and a larger validated footprint. No custom engine power
+or maximum-speed edits are applied.
 
 Private brake-failure trials damage only the newly created managed car's four brake part
 and inventory-item conditions, recalculate stock part stats, and transmit the updates. Zero

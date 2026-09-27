@@ -5,22 +5,25 @@ import java.util.*;
 /** Original oriented footprint for the pinned SmallCar profile, with sampling margin. */
 final class ProbeFootprint {
     static final double HALF_WIDTH=.95,HALF_LENGTH=1.95;
-    static boolean touches(int tx,int ty,double x,double y,double fx,double fy) {
+    static boolean touches(int tx,int ty,double x,double y,double fx,double fy) {return touches(tx,ty,x,y,fx,fy,false);}
+    static boolean touches(int tx,int ty,double x,double y,double fx,double fy,boolean extendedImpact) {
+        double halfWidth=extendedImpact?1.1:HALF_WIDTH,halfLength=extendedImpact?2.2:HALF_LENGTH;
         double rx=fy,ry=-fx,dx=tx+.5-x,dy=ty+.5-y;
-        if(Math.abs(dx)>Math.abs(fx)*HALF_LENGTH+Math.abs(rx)*HALF_WIDTH+.5||
-           Math.abs(dy)>Math.abs(fy)*HALF_LENGTH+Math.abs(ry)*HALF_WIDTH+.5)return false;
-        return Math.abs(dx*fx+dy*fy)<=HALF_LENGTH+.5*(Math.abs(fx)+Math.abs(fy))&&
-               Math.abs(dx*rx+dy*ry)<=HALF_WIDTH+.5*(Math.abs(rx)+Math.abs(ry));
+        if(Math.abs(dx)>Math.abs(fx)*halfLength+Math.abs(rx)*halfWidth+.5||
+           Math.abs(dy)>Math.abs(fy)*halfLength+Math.abs(ry)*halfWidth+.5)return false;
+        return Math.abs(dx*fx+dy*fy)<=halfLength+.5*(Math.abs(fx)+Math.abs(fy))&&
+               Math.abs(dx*rx+dy*ry)<=halfWidth+.5*(Math.abs(rx)+Math.abs(ry));
     }
-    private static void add(Set<ProbeRoute.Tile> cells,double x,double y,double angle) {
+    private static void add(Set<ProbeRoute.Tile> cells,double x,double y,double angle) {add(cells,x,y,angle,false);}
+    private static void add(Set<ProbeRoute.Tile> cells,double x,double y,double angle,boolean extendedImpact) {
         double fx=Math.sin(angle),fy=Math.cos(angle);
         for(int ty=(int)Math.floor(y-3);ty<=(int)Math.floor(y+3);ty++)
             for(int tx=(int)Math.floor(x-3);tx<=(int)Math.floor(x+3);tx++)
-                if(touches(tx,ty,x,y,fx,fy))cells.add(new ProbeRoute.Tile(tx,ty));
+                if(touches(tx,ty,x,y,fx,fy,extendedImpact))cells.add(new ProbeRoute.Tile(tx,ty));
     }
     static LinkedHashSet<ProbeRoute.Tile> swept(BezierPath path){
         var cells=new LinkedHashSet<ProbeRoute.Tile>();
-        for(var p:path.samples())add(cells,p.x(),p.y(),p.heading());
+        for(var p:path.samples())add(cells,p.x(),p.y(),p.heading(),path.extendedImpact);
         return cells;
     }
     static LinkedHashSet<ProbeRoute.Tile> swept(List<ProbeRoute.Point> points) {

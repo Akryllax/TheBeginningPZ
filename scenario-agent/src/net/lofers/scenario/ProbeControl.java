@@ -7,8 +7,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Private operator files, detached diagnostics and bounded route geometry; no game objects. */
 final class ProbeControl implements Runnable {
-    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode,boolean driverModel,List<ProbeDriver.Stop> stops,boolean bypass,boolean shoulder,ProbeImpactTarget impact) {
-        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false,false,List.of(),false,false,null);}
+    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode,boolean driverModel,String vehicleScript,List<ProbeDriver.Stop> stops,boolean bypass,boolean shoulder,ProbeImpactTarget impact) {
+        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false,false,"Base.SmallCar",List.of(),false,false,null);}
         double deadlineSeconds(){return roadMode?120:30;}
         static Config read(Properties p,String world,boolean server) {
             if(!Boolean.parseBoolean(p.getProperty("vehicle_probe.enabled","false")))return null;
@@ -22,13 +22,13 @@ final class ProbeControl implements Runnable {
             boolean laneMode=Boolean.parseBoolean(p.getProperty("vehicle_probe.lane_mode","false"));
             if(laneMode&&!roadMode)throw new IllegalArgumentException("Lane mode requires road route");
             boolean extendedImpact=Boolean.parseBoolean(p.getProperty("vehicle_probe.extended_impact","false"));
-            double yaw=bounded(p,"heading_degrees",90,0,360),distance=bounded(p,"distance",10,2,12),speed=bounded(p,"speed_kmh",4,1,!curves.isEmpty()?(extendedImpact?80:50):laneMode?15:5);
+            double yaw=bounded(p,"heading_degrees",90,0,360),distance=bounded(p,"distance",10,2,12),speed=bounded(p,"speed_kmh",4,1,!curves.isEmpty()?(extendedImpact?100:50):laneMode?15:5);
             if(!curves.isEmpty()&&(!roadMode||!laneMode))throw new IllegalArgumentException("Bezier course requires lane mode");
             ProbeRoute route=!curves.isEmpty()?new ProbeRoute(BezierPath.parse(curves,extendedImpact)):(roadMode?ProbeRoute.parse(points,laneMode):ProbeRoute.straight(x,y,yaw,distance));
             if(Math.hypot(route.points.getFirst().x()-x,route.points.getFirst().y()-y)>0.01)throw new IllegalArgumentException("Route must start at configured spawn");
             if(Math.abs(ProbeRoute.wrap(route.heading()-Math.toRadians(yaw)))>Math.toRadians(10))throw new IllegalArgumentException("Spawn heading differs from route");
             String script=p.getProperty("vehicle_probe.script","Base.SmallCar");
-            if(!Set.of("Base.SmallCar","Base.LofersSmallCar").contains(script))throw new IllegalArgumentException("Unsupported probe vehicle script");
+            if(!Set.of("Base.SmallCar","Base.LofersSmallCar").contains(script)&&!(extendedImpact&&script.equals("Base.SportsCar")))throw new IllegalArgumentException("Unsupported probe vehicle script");
             List<ProbeDriver.Stop> stops=new ArrayList<>();
             String stopText=p.getProperty("vehicle_probe.stops","");
             if(stopText.length()>256)throw new IllegalArgumentException("Stop config too long");
@@ -44,7 +44,7 @@ final class ProbeControl implements Runnable {
             if(shoulder&&!bypass)throw new IllegalArgumentException("Shoulder choice requires a reviewed bypass route");
             ProbeImpactTarget impact=ProbeImpactTarget.read(p,route,roadMode,bypass,!stops.isEmpty());
             if(extendedImpact&&(impact==null||!route.extendedImpact))throw new IllegalArgumentException("Extended course requires marked impact scene");
-            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),List.copyOf(stops),bypass,shoulder,impact);
+            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),script,List.copyOf(stops),bypass,shoulder,impact);
         }
         private static double bounded(Properties p,String name,double fallback,double min,double max) {
             double n=Double.parseDouble(p.getProperty("vehicle_probe."+name,Double.toString(fallback)));

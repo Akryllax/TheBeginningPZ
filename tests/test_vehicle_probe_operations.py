@@ -180,23 +180,24 @@ def test_mismatched_bezier_endpoints_do_not_write_config(probe):
 def test_extended_impact_requires_marked_scene_and_resets_on_normal_route(probe):
     manager, target, route = probe
     normal = route.read_text()
-    points = [{'x': .5 + i * 40, 'y': .5} for i in range(9)]
+    points = [{'x': .5 + i * 40, 'y': .5} for i in range(13)]
     curves = [[a, {'x': a['x'] + 40 / 3, 'y': .5},
                {'x': a['x'] + 80 / 3, 'y': .5}, b]
               for a, b in zip(points, points[1:])]
     data = dict(waypoints=points, beziers=curves, lane_mode=True,
-                speed_kmh=80, extended_impact=True)
+                speed_kmh=100, extended_impact=True, vehicle_script="Base.SportsCar")
     before = (target / 'scenario.properties').read_bytes()
     route.write_text(json.dumps(data))
     with pytest.raises(ValueError, match='Marked impact'):
         ops.configure_route(manager, route)
     assert (target / 'scenario.properties').read_bytes() == before
-    data.update(impact_target=[160, 0], impact_token='impact-' + 'a' * 32)
+    data.update(impact_target=[240, 0], impact_token='impact-' + 'a' * 32)
     route.write_text(json.dumps(data))
     ops.configure_route(manager, route)
     settings = ops.properties(target / 'scenario.properties')
     assert settings['vehicle_probe.extended_impact'] == 'true'
-    assert settings['vehicle_probe.impact_target'] == '160,0'
+    assert settings['vehicle_probe.impact_target'] == '240,0'
+    assert settings['vehicle_probe.script'] == 'Base.SportsCar'
     route.write_text(normal)
     ops.configure_route(manager, route)
     settings = ops.properties(target / 'scenario.properties')

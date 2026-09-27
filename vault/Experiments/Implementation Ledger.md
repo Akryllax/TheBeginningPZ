@@ -10,6 +10,36 @@ This ledger separates requested design from measured implementation evidence. Th
 0.1.0 prototype remains an observation world. The 0.2.0 First Week implementation is under
 development; it is not a complete or multiplayer-validated release.
 
+## Faster stock sports-car brake failure — 2026-09-27
+
+User requested substantially more speed. Only explicit extended impact experiments now admit
+`Base.SportsCar`, using its installed stock drivetrain and a wider/longer clearance footprint.
+Normal routes retain their previous car and speed restrictions. The extended experiment has
+480 tiles / 100 km/h bounds, at most 16 loading anchors, 256 retained chunks and native width
+65. Scanned road tiles remain capped at 1024 per tick; forward stopping preview is bounded at
+320 tiles with a larger deduplication bitmap. No stock power, velocity or damage override.
+
+JAR `a1fbf71c19ca02d0d353e6b438b6ed24553c02f48688913b2daa3d55b1dbb76a`;
+full Java fixtures and 191 Python tests passed. Evidence logs:
+`artifacts/faster-brake-failure-agent-tests.log`, `artifacts/faster-brake-failure-python-tests.log`.
+The course now runs X 10588.5, Y 9820.5 -> 10300.5; the marked pole and clear side-view
+position remain at Y 10060.5. All 1455 swept asphalt tiles passed offline/live checks.
+
+The first empty trial (`fast-sports-brake-impact-empty-20260927_101330`) reached 100 km/h,
+but the operator brake-damage action was too late to establish a pre-impact braking attempt.
+The corrected trigger at route progress 210 passed in
+`artifacts/scenario-agent/fast-sports-brake-impact-empty-20260927_101453/`:
+stock available braking force 108 -> 21.6, driver request 80%, native applied force 17.28.
+Before contact, samples show 99.96 -> 95.53 -> **91.09 km/h while braking**; peak was 100.
+One native impact (severity 77.10653), one `VehicleCrash` sound request. Hood, windshield and
+headlights fell 100 -> 41; engine remained 100. This is stronger real damage, not a total wreck
+or a living NPC death. The empty vehicle remained visible to the server for 20 seconds,
+then tagged pole/body cleanup completed with native count zero.
+
+Warm mean 0.176 ms, p99 upper bound 0.7 ms, maximum safety scan 0.591 ms. Unrelated loaded
+vehicle coordinate comparison and cleanup are recorded in `verification.json`. Client
+observation of this faster run is pending; test server remains ready on .132:16281.
+
 ## Brake failure on a longer clear-view course — 2026-09-27
 
 Requested: a faster native crash on a different street, then damage the brakes while the

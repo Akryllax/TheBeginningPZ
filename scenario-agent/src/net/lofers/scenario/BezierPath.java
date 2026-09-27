@@ -48,7 +48,7 @@ final class BezierPath {
             }
             ends[segment+1]=arc[(segment+1)*STEPS];
         }
-        length=arc[count-1];if(length<2||length>(extendedImpact?320:60))throw new IllegalArgumentException("Bezier course exceeds bounded length");
+        length=arc[count-1];if(length<2||length>(extendedImpact?480:60))throw new IllegalArgumentException("Bezier course exceeds bounded length");
     }
     static Curve line(ProbeRoute.Point a,ProbeRoute.Point b){return new Curve(a,lerp(a,b,1.0/3),lerp(a,b,2.0/3),b);}
     private static ProbeRoute.Point lerp(ProbeRoute.Point a,ProbeRoute.Point b,double t){return new ProbeRoute.Point(a.x()+(b.x()-a.x())*t,a.y()+(b.y()-a.y())*t);}

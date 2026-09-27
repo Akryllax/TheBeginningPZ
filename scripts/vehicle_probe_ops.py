@@ -203,7 +203,7 @@ def route_points(payload):
             raise ValueError('Probe waypoints must be at ground level')
         normalized.append(tuple(float(v) for v in xy))
     lengths = [math.dist(a, b) for a, b in zip(normalized, normalized[1:])]
-    if min(lengths) < 0.5 or max(lengths) > 40 or not 2 <= sum(lengths) <= (320 if payload.get('extended_impact') is True else 60):
+    if min(lengths) < 0.5 or max(lengths) > 40 or not 2 <= sum(lengths) <= (480 if payload.get('extended_impact') is True else 60):
         raise ValueError('Probe route needs segments 0.5 to 40 tiles and total length 2 to 60 tiles')
     return normalized
 
@@ -211,7 +211,7 @@ def route_points(payload):
 def traffic_settings(payload, points):
     lane=payload.get('lane_mode',False)
     speed=payload.get('speed_kmh',4)
-    ceiling=(80 if payload.get('extended_impact') is True else 50) if lane and payload.get('beziers') else 15 if lane else 5
+    ceiling=(100 if payload.get('extended_impact') is True else 50) if lane and payload.get('beziers') else 15 if lane else 5
     if type(lane) is not bool or type(speed) not in (int,float) or not math.isfinite(speed) or not 1<=speed<=ceiling:
         raise ValueError('Invalid lane mode or bounded speed')
     rows=payload.get('stops',[])
@@ -274,8 +274,10 @@ def configure_route(m, source):
         tx,ty=impact_target[0]+.5-points[0][0],impact_target[1]+.5-points[0][1]
         progress=(tx*dx+ty*dy)/span
         if abs(tx*dy-ty*dx)/span>.05 or not 15<=progress<=span-15:raise ValueError('Impact approach/runout insufficient')
+    script=payload.get('vehicle_script', 'Base.LofersSmallCar' if receipt.get('driver_model') else 'Base.SmallCar')
+    if script not in ('Base.SmallCar','Base.LofersSmallCar') and not (extended and script=='Base.SportsCar'):raise ValueError('Unreviewed vehicle script')
     dx, dy = points[1][0] - points[0][0], points[1][1] - points[0][1]
-    changes = {'vehicle_probe.extended_impact': str(extended).lower(),
+    changes = {'vehicle_probe.extended_impact': str(extended).lower(), 'vehicle_probe.script': script,
                'vehicle_probe.impact_target': ','.join(map(str,impact_target)) if extended else '', 'vehicle_probe.impact_token': token if extended else '',
                'vehicle_probe.x': points[0][0], 'vehicle_probe.y': points[0][1],
                'vehicle_probe.heading_degrees': math.degrees(math.atan2(dx, dy)) % 360,

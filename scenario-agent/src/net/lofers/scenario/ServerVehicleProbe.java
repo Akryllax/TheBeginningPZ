@@ -163,7 +163,7 @@ final class ServerVehicleProbe {
                 terrainMinY=route.chunks.stream().mapToInt(ProbeRoute.Tile::y).min().orElseThrow();
                 terrainWidth=Math.max(route.chunks.stream().mapToInt(ProbeRoute.Tile::x).max().orElseThrow()-terrainMinX,
                     route.chunks.stream().mapToInt(ProbeRoute.Tile::y).max().orElseThrow()-terrainMinY)+1;
-                if(terrainWidth>(route.extendedImpact?45:13))throw new IllegalStateException("native_collision_map_extent");
+                if(terrainWidth>(route.extendedImpact?65:13))throw new IllegalStateException("native_collision_map_extent");
                 }finally{coldCost("native_world",coldStart);}
                 phase("preparing_terrain");
             }
@@ -316,12 +316,12 @@ final class ServerVehicleProbe {
         }
         return "";
     }
-    private final long[] checkedRoadTiles=new long[4096];
+    private final long[] checkedRoadTiles=new long[16384];
     private int checkOriginX,checkOriginY;
     private String checkRoadOnce(int x,int y){
         int dx=x-checkOriginX,dy=y-checkOriginY;
-        if(dx<0||dx>=512||dy<0||dy>=512)return "road_check_extent";
-        int row=dy*8+(dx>>>6);long bit=1L<<(dx&63);if((checkedRoadTiles[row]&bit)!=0)return "";
+        if(dx<0||dx>=1024||dy<0||dy>=1024)return "road_check_extent";
+        int row=dy*16+(dx>>>6);long bit=1L<<(dx&63);if((checkedRoadTiles[row]&bit)!=0)return "";
         if(!safetyWork.tile())return "road_check_capacity";
         checkedRoadTiles[row]|=bit;return tileProblem(x,y,!bypassOffroad,true,bypassOffroad);
     }
@@ -337,17 +337,17 @@ final class ServerVehicleProbe {
         forecastContact=Double.POSITIVE_INFINITY;forecastBlocker=-1;
         parkedStop=Double.POSITIVE_INFINITY;parkedBlocker=-1;
         parkedShapes.clear();nearbyTrafficStatic=true;
-        Arrays.fill(checkedRoadTiles,0L);checkOriginX=(int)Math.floor(lastX)-256;checkOriginY=(int)Math.floor(lastY)-256;
+        Arrays.fill(checkedRoadTiles,0L);checkOriginX=(int)Math.floor(lastX)-512;checkOriginY=(int)Math.floor(lastY)-512;
         // The current body footprint, plus conservative stopping-space samples,
         // must remain asphalt and clear. This checks actual native pose, not
         // merely whether the planned centerline belongs to a broad road polygon.
         for(int y=(int)Math.floor(lastY-3);y<=(int)Math.floor(lastY+3);y++)for(int x=(int)Math.floor(lastX-3);x<=(int)Math.floor(lastX+3);x++){
             double dx=Math.max(Math.max(x-lastX,0),lastX-(x+1.0)),dy=Math.max(Math.max(y-lastY,0),lastY-(y+1.0));
-            if(route.laneMode?!ProbeFootprint.touches(x,y,lastX,lastY,forward.x,forward.z):Math.hypot(dx,dy)>2.25)continue;
+            if(route.laneMode?!ProbeFootprint.touches(x,y,lastX,lastY,forward.x,forward.z,route.extendedImpact):Math.hypot(dx,dy)>2.25)continue;
             String problem=checkRoadOnce(x,y);if(!problem.isEmpty())return problem;
         }
         double deceleration=carLimits==null?.6:carLimits.brakingDeceleration();
-        double stopping=Math.min(route.extendedImpact?220:route.trajectory!=null?64:route.laneMode?18:4,2+Math.pow(speed/3.6,2)/(2*deceleration));
+        double stopping=Math.min(route.extendedImpact?320:route.trajectory!=null?64:route.laneMode?18:4,2+Math.pow(speed/3.6,2)/(2*deceleration));
         if(route.trajectory!=null){
             // The precomputed full-width swept corridor follows the curve; a
             // straight ray would falsely leave asphalt while approaching a turn.
@@ -464,12 +464,12 @@ final class ServerVehicleProbe {
         // No body may appear on an actor that entered after the staged road scan.
         for(int y=(int)Math.floor(config.y()-3);y<=(int)Math.floor(config.y()+3);y++)for(int x=(int)Math.floor(config.x()-3);x<=(int)Math.floor(config.x()+3);x++){
             double dx=Math.max(Math.max(x-config.x(),0),config.x()-(x+1.0)),dy=Math.max(Math.max(y-config.y(),0),config.y()-(y+1.0));
-            if(route.laneMode?!ProbeFootprint.touches(x,y,config.x(),config.y(),Math.sin(route.heading()),Math.cos(route.heading())):Math.hypot(dx,dy)>2.25)continue;
+            if(route.laneMode?!ProbeFootprint.touches(x,y,config.x(),config.y(),Math.sin(route.heading()),Math.cos(route.heading()),route.extendedImpact):Math.hypot(dx,dy)>2.25)continue;
             String problem=tileProblem(x,y,config.roadMode(),true);if(!problem.isEmpty())throw new IllegalStateException("spawn_"+problem);
         }
-        VehicleScript script=ScriptManager.instance.getVehicle(config.driverModel()?"Base.LofersSmallCar":"Base.SmallCar");
-        if(script==null||script.getWheelCount()!=4)throw new IllegalStateException("missing_four_wheel_SmallCar_script");
-        if(route.laneMode&&(script.getExtents().x()>1.4||script.getExtents().z()>3.4))throw new IllegalStateException("car_exceeds_lane_footprint");
+        VehicleScript script=ScriptManager.instance.getVehicle(config.vehicleScript());
+        if(script==null||script.getWheelCount()!=4)throw new IllegalStateException("missing_four_wheel_vehicle_script");
+        if(route.laneMode&&(script.getExtents().x()>(route.extendedImpact?1.6:1.4)||script.getExtents().z()>(route.extendedImpact?3.9:3.4)))throw new IllegalStateException("car_exceeds_lane_footprint");
         bodyRadius=Math.hypot(script.getExtents().x(),script.getExtents().z())/2;
         if(!Double.isFinite(bodyRadius)||bodyRadius<=0||bodyRadius>2.25)throw new IllegalStateException("car_exceeds_validated_corridor_radius");
         double minWheel=Double.POSITIVE_INFINITY,maxWheel=Double.NEGATIVE_INFINITY;
