@@ -30,6 +30,23 @@ Neither a rollover nor managed two-car native collision is yet demonstrated. Ord
 Java cars still do not provide native vehicle bodies; the opposing test requires explicit
 registration, ownership, independent controls, contact feedback and cleanup for both cars.
 
+## One-client stove impact accepted after reconnect — 2026-09-27
+
+The first client attempt (`stove-impact-client-20260927_110926`) coincided with a reported
+client freeze. It aborted with `invalid_observation` near 1 km/h; car and tagged fixture were
+removed, native count zero. The cause of the freeze is not established.
+
+After the user restarted and reconnected, the rerun completed:
+`artifacts/scenario-agent/stove-impact-client-20260927_111158/`. The user confirmed:
+“Saw and heard it; game stayed responsive.” Peak 103.35 km/h, final approach
+sample 100.40 km/h, native crash severity 81.2255, one
+stock crash sound, maximum tilt 4.46°. No rollover is demonstrated.
+No new client error/exception entries were found in the captured log interval. Fixture
+removal occurred 3.15 seconds after observed contact; managed-body cleanup
+completed with native count zero and 5 unrelated cars unchanged.
+This accepts the one-client collision/sound presentation, not two-client consistency or
+NPC death. The separate opposing-car test remains next in the requested sequence.
+
 ## Alternative collider preparation — 2026-09-27
 
 Stock boulder contacts did not roll the car: the first measured maximum tilt was 4.97°.
