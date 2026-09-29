@@ -2,10 +2,14 @@
 
 The game agent is one JAR. Its stable entry point is `net.akr.scenario.ScenarioAgent`.
 `compat` owns pinned build and native-library checks; `bridge` owns bounded Lua/protobuf
-conversion; `npc.core` contains engine-independent civilian rules. Engine hooks and the
-scenario orchestrator remain in the root package while their smaller interfaces are
-extracted. Observer's separate agent uses `net.akr.observer`. Avoid making internal
-fields public merely to move a file into another package.
+conversion; `npc.core` contains engine-independent civilian rules. The coupled game-facing
+classes remain package-private in `net.akr.scenario` while their interfaces are extracted.
+They live in separate Eclipse/Java source roots: `src-bootstrap`, `src-runtime`,
+`src-npc-engine`, `src-experiments` and `src-vehicles`. Each root preserves the matching
+`net/akr/scenario` path. The builder compiles all roots into the same JAR; these roots are
+source organization, not separate runtime modules. Observer's separate agent uses
+`net.akr.observer`. Avoid making internal fields public merely to move a file into
+another package.
 
 Run `./dayone format` after editing and `./dayone lint` before committing. The former
 formats authored Java, Python, Lua, C++, protobuf, TypeScript, CSS, HTML, JSON, YAML,

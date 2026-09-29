@@ -81,7 +81,7 @@ def build(
             *(str(p) for p in sorted(game_jar.parent.glob("*.jar")) if p != game_jar),
         ]
     )
-    sources = [*ROOT.glob("scenario-agent/src/**/*.java"), *generated.rglob("*.java")]
+    sources = [*ROOT.glob("scenario-agent/src*/**/*.java"), *generated.rglob("*.java")]
     subprocess.run(
         [
             str(jdk / "bin/javac"),

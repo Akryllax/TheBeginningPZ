@@ -19,15 +19,17 @@ the rebuilt prior agent and matching source archive are under
 disposable world.
 
 The one-JAR Java agent now has actual `compat`, `bridge` and `npc.core` packages.
-Vehicle runtime classes remain together in the root package: a trial split exposed
-extensive internal route/controller state and was reverted before this checkpoint.
+Coupled runtime, engine, experiment and vehicle classes retain package-private
+access within `net.akr.scenario`, but are divided into five matching Java source
+roots so no source folder contains the previous hundred-file pile. A trial vehicle
+package split exposed extensive internal route/controller state and was reverted.
 The compiled `BuildGuard` contract now supplies manifest hashes, eliminating the
 source-spacing regex that would have lost all guarded classes after formatting.
 See [source style](../../CODE_STYLE.md) for the pinned formatter workflow and
 Javadoc policy.
 
 `./dayone runtime-test offline` passed at
-`artifacts/runtime-tests/20260929-112437-beb73a57/` after the namespace and package
+`artifacts/runtime-tests/20260929-113504-63a74606/` after the namespace, package and source-root
 changes. `./dayone test` passed 274 root Python tests, 116 Observer tests and the
 Observer web TypeScript/Vite build. `./dayone lint`, `./dayone docs java`, the
 Observer agent build and the C++ worker tests also passed locally. These checks do

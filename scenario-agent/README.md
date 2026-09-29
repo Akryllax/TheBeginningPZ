@@ -34,8 +34,9 @@ is packaged in our JAR. Protobuf runtime license notices are retained.
 
 The agent remains one JAR. `net.akr.scenario.compat` owns exact build checks;
 `net.akr.scenario.bridge` owns bounded Lua/protobuf conversion; and
-`net.akr.scenario.npc.core` owns detached civilian rules. The root package still
-holds the game-facing orchestrator and hooks. See [source style](../CODE_STYLE.md)
+`net.akr.scenario.npc.core` owns detached civilian rules. The coupled game-facing
+classes share a package but are organized into bootstrap, runtime, NPC engine,
+experiment and vehicle source roots. See [source style](../CODE_STYLE.md)
 for formatting and Javadoc commands. The AKR namespace and mod IDs require a
 fresh disposable world; prior development saves stay with the previous build.
 

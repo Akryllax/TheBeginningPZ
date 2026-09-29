@@ -15,7 +15,7 @@ def main() -> None:
     subprocess.run(["python3", str(ROOT / "scripts/build_scenario_agent.py")], check=True, cwd=ROOT)
     game_jars = [GAME, *sorted(path for path in GAME.parent.glob("*.jar") if path != GAME)]
     classpath = ":".join(str(path) for path in [CLASSES, PROTOBUF, *game_jars])
-    sources = sorted((ROOT / "scenario-agent/src").rglob("*.java"))
+    sources = sorted(ROOT.glob("scenario-agent/src*/**/*.java"))
     subprocess.run(
         [
             str(JDK / "javadoc"),
