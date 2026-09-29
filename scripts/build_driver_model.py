@@ -10,7 +10,7 @@ import struct
 import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
-MEDIA = ROOT / "mods/LofersStoryteller/42/media"
+MEDIA = ROOT / "mods/AKRStoryteller/42/media"
 
 
 def geometry():
@@ -66,7 +66,7 @@ def mesh_text():
         return ",\n".join("3;" + ",".join(map(str, row)) + ";" for row in faces) + ";\n"
 
     return (
-        "xof 0303txt 0032\nMesh LofersSeatedDriver {\n"
+        "xof 0303txt 0032\nMesh AKRSeatedDriver {\n"
         + str(len(vertices))
         + ";\n"
         + rows(vertices)
@@ -110,8 +110,8 @@ def palette():
 
 
 def build():
-    model = MEDIA / "models_X/Lofers/SeatedDriver.x"
-    texture = MEDIA / "textures/Lofers/DriverPalette.png"
+    model = MEDIA / "models_X/AKR/SeatedDriver.x"
+    texture = MEDIA / "textures/AKR/DriverPalette.png"
     model.parent.mkdir(parents=True, exist_ok=True)
     texture.parent.mkdir(parents=True, exist_ok=True)
     model.write_text(mesh_text())

@@ -323,8 +323,8 @@ int main(int argc, char **argv) {
             }));
         for (auto &f : parallel)
             require(f.get() == expected, "deterministic parallel workers");
-        const auto temp = std::filesystem::temp_directory_path() /
-                          ("lofers-lua-budget-" + std::to_string(getpid()));
+        const auto temp =
+            std::filesystem::temp_directory_path() / ("akr-lua-budget-" + std::to_string(getpid()));
         std::filesystem::create_directories(temp);
         for (const char *name : {"emergency.lua", "survival.lua"})
             std::filesystem::copy_file(rules / name, temp / name,

@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import shutil
@@ -73,9 +72,9 @@ def bundle(binary: Path):
     if temporary.exists():
         shutil.rmtree(temporary)
     (temporary / "usr/local/bin").mkdir(parents=True)
-    shutil.copy2(binary, temporary / "usr/local/bin/lofers-npc-service")
-    (temporary / "opt/lofers").mkdir(parents=True)
-    shutil.copytree(ROOT / "npc-service/rules", temporary / "opt/lofers/rules")
+    shutil.copy2(binary, temporary / "usr/local/bin/akr-npc-service")
+    (temporary / "opt/akr").mkdir(parents=True)
+    shutil.copytree(ROOT / "npc-service/rules", temporary / "opt/akr/rules")
     # Preserve loader and library paths exactly; this bundle does not depend on
     # the libc version of a guessed container distribution.
     dependencies = run("ldd", binary, capture_output=True, text=True).stdout
@@ -88,7 +87,7 @@ def bundle(binary: Path):
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source.resolve(), destination)
         destination.chmod(0o755)
-    licenses = temporary / "usr/share/licenses/lofers-npc-service"
+    licenses = temporary / "usr/share/licenses/akr-npc-service"
     licenses.mkdir(parents=True)
     for name, source in [
         ("lua.html", TOOLS / "lua-5.4.9/doc/readme.html"),
@@ -117,9 +116,7 @@ def bundle(binary: Path):
             if p.is_file()
         },
     }
-    (temporary / "opt/lofers/runtime-manifest.json").write_text(
-        json.dumps(manifest, indent=2) + "\n"
-    )
+    (temporary / "opt/akr/runtime-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     if target.exists():
         shutil.rmtree(target)
     temporary.replace(target)
@@ -153,11 +150,11 @@ def main():
             "python3",
             ROOT / "npc-service/tests/wire_test.py",
             "--binary",
-            build / "lofers-npc-service",
+            build / "akr-npc-service",
         )
     if args.bundle:
-        bundle(build / "lofers-npc-service")
-    print(f"Planner binary: {build / 'lofers-npc-service'}")
+        bundle(build / "akr-npc-service")
+    print(f"Planner binary: {build / 'akr-npc-service'}")
 
 
 if __name__ == "__main__":

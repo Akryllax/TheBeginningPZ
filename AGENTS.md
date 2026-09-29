@@ -90,3 +90,9 @@ Detailed experiment history belongs in the vault ledger, not in this instruction
 
 See `SKILLS.md` for task-specific workflows. Existing user authorization applies to
 routine implementation and validation; do not add repeated approval prompts.
+
+Source identity and formatting are specified in `CODE_STYLE.md`. Use AKR namespaces and
+module names for new code, while keeping `lofers.net` DNS and the existing Git remote.
+Run `./dayone lint` before committing and keep the compatibility guard verified when
+changing Java packages or formatting. The renamed AKR build belongs in a fresh disposable
+test world; existing development saves remain attached to the previous build.

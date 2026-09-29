@@ -9,8 +9,8 @@ int main(int argc, char **argv) {
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
             if (arg == "--help") {
-                std::cout << "lofers-npc-service --socket PATH --world NAME --rules DIR [--workers "
-                             "2] [--map-index PATH]\n";
+                std::cout << "akr-npc-service --socket PATH --world NAME --rules DIR [--workers 2] "
+                             "[--map-index PATH]\n";
                 return 0;
             }
             if (i + 1 == argc)

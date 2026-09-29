@@ -9,9 +9,9 @@ Use the existing server agent with these additional properties:
 ```properties
 side=server
 scenario.enabled=true
-world=LofersVehicleProbe_20260926
+world=AKRVehicleProbe_20260926
 vehicle_probe.enabled=true
-vehicle_probe.directory=/run/lofers/vehicle-probe
+vehicle_probe.directory=/run/akr/vehicle-probe
 vehicle_probe.x=10756.5
 vehicle_probe.y=9856.5
 vehicle_probe.z=0
@@ -21,7 +21,7 @@ vehicle_probe.speed_kmh=4
 ```
 
 The directory must exist, be private to the operator, and not be a symlink.
-The world name must match `LofersVehicleProbe_[A-Za-z0-9_-]{1,64}`. A playable
+The world name must match `AKRVehicleProbe_[A-Za-z0-9_-]{1,64}`. A playable
 world name or client side is refused. Legacy straight distance is limited to 12
 tiles and target speed to 5 km/h. Heading is a native rotation around the vertical axis: 0 faces
 world +Y; 90 faces world +X. The test uses `Base.SmallCar` only.

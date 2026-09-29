@@ -63,9 +63,9 @@ def bandits_file(game, explicit):
 
 def assets():
     here = Path(__file__).resolve().parent
-    if (here / "lofers-scenario-agent.jar").is_file():
-        return here, here / "LofersStoryteller"
-    return here.parent / "artifacts/scenario-agent", here.parent / "mods/LofersStoryteller"
+    if (here / "akr-scenario-agent.jar").is_file():
+        return here, here / "AKRStoryteller"
+    return here.parent / "artifacts/scenario-agent", here.parent / "mods/AKRStoryteller"
 
 
 def verify_game(game, manifest):
@@ -109,9 +109,9 @@ def running_client(game):
 def install_mod(source, cachedir, game):
     if running_client(game):
         raise RuntimeError("Close the local game before updating its companion mod")
-    target = cachedir / "mods/LofersStoryteller"
+    target = cachedir / "mods/AKRStoryteller"
     if target.exists():
-        backup = cachedir / "mods-backups" / ("LofersStoryteller-" + time.strftime("%Y%m%d-%H%M%S"))
+        backup = cachedir / "mods-backups" / ("AKRStoryteller-" + time.strftime("%Y%m%d-%H%M%S"))
         backup.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(target), backup)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -130,7 +130,7 @@ def main():
     args = parser.parse_args()
     game = game_directory(args.game_dir)
     directory, mod = assets()
-    jar = directory / "lofers-scenario-agent.jar"
+    jar = directory / "akr-scenario-agent.jar"
     manifest = directory / "manifest.json"
     if not jar.is_file() or not manifest.is_file():
         raise RuntimeError("Build/package the scenario agent first")
@@ -149,7 +149,7 @@ def main():
         "side=client\nscenario.enabled=true\nbandits_update_file=" + bandits.as_posix() + "\n"
     )
     env = os.environ.copy()
-    if "lofers-scenario-agent" in env.get("JAVA_TOOL_OPTIONS", ""):
+    if "akr-scenario-agent" in env.get("JAVA_TOOL_OPTIONS", ""):
         raise RuntimeError("A scenario helper is already present in JAVA_TOOL_OPTIONS")
     agent = "-javaagent:" + jar.as_posix() + "=" + properties.as_posix()
     if '"' in agent or "\n" in agent:

@@ -1,7 +1,6 @@
 """One native off-screen chase, using the disposable deployment and prewarmed Actor pool."""
 
 import json
-from pathlib import Path
 import shutil
 import time
 import civilian_watch as watch
@@ -29,7 +28,7 @@ def dispatch(m, args):
             "\n".join(
                 line for line in props.read_text().splitlines() if not line.startswith("watched.")
             )
-            + "\nchase.enabled=true\nchase.directory=/run/lofers\n",
+            + "\nchase.enabled=true\nchase.directory=/run/akr\n",
         )
         ini = target / "Zomboid/Server" / f"{receipt['world']}.ini"
         scenario.write_private(

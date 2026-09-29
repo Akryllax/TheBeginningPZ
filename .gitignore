@@ -6,7 +6,7 @@ artifacts/
 game/vendor/
 references/upstream/
 references/live-baseline*
-mods/LofersStoryteller/42/media/lua/server/LofersScenario/MapIndex.lua
+mods/AKRStoryteller/42/media/lua/server/AKRScenario/MapIndex.lua
 **/__pycache__/
 **/.pytest_cache/
 **/.ruff_cache/

@@ -92,7 +92,7 @@ playable world with an unvalidated scenario.
 
 | Directory | Purpose |
 | --- | --- |
-| `mods/LofersStoryteller/` | Original Lua companion and scenario code |
+| `mods/AKRStoryteller/` | Original Lua companion and scenario code |
 | `npc-service/`, `protocol/` | C++20 planner, Lua rules and wire contract |
 | `scenario-agent/` | Server bridge, guarded runtime hooks and fixtures |
 | `observer/` | Independent map/exporter source and private diagnostics |

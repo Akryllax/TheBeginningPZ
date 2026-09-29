@@ -1,4 +1,4 @@
-# Lofers scenario gameplay bridge
+# AKR scenario gameplay bridge
 
 This is a separate gameplay Java agent for **Project Zomboid 42.20.4 / b0bbce05d5,
 Java 25**. Observer remains a read-only service and exporter. The agent changes
@@ -27,21 +27,28 @@ Selections `unit`, `integration` and `worker` run narrower layers. The Java buil
 See [Runtime Testing](../vault/Runbooks/Runtime%20Testing.md) for coverage and outstanding gates.
 
 The project-local pinned JDK, protoc and protobuf runtime must already exist in
-`.tooling/agent`. Output is `artifacts/scenario-agent/lofers-scenario-agent.jar`
+`.tooling/agent`. Output is `artifacts/scenario-agent/akr-scenario-agent.jar`
 and `manifest.json`. The manifest includes critical class hashes, the JAR hash
 and the required upstream Bandits callback source hash. No game or Bandits code
 is packaged in our JAR. Protobuf runtime license notices are retained.
 
+The agent remains one JAR. `net.akr.scenario.compat` owns exact build checks;
+`net.akr.scenario.bridge` owns bounded Lua/protobuf conversion; and
+`net.akr.scenario.npc.core` owns detached civilian rules. The root package still
+holds the game-facing orchestrator and hooks. See [source style](../CODE_STYLE.md)
+for formatting and Javadoc commands. The AKR namespace and mod IDs require a
+fresh disposable world; prior development saves stay with the previous build.
+
 ## Launch configuration
 
 Pass an absolute properties path through
-`-javaagent:/path/lofers-scenario-agent.jar=/path/scenario.properties`.
+`-javaagent:/path/akr-scenario-agent.jar=/path/scenario.properties`.
 
 ```properties
 side=server
 scenario.enabled=true
 world=AKR_DayOne
-socket=/run/lofers/npc.sock
+socket=/run/akr/npc.sock
 bandits_update_file=/pzserver/steamapps/workshop/content/108600/3268487204/mods/Bandits/42.20/media/lua/client/BanditUpdate.lua
 ```
 
@@ -63,13 +70,13 @@ Only its exact command, single `pzexe.jar` classpath and pinned helper class
 hash are exempted. The subsequent actual game JVM still performs every guard.
 
 `scenario.enabled=false` installs no hooks. A client launched with the helper
-but connected to a world without `SandboxVars.LofersScenario.Enabled=true` has
+but connected to a world without `SandboxVars.AKRScenario.Enabled=true` has
 no scenario gameplay effects. The availability table can still be inspected.
 
 ## Game-thread Lua API
 
-Global `LofersNative` is installed after Lua initialization, with an event-entry
-fallback. Calls use a dot (`LofersNative.bind(...)`), not a colon. The live game
+Global `AKRNative` is installed after Lua initialization, with an event-entry
+fallback. Calls use a dot (`AKRNative.bind(...)`), not a colon. The live game
 thread is claimed when the first tick/action runs, not during threaded loading.
 
 | Function | Contract |
@@ -87,7 +94,7 @@ thread is claimed when the first tick/action runs, not during threaded loading.
 | `removeOwned(zombie)` | Queues native network deletion while the actor's online ID is valid, then removes the managed actor and flushes the update. Refuses unsafe moving-vehicle removal. Lua still owns the durable lifecycle receipt. |
 | `populationMode(allowBackground)` | Server only. Explicitly permits or denies autonomous factory creation. Default is denied from JVM startup, before Lua activation. |
 
-Actor metadata is a primitive table at `zombie:getModData().LofersScenario` with
+Actor metadata is a primitive table at `zombie:getModData().AKRScenario` with
 `id`, `generation`, `lease_epoch` and `owner_id`. Only the Lua scenario executor
 owns domain decisions and validates received client action receipts.
 
@@ -132,7 +139,7 @@ seat display, ownership transfer and reconnect before calling driving validated.
 ## Primitive IPC boundary
 
 The server publishes a detached table at
-`ModData.getOrCreate("LofersScenario").bridgeOut`. Its fields match
+`ModData.getOrCreate("AKRScenario").bridgeOut`. Its fields match
 `ObservationBatch` in `protocol/npc_control.proto`, using snake_case names and
 Lua arrays. It additionally supplies `world` and the Java-published
 `server_epoch`. Lua must adopt the epoch from `bridgeIn` before publishing.

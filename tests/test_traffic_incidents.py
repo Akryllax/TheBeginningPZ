@@ -11,9 +11,9 @@ ROOT = Path(__file__).parents[1]
 @pytest.fixture
 def lua():
     vm = LuaRuntime(unpack_returned_tuples=True)
-    vm.globals().package.path = str(ROOT / "mods/LofersStoryteller/42/media/lua/shared/?.lua")
+    vm.globals().package.path = str(ROOT / "mods/AKRStoryteller/42/media/lua/shared/?.lua")
     vm.execute("""
-        T=require 'LofersScenario/TrafficIncidents'
+        T=require 'AKRScenario/TrafficIncidents'
         s={world_id='world',status='running',phase='first_cases',elapsed_hours=2}
         c={online=2,all_players_known=true,scene_clear=true,player_exclusion=true,unseen=true,
             age_seconds=0,moving_vehicles=0}
@@ -121,7 +121,7 @@ def test_cooldown_history_cap_and_ids_survive_restore(lua):
 
 def test_unresolved_incident_counts_against_shared_scenario_fleet(lua):
     lua.execute("""
-        local M=require 'LofersScenario/Model'
+        local M=require 'AKRScenario/Model'
         s=M.new('test','world',100);s.status='running';s.phase='first_cases'
         e=assert(T.reserve(s,plan,c));local _,_,cars=M.count(s);assert(cars==2)
         s.vehicles.normal={status='driving'};_,_,cars=M.count(s);assert(cars==3)

@@ -32,7 +32,7 @@ def setup():
             pending = Path(stream.name)
             try:
                 request = urllib.request.Request(
-                    spec["url"], headers={"User-Agent": "Lofers-project-tooling"}
+                    spec["url"], headers={"User-Agent": "AKR-project-tooling"}
                 )
                 with urllib.request.urlopen(request, timeout=60) as response:
                     while data := response.read(1024 * 1024):

@@ -1057,13 +1057,11 @@ export function enablePlanning(
       const edges = draft.routing
         ? (draft.routing.geometry || []).flatMap((segment) =>
             knownParts(segment.points, known).flatMap((part) =>
-              part
-                .slice(1)
-                .map((p, i) => ({
-                  a: { x: part[i][0], y: part[i][1] },
-                  b: { x: p[0], y: p[1] },
-                  index: draft.stops.findIndex((s) => s.id === segment.to),
-                })),
+              part.slice(1).map((p, i) => ({
+                a: { x: part[i][0], y: part[i][1] },
+                b: { x: p[0], y: p[1] },
+                index: draft.stops.findIndex((s) => s.id === segment.to),
+              })),
             ),
           )
         : draft.stops.slice(1).map((p, i) => ({ a: draft.stops[i], b: p, index: i + 1 }));

@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-package lofers.observer.v1;
-option java_package = "net.lofers.observer.protocol";
+package akr.observer.v1;
+option java_package = "net.akr.observer.protocol";
 option java_outer_classname = "Positions";
 
 // A complete, current online-player list. Empty means nobody is online.

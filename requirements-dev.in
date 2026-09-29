@@ -3,4 +3,6 @@ pytest==8.4.2
 httpx==0.28.1
 lupa==2.5
 ruff==0.13.0
+gersemi==0.23.0
+clang-format==22.1.8
 PyYAML==6.0.2

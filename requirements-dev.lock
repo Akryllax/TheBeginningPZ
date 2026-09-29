@@ -19,12 +19,36 @@ anyio==4.15.1 \
     #   -r observer/requirements.lock
     #   httpx
     #   starlette
+appdirs==1.4.4 \
+    --hash=sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41 \
+    --hash=sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128
+    # via gersemi
 certifi==2026.7.22 \
     --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775 \
     --hash=sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55
     # via
     #   httpcore
     #   httpx
+clang-format==22.1.8 \
+    --hash=sha256:0223471f781647d476ce0e09a0512521043343313e42932d900f97a15eacb510 \
+    --hash=sha256:02ff8ad2e6a60554cc6b9b34310f71adb04da39e94302e08e3a655b77e4dd31c \
+    --hash=sha256:07312f8a74bda89b6ce32fae46c589cd7bb210a5d3fb2829a70e28ff449f5b80 \
+    --hash=sha256:1fac18f32426c6fd7acde7087511bd80e2c549b2cd7477099582c216ae82fa63 \
+    --hash=sha256:396f66b2237131ae7c5c9a9c34d50b1b9bee60ec6754e8b0dcb943850c747aa6 \
+    --hash=sha256:41e00922840376f8d1239db8fb5bc6b1d313bd09752344a85b0f8071112e5c7e \
+    --hash=sha256:48c3b8dcfe9d4e964ced0e744e0f1f8ddc711bce92e50f6cab21e10f54857d08 \
+    --hash=sha256:5fe6ad3e9399d589aff5ead432568a84cdcbbd621f1708340819efd74cbf8176 \
+    --hash=sha256:61a23f4fc0ad1932e1b0300ca451108bf1e751eb89f478062d87f888db9190e6 \
+    --hash=sha256:65df71f1eab12de161b9059483be55cb72490ec7fc7ca4915b5de49722a76a46 \
+    --hash=sha256:734d22be5c9d3a72a841444817aae8168c8f4bdccb08de491f05673e42ec7304 \
+    --hash=sha256:7763ce0f45b5ff0b5ca7a830d6061ce431dcb644211f9b2bb483bfa66d6c78ca \
+    --hash=sha256:8fc6139349a64f82d24396c815f5584f56da8912482dceadd9e5d7a3f8c17d6c \
+    --hash=sha256:a796192453ae56c61e975fc56ee7defb4187013fc3de798cbe608cfe326762aa \
+    --hash=sha256:b00cff6bfd1f1686f073a4fdf1cb937dbd58bf7510c659477805c03afdea0816 \
+    --hash=sha256:c6d7382dd728431c0cecf3c7db6ac0904e162c7c18889696ab8dc0630ff9349b \
+    --hash=sha256:d1147107222c0dda3e4869e9e8c4a79f9ed1de83819e5274de42b82adf3d2129 \
+    --hash=sha256:fc2ac5bd0ea41af49968fb69426207806d5f7016cb8f4bfbd44f4f1ffe8d53f2
+    # via -r requirements-dev.in
 click==8.5.0 \
     --hash=sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360 \
     --hash=sha256:ba0d2089de75ea0310e2dde03160e6ca10009947fb95a182f9b54021bb272e34
@@ -35,6 +59,10 @@ fastapi==0.141.1 \
     --hash=sha256:bfb91aa2d334c61cb35ba9a116fc123b3d3df31640b801cf57a7a78ec3f603b3 \
     --hash=sha256:e8822fc40db1e1858054d7a949a888695bc9bdce70139178e33bd2871a453ca1
     # via -r observer/requirements.lock
+gersemi==0.23.0 \
+    --hash=sha256:079ed5cd8a74a2a7aa13bc3fcf10311ec5f51d59fb48f724876e22d2580f7f16 \
+    --hash=sha256:ef69219e1a8b97e6b920c601637f4ad6bf8d4fdceb8e9edc4203fa50115fab65
+    # via -r requirements-dev.in
 h11==0.16.0 \
     --hash=sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1 \
     --hash=sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
@@ -61,6 +89,10 @@ iniconfig==2.3.0 \
     --hash=sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730 \
     --hash=sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12
     # via pytest
+lark==1.3.1 \
+    --hash=sha256:b426a7a6d6d53189d318f2b6236ab5d6429eaf09259f1ca33eb716eed10d2905 \
+    --hash=sha256:c629b661023a014c37da873b4ff58a817398d12635d3bbb2c5a03be7fe5d1e12
+    # via gersemi
 lupa==2.5 \
     --hash=sha256:0014935935862d3acf0f96dfa9ce6657720ece6918feaf76eb7c63948ba03a58 \
     --hash=sha256:01433c46562ee9a64779627de34ccef38241a926b5325f03fe7859d73d8d2393 \
@@ -428,7 +460,9 @@ pyyaml==6.0.2 \
     --hash=sha256:efdca5630322a10774e8e98e1af481aad470dd62c3170801852d752aa7a783ba \
     --hash=sha256:f753120cb8181e736c57ef7636e83f31b9c0d1722c516f7e86cf15b7aa57ff12 \
     --hash=sha256:ff3824dc5261f50c9b0dfb3be22b4567a6f938ccce4587b38952d85fd9e9afe4
-    # via -r requirements-dev.in
+    # via
+    #   -r requirements-dev.in
+    #   gersemi
 ruff==0.13.0 \
     --hash=sha256:03447f3d18479df3d24917a92d768a89f873a7181a064858ea90a804a7538991 \
     --hash=sha256:0f96a8d90bb258d7d3358b372905fe7333aaacf6c39e2408b9f8ba181f4b6ef2 \

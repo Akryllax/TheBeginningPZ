@@ -59,7 +59,7 @@ def create(m, actors=4, hunters=0):
     scenario.write_private(
         properties,
         properties.read_text()
-        + f"watched.enabled=true\nwatched.directory=/run/lofers\nwatched.actors={actors}\nwatched.hunters={hunters}\n",
+        + f"watched.enabled=true\nwatched.directory=/run/akr\nwatched.actors={actors}\nwatched.hunters={hunters}\n",
     )
     # Keep the saved test account and character so the ordinary client can join unattended.
     for source, dest in [

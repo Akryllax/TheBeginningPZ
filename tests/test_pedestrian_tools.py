@@ -10,7 +10,7 @@ from lupa.lua51 import LuaRuntime
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-import runtime_control
+import runtime_control  # noqa: E402 - project-local scripts path added above
 
 
 def test_receive_handles_fragmentation_and_disconnect():
@@ -47,7 +47,7 @@ def server_vm():
       next=nil -- The game's Kahlua global library does not provide Lua's next().
       data={};ModData={getOrCreate=function(k) data[k]=data[k] or {};return data[k] end}
       BanditCustom={ClanGetAll=function() return {one={spawn={spawnChance=99}}} end}
-      LofersNative={spawn=function(fn) return true,fn() end}
+      AKRNative={spawn=function(fn) return true,fn() end}
       registered=0;AKRRuntime={world='AKR_DayOne_Test_fixture',epoch='epoch',register=function(a,b)
         registered=registered+1;factory=a;retire=b;return true end}
       print=function() end
@@ -83,7 +83,7 @@ def test_normal_world_does_not_register_executor():
 def test_missing_legacy_activation_is_detected_before_observer_test():
     lua = server_vm()
     lua.execute(
-        "LofersNative.spawn=function() return false,'spawn_not_authorized' end;Events.OnServerStarted.callbacks[1]()"
+        "AKRNative.spawn=function() return false,'spawn_not_authorized' end;Events.OnServerStarted.callbacks[1]()"
     )
     assert lua.globals().registered == 0
     assert lua.eval("AKR.dispatch.failures['OnServerStarted:AKRDevTools.init']") == 1

@@ -47,9 +47,11 @@ function G.accept(r, p)
     then
         return false, "unsupported_plan"
     end
-    local expected = (
-        { [0] = { "WALK", "WAIT", "WALK" }, [1] = { "WAIT", "WALK" }, [2] = { "WALK" } }
-    )[g.phase]
+    local expected = ({
+        [0] = { "WALK", "WAIT", "WALK" },
+        [1] = { "WAIT", "WALK" },
+        [2] = { "WALK" },
+    })[g.phase]
     if #p.actions ~= #expected then
         return false, "routine_shape"
     end

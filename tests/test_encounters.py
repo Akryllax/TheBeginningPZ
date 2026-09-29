@@ -7,7 +7,7 @@ from lupa.lua51 import LuaRuntime
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-import civilian_encounter as ops
+import civilian_encounter as ops  # noqa: E402 - project-local scripts path added above
 
 
 def test_batch_keeps_exact_counts_and_bounded_cases():

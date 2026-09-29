@@ -114,18 +114,13 @@ K.Dispatch.on(core.dispatch, "OnTick", "AKRDevTools.chaseObserve", function()
     local zv = bodyView(z, player, not z and list:size() > 64)
     zv.local_owner = z ~= nil and not z:isRemoteZombie()
     zv.targeted = z ~= nil and actor ~= nil and z:getTarget() == actor
-    sendClientCommand(
-        player,
-        "AKRDevTools",
-        "chaseView",
-        {
-            epoch = config.epoch,
-            revision = config.revision,
-            x = player:getX(),
-            y = player:getY(),
-            candidates = candidates,
-            actor = av,
-            hunter = zv,
-        }
-    )
+    sendClientCommand(player, "AKRDevTools", "chaseView", {
+        epoch = config.epoch,
+        revision = config.revision,
+        x = player:getX(),
+        y = player:getY(),
+        candidates = candidates,
+        actor = av,
+        hunter = zv,
+    })
 end)

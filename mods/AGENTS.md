@@ -1,7 +1,8 @@
 # Game mods
 
 Use the project storyteller and multiplayer-compatibility skills for companion-mod changes.
-Keep `LofersStoryteller` original source separate from downloaded Workshop dependencies.
+Keep `AKRStoryteller` original source separate from downloaded Workshop dependencies.
+Use `CODE_STYLE.md` for game Lua formatting and AKR module naming.
 Do not make client synchronization or API availability claims based on Lua mocks alone.
 
 Scheduling, persistent IDs and budgets are server-owned. Bound work on every event hook,

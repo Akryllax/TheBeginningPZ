@@ -99,7 +99,7 @@ def test(jdk, game_jar):
                         f"-javaagent:{agent}={config}",
                         "-cp",
                         f"{classes}:{game_jar}:{agent}",
-                        "net.lofers.observer.FixtureMain",
+                        "net.akr.observer.FixtureMain",
                         mode,
                     ],
                     check=False,

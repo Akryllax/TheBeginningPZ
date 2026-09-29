@@ -24,12 +24,12 @@ def probe(tmp_path):
     target.mkdir(parents=True)
     config = target / "scenario.properties"
     config.write_text(
-        "world=LofersVehicleProbe_test\nvehicle_probe.x=10\nvehicle_probe.y=10\nprivate_key=unchanged\n"
+        "world=AKRVehicleProbe_test\nvehicle_probe.x=10\nvehicle_probe.y=10\nprivate_key=unchanged\n"
     )
     receipt = {
-        "world": "LofersVehicleProbe_test",
+        "world": "AKRVehicleProbe_test",
         "path": str(target),
-        "container": "lofers-vehicle-probe",
+        "container": "akr-vehicle-probe",
     }
     (target.parent / "current.json").write_text(json.dumps(receipt))
     route = tmp_path / "artifacts/route.json"
@@ -79,7 +79,7 @@ def test_route_reconfiguration_keeps_private_settings_and_reviewed_provenance(pr
     ops.configure_route(manager, route)
     settings = ops.properties(target / "scenario.properties")
     assert settings["private_key"] == "unchanged"
-    assert settings["world"] == "LofersVehicleProbe_test"
+    assert settings["world"] == "AKRVehicleProbe_test"
     assert float(settings["vehicle_probe.heading_degrees"]) == 90
     assert settings["vehicle_probe.waypoints"].startswith("100.00000000,100.00000000;")
     record = next((target / "routes").iterdir())
@@ -95,7 +95,7 @@ def test_concurrent_start_and_route_change_cannot_replace_launch_configuration(p
     (target / "agent").mkdir()
     artifact = manager.ROOT / "artifacts/scenario-agent"
     artifact.mkdir()
-    (artifact / "lofers-scenario-agent.jar").write_bytes(b"fixture-only")
+    (artifact / "akr-scenario-agent.jar").write_bytes(b"fixture-only")
     (artifact / "manifest.json").write_text(
         json.dumps({"jar_sha256": hashlib.sha256(b"fixture-only").hexdigest()})
     )

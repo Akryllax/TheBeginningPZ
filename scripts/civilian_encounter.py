@@ -328,8 +328,8 @@ def dispatch(m, args):
         )
         scenario.write_private(
             props,
-            text.replace("socket=/run/lofers/no-planner.sock", "socket=/run/lofers/npc.sock")
-            + "\nencounter.enabled=true\nencounter.directory=/run/lofers\n",
+            text.replace("socket=/run/akr/no-planner.sock", "socket=/run/akr/npc.sock")
+            + "\nencounter.enabled=true\nencounter.directory=/run/akr\n",
         )
         if action == "lifecycle-create":
             import re

@@ -67,21 +67,16 @@ K.Dispatch.on(K.instance().dispatch, "OnTick", "AKRDevTools.combatWatch", functi
         z:setUseless(true)
         z:setTarget(nil)
     end
-    sendClientCommand(
-        p,
-        "AKRDevTools",
-        "combatView",
-        {
-            epoch = config.epoch,
-            actor_present = a ~= nil,
-            target_present = z ~= nil,
-            attack_animation_flag_seen = swing,
-            saw_reaction = reaction,
-            actor_state = ast,
-            target_state = zst,
-            target_health = z and z:getHealth() or -1,
-        }
-    )
+    sendClientCommand(p, "AKRDevTools", "combatView", {
+        epoch = config.epoch,
+        actor_present = a ~= nil,
+        target_present = z ~= nil,
+        attack_animation_flag_seen = swing,
+        saw_reaction = reaction,
+        actor_state = ast,
+        target_state = zst,
+        target_health = z and z:getHealth() or -1,
+    })
 end)
 
 -- Presentation follows stock replicated action/hit callbacks. Never applies damage,

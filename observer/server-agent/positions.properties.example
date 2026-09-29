@@ -1,5 +1,5 @@
 world=AKR_Exploratory
 endpoint=http://observer-positions:8000/internal/v1/positions
 token_file=/run/secrets/observer-positions-token
-## Optional local-only storyteller diagnostics (requires LofersStoryteller mod).
+## Optional local-only storyteller diagnostics (requires AKRStoryteller mod).
 storyteller_enabled=false

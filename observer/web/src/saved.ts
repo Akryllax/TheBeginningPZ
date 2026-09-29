@@ -298,13 +298,11 @@ function renderPlayers(frame: PositionFrame) {
       focus(p.x, p.y);
       if ($<HTMLInputElement>("place-query").value) void search();
     };
-    entry.pin
-      .setLatLng(xy(p.x, p.y))
-      .setStyle({
-        fillColor: p.source === "live" ? "#28b8e0" : "#248db3",
-        fillOpacity: p.source === "live" ? 1 : 0.7,
-        dashArray: p.source === "last_seen" ? "3 3" : undefined,
-      });
+    entry.pin.setLatLng(xy(p.x, p.y)).setStyle({
+      fillColor: p.source === "live" ? "#28b8e0" : "#248db3",
+      fillOpacity: p.source === "live" ? 1 : 0.7,
+      dashArray: p.source === "last_seen" ? "3 3" : undefined,
+    });
     const content = popup(p.name, [
       p.character,
       `${p.x.toFixed(1)}, ${p.y.toFixed(1)} · Floor ${Math.floor(p.z)}`,

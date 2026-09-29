@@ -41,7 +41,8 @@ return function(c, d)
                 set_mask = S,
                 clear_mask = 11,
                 cost = 2
-                    + math.sqrt((c.position.x - c.shop.x) ^ 2 + (c.position.y - c.shop.y) ^ 2) / 30,
+                    + math.sqrt((c.position.x - c.shop.x) ^ 2 + (c.position.y - c.shop.y) ^ 2)
+                        / 30,
                 duration = 0,
                 target_id = "",
                 animation = "Walk",

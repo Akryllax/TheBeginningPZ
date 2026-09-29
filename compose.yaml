@@ -10,7 +10,7 @@ services:
     cpus: 6
     stop_grace_period: 180s
     environment:
-      JAVA_TOOL_OPTIONS: -javaagent:/opt/observer/observer-position-agent.jar=/opt/observer/positions.properties ${LOFERS_SCENARIO_AGENT_OPTIONS:-}
+      JAVA_TOOL_OPTIONS: -javaagent:/opt/observer/observer-position-agent.jar=/opt/observer/positions.properties ${AKR_SCENARIO_AGENT_OPTIONS:-}
     ports:
       - "192.168.1.132:16271:16271/udp"
       - "192.168.1.132:16272:16272/udp"
@@ -20,7 +20,7 @@ services:
       - ./data/Zomboid:/home/pzuser/Zomboid:z
       - ./artifacts/agent:/opt/observer:ro,z
       - ./artifacts/scenario-agent:/opt/scenario:ro,z
-      - ./data/npc-ipc:/run/lofers:z
+      - ./data/npc-ipc:/run/akr:z
       - ./secrets/positions.token:/run/secrets/observer-positions-token:ro,z
       - ./secrets/admin-password:/run/secrets/admin-password:ro,z
     networks: [default, telemetry]
@@ -42,19 +42,19 @@ services:
     command:
       [
         "--socket",
-        "/run/lofers/npc.sock",
+        "/run/akr/npc.sock",
         "--world",
         "AKR_DayOne",
         "--rules",
-        "/opt/lofers/rules",
+        "/opt/akr/rules",
         "--workers",
         "2",
         "--map-index",
-        "/opt/lofers/map/map-index.pb",
+        "/opt/akr/map/map-index.pb",
       ]
     volumes:
-      - ./data/npc-ipc:/run/lofers:z
-      - ./artifacts/scenario-map:/opt/lofers/map:ro,z
+      - ./data/npc-ipc:/run/akr:z
+      - ./artifacts/scenario-map:/opt/akr/map:ro,z
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     logging:

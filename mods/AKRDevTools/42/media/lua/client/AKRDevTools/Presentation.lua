@@ -238,19 +238,16 @@ K.Dispatch.on(core.dispatch, "OnTick", "AKRDevTools.samples", function()
         frames[i] = v
     end
     table.sort(frames)
-    send(
-        "sample",
-        {
-            epoch = C.epoch,
-            client_ms = stamp,
-            server_echo_ms = C.serverEcho,
-            actors = samples,
-            gate = G.status(),
-            presented = C.presented,
-            missing_brain = C.missingBrain,
-            frame_p95_ms = frames[math.max(1, math.ceil(#frames * 0.95))] or 0,
-        }
-    )
+    send("sample", {
+        epoch = C.epoch,
+        client_ms = stamp,
+        server_echo_ms = C.serverEcho,
+        actors = samples,
+        gate = G.status(),
+        presented = C.presented,
+        missing_brain = C.missingBrain,
+        frame_p95_ms = frames[math.max(1, math.ceil(#frames * 0.95))] or 0,
+    })
 end)
 ZombiePrograms.AKRRemoteCivilian = {}
 ZombiePrograms.AKRRemoteCivilian.Prepare = function()

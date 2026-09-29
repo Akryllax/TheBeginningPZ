@@ -10,7 +10,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-import civilian_headless as headless
+import civilian_headless as headless  # noqa: E402 - project-local scripts path added above
 
 
 def test_prepare_keeps_existing_world_receipt_and_pins_isolated_config(tmp_path, monkeypatch):
@@ -44,7 +44,7 @@ def test_prepare_keeps_existing_world_receipt_and_pins_isolated_config(tmp_path,
         (root / "mods" / name).mkdir(parents=True)
     agent = root / "artifacts/scenario-agent"
     agent.mkdir(parents=True)
-    (agent / "lofers-scenario-agent.jar").write_bytes(b"fixture")
+    (agent / "akr-scenario-agent.jar").write_bytes(b"fixture")
     (agent / "manifest.json").write_text(
         json.dumps({"jar_sha256": hashlib.sha256(b"fixture").hexdigest()})
     )
@@ -91,7 +91,7 @@ def test_receipt_cannot_target_a_different_container(tmp_path):
     base = tmp_path / "artifacts/civilian-headless"
     base.mkdir(parents=True)
     (base / "current.json").write_text(
-        json.dumps({"path": str(base / "x"), "container": "lofers-scenario-test"})
+        json.dumps({"path": str(base / "x"), "container": "akr-scenario-test"})
     )
     with pytest.raises(RuntimeError, match="Invalid headless receipt"):
         headless.receipt(SimpleNamespace(ROOT=tmp_path))

@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace npc {
-namespace pb = lofers::npc::v1;
+namespace pb = akr::npc::v1;
 constexpr size_t kMaxFrame = 256 * 1024;
 constexpr size_t kMaxResidents = 64;
 constexpr size_t kMaxRoadNodes = 4096;

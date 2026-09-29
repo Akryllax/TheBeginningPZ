@@ -16,8 +16,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 MAX_CORRIDOR_SAMPLES = 32768
 sys.path.insert(0, str(ROOT / "observer"))
-from observer.roads import Roads
-from observer.terrain import Binary, read_header
+from observer.roads import Roads  # noqa: E402 - project-local observer path added above
+from observer.terrain import Binary, read_header  # noqa: E402
 
 
 def probe_waypoints(rows):

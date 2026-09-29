@@ -16,9 +16,9 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "observer"))
-from observer.terrain import read_header
-from scenario_roads import RoadSurface, corridor_cells, probe_waypoints
-from scenario_navigation import bake_navigation, benchmark_queries, source_identity
+from observer.terrain import read_header  # noqa: E402 - project-local observer path added above
+from scenario_roads import RoadSurface, corridor_cells, probe_waypoints  # noqa: E402
+from scenario_navigation import bake_navigation, benchmark_queries, source_identity  # noqa: E402
 
 BOUNDS = (10400, 9400, 11200, 10752)
 ROAD_RADIUS = 2.25
@@ -301,7 +301,7 @@ def generate():
             % (p["id"], p["kind"], q["x"], q["y"])
         )
     lua.extend(["} }", ""])
-    destination = ROOT / "mods/LofersStoryteller/42/media/lua/server/LofersScenario/MapIndex.lua"
+    destination = ROOT / "mods/AKRStoryteller/42/media/lua/server/AKRScenario/MapIndex.lua"
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text("\n".join(lua))
     counts = {kind: sum(p["kind"] == kind for p in places) for kind in ROOM_ROLES}

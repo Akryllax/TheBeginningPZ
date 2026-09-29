@@ -37,7 +37,7 @@ def test_sources_parse_and_mod_metadata(lua):
     assert info["id"] == "AKRCore" and "require" not in info
     version = (MOD / "VERSION").read_text().strip()
     assert version in info["description"]
-    assert f'version="{version}"' in (LUA / "shared/AKRCore/Core.lua").read_text()
+    assert f'version = "{version}"' in (LUA / "shared/AKRCore/Core.lua").read_text()
 
 
 def test_version_compatibility(lua):

@@ -44,7 +44,7 @@ def create(m):
     scenario.write_private(
         target / "scenario.properties",
         f"side=server\nscenario.enabled=true\nworld={receipt['world']}\n"
-        "socket=/run/lofers/no-planner.sock\nruntime.enabled=true\nruntime.socket=/run/lofers/runtime.sock\n"
+        "socket=/run/akr/no-planner.sock\nruntime.enabled=true\nruntime.socket=/run/akr/runtime.sock\n"
         f"bandits_update_file={scenario.BANDITS_SOURCE}\n",
     )
     for path in (target / "receipt.json", m.ROOT / "artifacts/scenario-tests/current.json"):
@@ -75,7 +75,7 @@ def start(m):
 
     for report in (target / "ipc").glob("*-report.json"):
         report.rename(report.with_name(report.stem + f".previous-{time.time_ns()}.json"))
-    jar = m.ROOT / "artifacts/scenario-agent/lofers-scenario-agent.jar"
+    jar = m.ROOT / "artifacts/scenario-agent/akr-scenario-agent.jar"
     manifest = json.loads(jar.with_name("manifest.json").read_text())
     if hashlib.sha256(jar.read_bytes()).hexdigest() != manifest["jar_sha256"]:
         raise RuntimeError("Agent artifact differs from manifest")
@@ -107,7 +107,7 @@ def start(m):
             "-e",
             f"PZ_WORLD={receipt['world']}",
             "-e",
-            "JAVA_TOOL_OPTIONS=-javaagent:/opt/scenario/lofers-scenario-agent.jar=/opt/scenario/scenario.properties",
+            "JAVA_TOOL_OPTIONS=-javaagent:/opt/scenario/akr-scenario-agent.jar=/opt/scenario/scenario.properties",
             "-v",
             f"{m.ROOT}/data/game-files:/pzserver:ro,z",
             "-v",
@@ -115,11 +115,11 @@ def start(m):
             "-v",
             f"{target}/Zomboid:/home/pzuser/Zomboid:z",
             "-v",
-            f"{target}/agent/lofers-scenario-agent.jar:/opt/scenario/lofers-scenario-agent.jar:ro,z",
+            f"{target}/agent/akr-scenario-agent.jar:/opt/scenario/akr-scenario-agent.jar:ro,z",
             "-v",
             f"{target}/scenario.properties:/opt/scenario/scenario.properties:ro,z",
             "-v",
-            f"{target}/ipc:/run/lofers:z",
+            f"{target}/ipc:/run/akr:z",
             "-v",
             f"{m.ROOT}/artifacts/npc-service-runtime:/opt/npc-runtime:ro,z",
             "-v",
@@ -160,7 +160,10 @@ def join(m):
     The stock "Click to Start" screen only accepts real input, so one synthetic click is sent
     to the game window with xdotool (XWayland).
     """
-    import os, signal, subprocess, time
+    import os
+    import signal
+    import subprocess
+    import time
 
     receipt, target = scenario.test_receipt(m)
     if receipt.get("experiment") != "pedestrian":
@@ -171,7 +174,12 @@ def join(m):
         )
     ini = target / "Zomboid/Server" / (receipt["world"] + ".ini")
     password = next(
-        (l.split("=", 1)[1] for l in ini.read_text().splitlines() if l.startswith("Password=")), ""
+        (
+            line.split("=", 1)[1]
+            for line in ini.read_text().splitlines()
+            if line.startswith("Password=")
+        ),
+        "",
     )
     running = subprocess.run(
         ["pgrep", "-f", "^./ProjectZomboid64"], capture_output=True, text=True

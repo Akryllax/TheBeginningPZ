@@ -6,7 +6,7 @@ import pytest
 from lupa.lua51 import LuaRuntime
 
 ROOT = Path(__file__).resolve().parents[1]
-LUA = ROOT / "mods/LofersStoryteller/42/media/lua"
+LUA = ROOT / "mods/AKRStoryteller/42/media/lua"
 
 
 @pytest.fixture
@@ -15,12 +15,12 @@ def lua():
     vm.globals().package.path = ";".join(
         str(LUA / side / "?.lua") for side in ("shared", "server", "client")
     )
-    vm.execute("M=require 'LofersScenario/Model';C=require 'LofersScenario/Config'")
+    vm.execute("M=require 'AKRScenario/Model';C=require 'AKRScenario/Config'")
     return vm
 
 
 def test_sources_parse(lua):
-    for path in LUA.glob("*/LofersScenario/*.lua"):
+    for path in LUA.glob("*/AKRScenario/*.lua"):
         lua.execute("assert(loadstring(...))", path.read_text())
 
 
@@ -156,7 +156,7 @@ def test_population_place_and_event_bounds(lua):
 
 
 SERVER = """
-SandboxVars={LofersScenario={Enabled=true}}
+SandboxVars={AKRScenario={Enabled=true}}
 isClient=function() return false end
 handlers={};Events=setmetatable({},{__index=function(self,k)
     local e={Add=function(f) handlers[k]=handlers[k] or {};table.insert(handlers[k],f) end}
@@ -177,20 +177,20 @@ function makePlayer(id,access)
 end
 admin=makePlayer(10,'admin');guest=makePlayer(11,'none');online={admin,guest}
 getOnlinePlayers=function() return {size=function() return #online end,get=function(self,i) return online[i+1] end} end
-package.loaded['LofersScenario/MapIndex']={places={}}
-package.loaded['LofersScenario/World']={discover=function() end,
+package.loaded['AKRScenario/MapIndex']={places={}}
+package.loaded['AKRScenario/World']={discover=function() end,
     candidate=function() return {x=160,y=160,z=0} end,valid=function() return true end}
 spawned=0
-package.loaded['LofersScenario/Native']={actors={},ready=function() return true end,
+package.loaded['AKRScenario/Native']={actors={},ready=function() return true end,
     spawn=function(s,r) spawned=spawned+1;r.materialized=true;r.lifecycle='active';return true end,
     reconcile=function() return nil,'unloaded' end,remove=function() return false,'unloaded' end}
-LofersNative={versionReady=function() return true end}
-Server=require 'LofersScenario/Server'
+AKRNative={versionReady=function() return true end}
+Server=require 'AKRScenario/Server'
 fire('OnInitGlobalModData')
-root=store.LofersScenario;s=root.state
+root=store.AKRScenario;s=root.state
 home=M.addPlace(s,'home','home',{x=100,y=100,z=0});r=M.resident(s,home,'worker')
 root.bridgeIn={health='ready',guard_ready=true,server_epoch='native-epoch'}
-function cmd(p,name,args) fire('OnClientCommand','LofersScenario',name,p,args or {}) end
+function cmd(p,name,args) fire('OnClientCommand','AKRScenario',name,p,args or {}) end
 function tick() clock=clock+0.2;hour=hour+0.001;fire('OnTick') end
 function hello(p) cmd(p,'hello',{helper=true,version=C.version,integration='lua-pedestrian',
  manifest=C.clientManifest,callback_ready=true,target_shield=true}) end
@@ -272,10 +272,8 @@ def test_epoch_change_revokes_previous_lease(lua):
 
 
 def test_disabled_scenario_does_not_create_world_state(lua):
-    lua.execute(
-        SERVER.replace("Enabled=true", "Enabled=false").split("root=store.LofersScenario")[0]
-    )
-    lua.execute("assert(store.LofersScenario==nil and Server.state==nil)")
+    lua.execute(SERVER.replace("Enabled=true", "Enabled=false").split("root=store.AKRScenario")[0])
+    lua.execute("assert(store.AKRScenario==nil and Server.state==nil)")
 
 
 NATIVE = (
@@ -296,21 +294,21 @@ health=1.8;dead=false;md={};removed=0
 z={getSquare=function() return {} end,getX=function() return 100 end,getY=function() return 100 end,
  getZ=function() return 0 end,getHealth=function() return health end,setHealth=function(self,h) health=h end,
  getModData=function() return md end,isDead=function() return dead end,getVehicle=function() return nil end}
-package.loaded['LofersScenario/World']={find=function(id) if id==42 then return z end end}
+package.loaded['AKRScenario/World']={find=function(id) if id==42 then return z end end}
 factoryMode='normal'
 BanditServer={Spawner={Individual=function(p,args)
  local profile=profiles[args.bid]
- assert(profile.cid=='lofers-scenario-civilians-v1' and profile.general.bid==args.bid)
+ assert(profile.cid=='akr-scenario-civilians-v1' and profile.general.bid==args.bid)
  if factoryMode=='throws' then error('factory failed') end
  if factoryMode=='unknown' then return end
  GetBanditClusterData(42)[42]={bid=args.bid,fullname=args.fullname,health=1.8}
  TransmitBanditCluster(42)
 end}}
-LofersNative={versionReady=function() return true end,
+AKRNative={versionReady=function() return true end,
  spawn=function(fn,args) return pcall(fn,args) end,
- bind=function(actor,id,generation,lease,owner) md.LofersScenario={id=id,generation=generation};return true end,
- removeOwned=function(actor) assert(md.LofersScenario.id==r.id);removed=removed+1;return true end}
-N=require 'LofersScenario/Native'
+ bind=function(actor,id,generation,lease,owner) md.AKRScenario={id=id,generation=generation};return true end,
+ removeOwned=function(actor) assert(md.AKRScenario.id==r.id);removed=removed+1;return true end}
+N=require 'AKRScenario/Native'
 p={getOnlineID=function() return 10 end}
 """
 )
@@ -357,7 +355,7 @@ def test_unknown_native_entity_is_never_removed(lua):
 
 
 CLIENT = """
-SandboxVars={LofersScenario={Enabled=true}}
+SandboxVars={AKRScenario={Enabled=true}}
 handlers={};Events=setmetatable({},{__index=function(self,k)
  local e={Add=function(f) handlers[k]=handlers[k] or {};table.insert(handlers[k],f) end}
  rawset(self,k,e);return e end})
@@ -387,15 +385,15 @@ z={getPersistentOutfitID=function() return 42 end,getModData=function() return m
  getPathFindBehavior2=function() return path end,setPath2=function() end,
  isRemoteZombie=function() return remote end,getOwnerPlayer=function() return p end,
  getVehicle=function() return z.currentVehicle end}
-LofersNative=nil
-package.loaded['LofersScenario/ClientGate']={ready=function() return true end,manifest=C.clientManifest}
+AKRNative=nil
+package.loaded['AKRScenario/ClientGate']={ready=function() return true end,manifest=C.clientManifest}
 getCell=function() return {getGridSquare=function() return nil end} end
-L=require 'LofersScenario/Runtime'
+L=require 'AKRScenario/Runtime'
 r={id='resident',outfit_id=42,name='Test Resident',role='worker',generation=1,
  lifecycle='active',owner_id=10,lease_epoch=1,lease_until=200,plan_revision=1,health=50,
  infection='healthy',position={x=100,y=100,z=0},action={id='action1',kind='WAIT',target={x=100,y=100,z=0},duration_hours=0}}
 function snapshot()
- fire('OnServerCommand','LofersScenario','residents',{epoch='epoch',server_seconds=clock,residents={r}})
+ fire('OnServerCommand','AKRScenario','residents',{epoch='epoch',server_seconds=clock,residents={r}})
 end
 function tick() clock=clock+0.2;hour=hour+0.001;fire('OnZombieUpdate',z) end
 snapshot()
@@ -407,7 +405,7 @@ def test_replica_displays_activity_but_never_executes_receipts(lua):
         CLIENT
         + """
         tick();tick()
-        assert(variables.LofersAction=='WAIT' and #sent==0 and walks==0 and controls==0)
+        assert(variables.AKRAction=='WAIT' and #sent==0 and walks==0 and controls==0)
         assert(math.abs(health-0.9)<0.0001)
         remote=false;tick()
         assert(#sent==1 and sent[1].cmd=='receipt' and sent[1].args.lease_epoch==1)
@@ -422,7 +420,7 @@ def test_ordinary_client_rejects_unverified_vehicle_actions(lua):
         + """
         remote=false;car={};r.vehicle_id='4';r.in_vehicle=true
         r.action.kind='DRIVE';snapshot();tick()
-        assert(seats==0 and controls==0 and LofersNative==nil)
+        assert(seats==0 and controls==0 and AKRNative==nil)
         assert(#sent==1 and sent[1].args.reason=='vehicle_execution_unverified')
     """
     )
@@ -433,9 +431,9 @@ def test_authoritative_snapshot_removes_stale_client_binding(lua):
         CLIENT
         + """
         tick()
-        fire('OnServerCommand','LofersScenario','residents',{epoch='epoch',server_seconds=clock,residents={}})
-        assert(L.residents.resident==nil and L.outfits[42]==nil and md.LofersScenario==nil)
-        fire('OnServerCommand','LofersScenario','terminal',{id='resident',lifecycle='abstract'})
+        fire('OnServerCommand','AKRScenario','residents',{epoch='epoch',server_seconds=clock,residents={}})
+        assert(L.residents.resident==nil and L.outfits[42]==nil and md.AKRScenario==nil)
+        fire('OnServerCommand','AKRScenario','terminal',{id='resident',lifecycle='abstract'})
     """
     )
 
@@ -453,7 +451,7 @@ def test_stale_admin_revision_cannot_advance_scenario(lua):
 
 
 GATE = """
-SandboxVars={LofersScenario={Enabled=true}}
+SandboxVars={AKRScenario={Enabled=true}}
 isServer=function() return false end
 clock=100;getTimestampMs=function() return clock*1000 end
 handlers={};Events=setmetatable({},{__index=function(self,k)
@@ -466,15 +464,15 @@ getFilenameOfClosure=function(f) return sources[f] or 'unrelated.lua' end
 getFirstLineOfClosure=function(f) return lines[f] end
 instanceof=function(o,k) return type(o)=='table' and o.kind==k end
 function zombie(id,managed)
- local md=managed and {LofersScenario={id='resident'}} or {}
+ local md=managed and {AKRScenario={id='resident'}} or {}
  return {kind='IsoZombie',getPersistentOutfitID=function() return id end,getModData=function() return md end}
 end
 z=zombie(42,true);other=zombie(99,false)
 GetBanditClusterData=function() return {} end
-LofersScenarioClient={outfits={[42]='resident'}}
+AKRScenarioClient={outfits={[42]='resident'}}
 BanditZombie={CacheLightB={[42]='managed',[99]='unrelated'},
  CacheLight={[42]='managed',[99]='unrelated'},CacheLightZ={[42]='managed',[99]='unrelated'}}
-G=require 'LofersScenario/ClientGate'
+G=require 'AKRScenario/ClientGate'
 function register(event,line,fn)
  sources[fn]='media/lua/client/BanditUpdate.lua';lines[fn]=line;Events[event].Add(fn);return fn
 end
@@ -570,9 +568,9 @@ def test_contact_damage_requires_native_attacker_owner_geometry_and_new_receipt(
           getY=function() return 100 end,getZ=function() return 0 end,getOnlineID=function() return 50 end,
           getSquare=function() return square end,getVariableBoolean=function() return false end,
           getOwnerPlayer=function() return admin end,isFacingObject=function() return true end}
-        local n=package.loaded['LofersScenario/Native'];n.actors[r.id]=victim
+        local n=package.loaded['AKRScenario/Native'];n.actors[r.id]=victim
         n.health=function(r,h) r.health=h;health=h/100;return true end
-        package.loaded['LofersScenario/World'].find=function(outfit) if outfit==500 then return attacker end end
+        package.loaded['AKRScenario/World'].find=function(outfit) if outfit==500 then return attacker end end
         M.start(s,hour)
         local a={epoch=Server.epoch,resident_id=r.id,generation=r.generation,lease_epoch=r.lease_epoch,
           attacker_id=50,attacker_outfit=500,sequence=1}
@@ -592,7 +590,7 @@ def test_spawn_selection_recovers_when_first_household_has_no_safe_position(lua)
         + """
         Server.pending=nil;Server.spawnCursor=1
         local second=M.resident(s,home,'worker')
-        package.loaded['LofersScenario/World'].candidate=function(state,resident)
+        package.loaded['AKRScenario/World'].candidate=function(state,resident)
           if resident.id==second.id then return {x=160,y=160,z=0} end
         end
         cmd(admin,'test_spawn',{role='worker'})
@@ -636,7 +634,7 @@ def test_ordinary_zombie_contact_adapter_uses_attacker_owner_and_bounded_work(lu
             isFacingObject=function() return true end,setBumpType=function() end,
             getOnlineID=function() return id end,getPersistentOutfitID=function() return id+1000 end}
         end
-        require 'LofersScenario/Contacts'
+        require 'AKRScenario/Contacts'
         for i=1,10 do fire('OnZombieUpdate',attacker(i)) end
         assert(attempts==4 and #sent==4)
         assert(sent[1].cmd=='contact' and sent[1].args.attacker_id==1)
@@ -728,11 +726,11 @@ def test_outage_keeps_native_reconciliation_and_defensive_lease_alive(lua):
         cmd(admin,'start');Server.pending=nil
         r.materialized=true;r.lifecycle='active';r.owner_id=10
         local renewed=0;local reconciled=0
-        package.loaded['LofersScenario/Native'].reconcile=function(resident)
+        package.loaded['AKRScenario/Native'].reconcile=function(resident)
           reconciled=reconciled+1;resident.position={x=111,y=100,z=0};return {},'active'
         end
-        LofersNative.ownerId=function() return 10 end
-        LofersNative.lease=function() renewed=renewed+1;return true end
+        AKRNative.ownerId=function() return 10 end
+        AKRNative.lease=function() renewed=renewed+1;return true end
         root.bridgeIn.health='planner_unavailable'
         local hunger=r.hunger;tick()
         assert(not Server.workerReady and reconciled>0 and renewed>0)
@@ -786,11 +784,11 @@ def test_outage_contact_keeps_damage_and_defers_confirmed_infection_until_recove
           getY=function() return 100 end,getZ=function() return 0 end,getOnlineID=function() return 50 end,
           getSquare=function() return square end,getVariableBoolean=function() return false end,
           getOwnerPlayer=function() return admin end,isFacingObject=function() return true end}
-        local n=package.loaded['LofersScenario/Native'];n.actors[r.id]=victim
+        local n=package.loaded['AKRScenario/Native'];n.actors[r.id]=victim
         n.health=function(r,h) r.health=h;health=h/100;return true end
         n.reconcile=function() return victim,'active' end
-        LofersNative.ownerId=function() return 10 end;LofersNative.lease=function() return true end
-        package.loaded['LofersScenario/World'].find=function(outfit) if outfit==500 then return attacker end end
+        AKRNative.ownerId=function() return 10 end;AKRNative.lease=function() return true end
+        package.loaded['AKRScenario/World'].find=function(outfit) if outfit==500 then return attacker end end
         root.bridgeIn.health='planner_unavailable';tick()
         local frozen=s.elapsed_hours
         cmd(admin,'contact',{epoch=Server.epoch,resident_id=r.id,generation=r.generation,
@@ -842,7 +840,7 @@ def test_road_closures_expire_deduplicate_and_cannot_cross_navigation_identity(l
     lua.execute(
         RESIDENT
         + """
-        local Road=require 'LofersScenario/RoadState'
+        local Road=require 'AKRScenario/RoadState'
         assert(Road.bind(s,'map-a'))
         assert(Road.block(s,'map-a',1,2,10,'car_in_path'))
         assert(Road.block(s,'map-a',1,2,10.1,'car_in_path'))

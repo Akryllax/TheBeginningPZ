@@ -63,7 +63,7 @@ def dispatch(m, args):
         scenario.write_private(
             props,
             text
-            + "\ncombat.enabled=true\ncombat.directory=/run/lofers\n"
+            + "\ncombat.enabled=true\ncombat.directory=/run/akr\n"
             + f"combat.survival={str(survival).lower()}\n",
         )
         for path in (target / "receipt.json", m.ROOT / "artifacts/scenario-tests/current.json"):

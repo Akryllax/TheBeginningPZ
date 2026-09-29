@@ -27,6 +27,7 @@ def scenario_enabled():
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / ".tooling"
 PYTHON = TOOLS / "venv/bin/python"
+RUFF = TOOLS / "venv/bin/ruff"
 PODMAN = ROOT / "scripts/podman-local"
 COMPOSE = [
     "podman-compose",
@@ -54,8 +55,8 @@ def environment():
             "npm_config_cache": str(TOOLS / "npm-cache"),
             "PLAYWRIGHT_BROWSERS_PATH": str(TOOLS / "browsers"),
             "TMPDIR": str(TOOLS / "tmp"),
-            "LOFERS_SCENARIO_AGENT_OPTIONS": (
-                "-javaagent:/opt/scenario/lofers-scenario-agent.jar=/opt/scenario/scenario.properties"
+            "AKR_SCENARIO_AGENT_OPTIONS": (
+                "-javaagent:/opt/scenario/akr-scenario-agent.jar=/opt/scenario/scenario.properties"
                 if scenario_enabled()
                 else ""
             ),
@@ -166,6 +167,7 @@ def bootstrap():
         run([uv, "venv", "--python", "3.12.12", TOOLS / "venv"])
     run([uv, "pip", "sync", "--python", PYTHON, ROOT / "requirements-dev.lock"])
     run(["npm", "ci"], cwd=ROOT / "observer/web")
+    run([sys.executable, ROOT / "scripts/bootstrap_format.py"])
     run(["npx", "playwright", "install", "chromium"], cwd=ROOT / "observer/web")
     manifest()
 
@@ -261,7 +263,7 @@ def start():
     install_mod()
     if scenario_enabled():
         for relative in [
-            "artifacts/scenario-agent/lofers-scenario-agent.jar",
+            "artifacts/scenario-agent/akr-scenario-agent.jar",
             "artifacts/scenario-agent/scenario.properties",
             "artifacts/scenario-map/map-index.pb",
         ]:
@@ -276,8 +278,8 @@ def start():
 def install_mod():
     if running("game"):
         raise RuntimeError("Stop the game before installing a companion mod build")
-    src = ROOT / "mods/LofersStoryteller"
-    dst = ROOT / "data/Zomboid/mods/LofersStoryteller"
+    src = ROOT / "mods/AKRStoryteller"
+    dst = ROOT / "data/Zomboid/mods/AKRStoryteller"
     if dst.exists():
         shutil.rmtree(dst)
     shutil.copytree(src, dst)
@@ -390,9 +392,9 @@ def restore_test(path):
 
 
 def package():
-    mod = ROOT / "mods/LofersStoryteller"
+    mod = ROOT / "mods/AKRStoryteller"
     version = (mod / "VERSION").read_text().strip()
-    out = ROOT / "artifacts" / f"LofersStoryteller-{version}.zip"
+    out = ROOT / "artifacts" / f"AKRStoryteller-{version}.zip"
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
         for file in sorted(mod.rglob("*")):
             if file.is_file() and "__pycache__" not in file.parts:
@@ -444,11 +446,47 @@ def main():
             "civilian-watch",
             "civilian-chase",
             "civilian-combat",
+            "format",
+            "lint",
+            "docs",
         ],
     )
     parser.add_argument("args", nargs="*")
+    parser.add_argument(
+        "--check", action="store_true", help="check formatting without editing files"
+    )
     args = parser.parse_args()
-    if args.command == "civilian-combat":
+    if args.command in {"format", "lint", "docs"}:
+        if args.command == "docs":
+            run([sys.executable, ROOT / "scripts/java_docs.py", *args.args])
+        else:
+            check = args.command == "lint" or args.check
+            if args.command == "format" and args.args:
+                parser.error("format accepts only --check")
+            if args.command == "lint" and args.args:
+                parser.error("lint accepts no arguments")
+            run(
+                [
+                    sys.executable,
+                    ROOT / "scripts/format_project.py",
+                    *(["--check"] if check else []),
+                ]
+            )
+            if args.command == "lint":
+                run(
+                    [
+                        RUFF,
+                        "check",
+                        "--config",
+                        ROOT / ".ruff.toml",
+                        "--select",
+                        "E4,E7,E9,F",
+                        ROOT / "scripts",
+                        ROOT / "tests",
+                        ROOT / "observer",
+                    ]
+                )
+    elif args.command == "civilian-combat":
         # The typed encounter protocol needs the project's pinned protobuf runtime.
         if Path(sys.prefix).resolve() != (ROOT / ".tooling/venv").resolve():
             os.execv(

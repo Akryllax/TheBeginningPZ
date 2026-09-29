@@ -1,0 +1,26 @@
+name: Source style
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  style:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install project-local formatters
+        run: |
+          python -m venv .tooling/venv
+          .tooling/venv/bin/python -m pip install --require-hashes -r requirements-dev.lock
+          npm ci --prefix observer/web
+          python scripts/bootstrap_format.py
+          python observer/scripts/build_position_agent.py --cache .tooling/agent
+      - name: Check style and static Python errors
+        run: ./dayone lint

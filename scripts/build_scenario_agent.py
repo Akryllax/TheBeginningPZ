@@ -30,6 +30,8 @@ def build(
         raise ValueError("Pinned protobuf runtime checksum mismatch")
     out = ROOT / "artifacts/scenario-agent"
     classes, generated = out / "classes", out / "generated"
+    if generated.exists():
+        shutil.rmtree(generated)
     generated.mkdir(parents=True, exist_ok=True)
     proto = ROOT / "protocol/npc_control.proto"
     subprocess.run(
@@ -57,10 +59,10 @@ def build(
                 f'new ProtocolCodec.Field("{field}","{kind}",{str(bool(repeat)).lower()})'
             )
         schema.append(f'Map.entry("{name}",new ProtocolCodec.Field[]{{{",".join(fields)}}})')
-    schema_path = generated / "net/lofers/scenario/ProtocolSchema.java"
+    schema_path = generated / "net/akr/scenario/bridge/ProtocolSchema.java"
     schema_path.parent.mkdir(parents=True, exist_ok=True)
     schema_path.write_text(
-        "package net.lofers.scenario;\nimport java.util.*;\nfinal class ProtocolSchema {\n"
+        "package net.akr.scenario.bridge;\nimport java.util.*;\nfinal class ProtocolSchema {\n"
         "static final Map<String,ProtocolCodec.Field[]> FIELDS=Map.ofEntries(\n"
         + ",\n".join(schema)
         + ");\n}\n"
@@ -93,11 +95,11 @@ def build(
         ],
         check=True,
     )
-    jar = out / "lofers-scenario-agent.jar"
+    jar = out / "akr-scenario-agent.jar"
     with zipfile.ZipFile(jar, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(
             "META-INF/MANIFEST.MF",
-            "Manifest-Version: 1.0\r\nPremain-Class: net.lofers.scenario.ScenarioAgent\r\n\r\n",
+            "Manifest-Version: 1.0\r\nPremain-Class: net.akr.scenario.ScenarioAgent\r\n\r\n",
         )
         for path in sorted(classes.rglob("*.class")):
             archive.write(path, path.relative_to(classes).as_posix())
@@ -108,7 +110,7 @@ def build(
     # Read the compiled compatibility contract. Source-text regexes silently lost every
     # guard when a Java formatter inserted spaces around Map.entry arguments.
     contract = subprocess.run(
-        [str(jdk / "bin/java"), "-cp", f"{classes}:{cp}", "net.lofers.scenario.BuildManifest"],
+        [str(jdk / "bin/java"), "-cp", f"{classes}:{cp}", "net.akr.scenario.compat.BuildManifest"],
         check=True,
         capture_output=True,
         text=True,
@@ -170,7 +172,7 @@ def build(
                     "-ea",
                     "-cp",
                     f"{tests_dir}:{classes}:{cp}",
-                    "net.lofers.scenario.RuntimeUnitFixture",
+                    "net.akr.scenario.RuntimeUnitFixture",
                 ],
                 check=True,
             )
@@ -181,7 +183,7 @@ def build(
                     "-ea",
                     "-cp",
                     f"{tests_dir}:{classes}:{cp}",
-                    "net.lofers.scenario.ScenarioFixture",
+                    "net.akr.scenario.ScenarioFixture",
                     str(game_jar.resolve()),
                 ],
                 check=True,
@@ -193,8 +195,8 @@ def build(
                     f"-Djava.library.path={game_jar.resolve().parent.parent / 'linux64'}",
                     "-cp",
                     f"{tests_dir}:{cp}",
-                    "net.lofers.scenario.DriverAssetFixture",
-                    str(ROOT / "mods/LofersStoryteller/42/media/models_X/Lofers/SeatedDriver.x"),
+                    "net.akr.scenario.DriverAssetFixture",
+                    str(ROOT / "mods/AKRStoryteller/42/media/models_X/AKR/SeatedDriver.x"),
                 ],
                 check=True,
             )
@@ -204,7 +206,7 @@ def build(
                 / "data/game-files/steamapps/workshop/content/108600/3268487204/mods/Bandits/42.20/media/lua/client/BanditUpdate.lua"
             )
             settings.write_text(
-                f"side=server\nscenario.enabled=true\nworld=LofersVehicleProbe_fixture\nsocket={out}/fixture-unused.sock\nbandits_update_file={bandit}\n"
+                f"side=server\nscenario.enabled=true\nworld=AKRVehicleProbe_fixture\nsocket={out}/fixture-unused.sock\nbandits_update_file={bandit}\n"
             )
             subprocess.run(
                 [
@@ -215,7 +217,7 @@ def build(
                     "-ea",
                     "-cp",
                     f"{tests_dir}:{jar}:{cp}",
-                    "net.lofers.scenario.PremainFixture",
+                    "net.akr.scenario.PremainFixture",
                 ],
                 check=True,
             )

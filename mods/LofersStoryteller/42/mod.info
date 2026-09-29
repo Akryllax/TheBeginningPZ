@@ -1,5 +1,0 @@
-name=Lofers First Week
-id=LofersStoryteller
-description=First Week civilian scenario and living-world telemetry. Ordinary Lua clients; enabled scenario worlds require the server runtime and planner. Experimental 0.2.0; multiplayer acceptance is in progress.
-versionMin=42.20
-require=Bandits2

@@ -21,7 +21,7 @@ def start(root, target, world):
     receipt = json.loads((target / "receipt.json").read_text())
     container = receipt["container"]
     identity = _podman(root, "inspect", "--format", "{{.Id}}", container).stdout.strip()
-    manifest = root / "artifacts/npc-service-runtime/opt/lofers/runtime-manifest.json"
+    manifest = root / "artifacts/npc-service-runtime/opt/akr/runtime-manifest.json"
     if not manifest.exists():
         raise RuntimeError("Build and bundle the project C++ planner first")
     if (target / "ipc/npc.sock").exists():
@@ -30,13 +30,13 @@ def start(root, target, world):
         "/opt/npc-runtime/lib64/ld-linux-x86-64.so.2",
         "--library-path",
         "/opt/npc-runtime/lib64:/opt/npc-runtime/usr/lib64",
-        "/opt/npc-runtime/usr/local/bin/lofers-npc-service",
+        "/opt/npc-runtime/usr/local/bin/akr-npc-service",
         "--socket",
-        "/run/lofers/npc.sock",
+        "/run/akr/npc.sock",
         "--world",
         world,
         "--rules",
-        "/opt/npc-runtime/opt/lofers/rules",
+        "/opt/npc-runtime/opt/akr/rules",
         "--workers",
         "2",
     ]
@@ -47,7 +47,7 @@ def start(root, target, world):
         container,
         "sh",
         "-c",
-        'echo $$ > /run/lofers/planner.pid; exec "$@" > /run/lofers/planner.log 2>&1',
+        'echo $$ > /run/akr/planner.pid; exec "$@" > /run/akr/planner.log 2>&1',
         "planner",
         *command,
     )

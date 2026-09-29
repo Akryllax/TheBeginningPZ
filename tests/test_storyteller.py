@@ -6,7 +6,7 @@ import pytest
 from lupa.lua51 import LuaRuntime
 
 ROOT = Path(__file__).resolve().parents[1]
-LUA = ROOT / "mods/LofersStoryteller/42/media/lua"
+LUA = ROOT / "mods/AKRStoryteller/42/media/lua"
 
 
 @pytest.fixture
@@ -14,7 +14,7 @@ def lua():
     runtime = LuaRuntime(unpack_returned_tuples=True)
     paths = ";".join(str(LUA / side / "?.lua") for side in ("shared", "server", "client"))
     runtime.globals().package.path = paths + ";" + runtime.globals().package.path
-    runtime.execute("Core=require 'LofersStoryteller/Core'; C=require 'LofersStoryteller/Config'")
+    runtime.execute("Core=require 'AKRStoryteller/Core'; C=require 'AKRStoryteller/Config'")
     return runtime
 
 
@@ -198,7 +198,7 @@ def test_snapshot_bounds_and_detached_tables(lua):
 
 
 INVENTORY_FIXTURE = """
-Scanner=require 'LofersStoryteller/Scanner'
+Scanner=require 'AKRStoryteller/Scanner'
 function container(items)
     local list={size=function() return #items end,get=function(self,i) return items[i+1] end}
     return {getItems=function() return list end}
@@ -249,7 +249,7 @@ def test_inventory_deadline_and_unloading_preserve_unknown_state(lua):
 
 def test_native_schedulers_remain_disabled_after_clan_reload(lua):
     lua.execute("""
-        local B=require 'LofersStoryteller/Bandits'
+        local B=require 'AKRStoryteller/Bandits'
         local clans={a={spawn={spawnChance=100}}}
         BanditCustom={ClanGetAll=function() return clans end}
         assert(B.install())
@@ -269,7 +269,7 @@ def test_wandering_zombies_companion_skips_only_bandits(lua):
         isClient=function() return true end
         local calls=0
         wzIsValidZombie=function() calls=calls+1;return true end
-        require 'LofersStoryteller/WanderingGuard'
+        require 'AKRStoryteller/WanderingGuard'
         callback()
         assert(not wzIsValidZombie({getVariableBoolean=function() return true end}))
         assert(calls==0)
@@ -314,7 +314,7 @@ getOnlinePlayers=function() return {size=function() return online and 1 or 0 end
     get=function() return player end} end
 getCell=function() return cell end
 instanceof=function(obj,kind) return obj.kind==kind or (kind=='InventoryContainer' and obj.is_container) end
-require 'LofersStoryteller/Server'
+require 'AKRStoryteller/Server'
 fire('OnInitGlobalModData')
 fire('OnServerStarted')
 function advance(ticks)
@@ -328,7 +328,7 @@ def test_server_first_join_reads_loaded_inventory_and_publishes(lua):
     lua.execute(SERVER_FIXTURE)
     lua.execute("""
         advance(150)
-        local root=store.LofersStoryteller
+        local root=store.AKRStoryteller
         local cell=root.state.cells['3:3:0']
         assert(math.abs(cell.stock.food-1)<0.001 and math.abs(cell.stock.weapon-4)<0.001)
         assert(math.abs(cell.stock.medical-3)<0.001)
@@ -344,7 +344,7 @@ def test_server_death_disconnect_and_stale_inventory_do_not_erase_stock(lua):
     lua.execute(SERVER_FIXTURE)
     lua.execute("""
         advance(60)
-        local state=store.LofersStoryteller.state
+        local state=store.AKRStoryteller.state
         local cell=state.cells['3:3:0']
         fire('OnPlayerDeath',player)
         local untilHour=state.recovery_until
@@ -354,7 +354,7 @@ def test_server_death_disconnect_and_stale_inventory_do_not_erase_stock(lua):
         assert(state.recovery_until==untilHour)
         online=false
         advance(60)
-        assert(store.LofersStoryteller.telemetry.online_players==0)
+        assert(store.AKRStoryteller.telemetry.online_players==0)
         assert(math.abs(cell.stock.food-1)<0.001 and cell.stock_complete==false)
     """)
 

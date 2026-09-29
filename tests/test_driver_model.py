@@ -21,8 +21,8 @@ def test_original_mesh_has_consistent_outward_winding():
 
 
 def test_committed_assets_match_original_generator():
-    assert (driver.MEDIA / "models_X/Lofers/SeatedDriver.x").read_text() == driver.mesh_text()
-    assert (driver.MEDIA / "textures/Lofers/DriverPalette.png").read_bytes() == driver.palette()
+    assert (driver.MEDIA / "models_X/AKR/SeatedDriver.x").read_text() == driver.mesh_text()
+    assert (driver.MEDIA / "textures/AKR/DriverPalette.png").read_bytes() == driver.palette()
 
 
 def test_probe_package_contains_only_original_visual_assets(tmp_path):
@@ -34,10 +34,10 @@ def test_probe_package_contains_only_original_visual_assets(tmp_path):
     }
     assert files == {
         "42/mod.info",
-        "42/media/models_X/Lofers/SeatedDriver.x",
-        "42/media/textures/Lofers/DriverPalette.png",
-        "42/media/scripts/lofers_driver.txt",
-        "42/media/lua/server/LofersDriverProbeWeather.lua",
+        "42/media/models_X/AKR/SeatedDriver.x",
+        "42/media/textures/AKR/DriverPalette.png",
+        "42/media/scripts/akr_driver.txt",
+        "42/media/lua/server/AKRDriverProbeWeather.lua",
     }
     assert "require=" not in (tmp_path / "driver/42/mod.info").read_text()
 
@@ -46,11 +46,11 @@ def test_visibility_setup_is_disposable_server_only(tmp_path):
     from lupa.lua51 import LuaRuntime
 
     ops.package_driver_assets(driver.ROOT, tmp_path / "driver")
-    script = (tmp_path / "driver/42/media/lua/server/LofersDriverProbeWeather.lua").read_text()
+    script = (tmp_path / "driver/42/media/lua/server/AKRDriverProbeWeather.lua").read_text()
     for world, server, expected in [
         ("AKR_DayOne", True, False),
-        ("LofersVehicleProbe_test", False, False),
-        ("LofersVehicleProbe_test", True, True),
+        ("AKRVehicleProbe_test", False, False),
+        ("AKRVehicleProbe_test", True, True),
     ]:
         lua = LuaRuntime()
         lua.globals().world = world

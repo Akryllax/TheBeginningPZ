@@ -57,6 +57,8 @@ def build(cache):
     classes, generated = out / "classes", out / "generated"
     if classes.exists():
         shutil.rmtree(classes)
+    if generated.exists():
+        shutil.rmtree(generated)
     classes.mkdir(parents=True)
     generated.mkdir(parents=True, exist_ok=True)
     subprocess.run(
@@ -90,7 +92,7 @@ def build(cache):
     with zipfile.ZipFile(jar, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(
             "META-INF/MANIFEST.MF",
-            "Manifest-Version: 1.0\r\nPremain-Class: net.lofers.observer.PositionAgent\r\n\r\n",
+            "Manifest-Version: 1.0\r\nPremain-Class: net.akr.observer.PositionAgent\r\n\r\n",
         )
         for path in sorted(classes.rglob("*.class")):
             archive.write(path, path.relative_to(classes).as_posix())
@@ -104,5 +106,5 @@ def build(cache):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--cache", type=Path, default=Path.home() / ".cache/zomboid-observer-build")
+    parser.add_argument("--cache", type=Path, default=ROOT.parent / ".tooling/observer-agent")
     build(parser.parse_args().cache)

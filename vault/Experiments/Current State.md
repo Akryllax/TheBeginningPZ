@@ -6,6 +6,33 @@ updated: 2026-09-29
 
 # Current state
 
+## Source normalization and AKR identity (2026-09-29)
+
+The source now builds the gameplay agent as `net.akr.scenario` and the separate Observer
+agent as `net.akr.observer`. The original companion mod is `AKRStoryteller`, its Lua
+state and calls use `AKRScenario`/`AKRNative`, and the planner's protobuf namespace and
+binary use `akr`. The `lofers.net` DNS name and Git remote are unchanged. This is a
+source/build change: neither the running `.132` services nor `.160` production were
+replaced or restarted. Existing development saves remain on the previous build;
+the rebuilt prior agent and matching source archive are under
+`artifacts/legacy-builds/230ead9/` with SHA-256 checksums. New AKR tests need a fresh
+disposable world.
+
+The one-JAR Java agent now has actual `compat`, `bridge` and `npc.core` packages.
+Vehicle runtime classes remain together in the root package: a trial split exposed
+extensive internal route/controller state and was reverted before this checkpoint.
+The compiled `BuildGuard` contract now supplies manifest hashes, eliminating the
+source-spacing regex that would have lost all guarded classes after formatting.
+See [source style](../../CODE_STYLE.md) for the pinned formatter workflow and
+Javadoc policy.
+
+`./dayone runtime-test offline` passed at
+`artifacts/runtime-tests/20260929-112437-beb73a57/` after the namespace and package
+changes. `./dayone test` passed 274 root Python tests, 116 Observer tests and the
+Observer web TypeScript/Vite build. `./dayone lint`, `./dayone docs java`, the
+Observer agent build and the C++ worker tests also passed locally. These checks do
+not establish an in-game AKR migration, a watched NPC run or two-client replication.
+
 ## Source checkpoint and tomorrow's task (2026-09-29)
 
 The accepted next plan is saved in

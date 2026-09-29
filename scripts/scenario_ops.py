@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import shutil
@@ -52,14 +50,14 @@ def scenario_sandbox(text):
         )
         if count != 1:
             raise RuntimeError(f"Expected exactly one sandbox {key}; found {count}")
-    if re.search(r"(?m)^\s*LofersScenario\s*=", text):
+    if re.search(r"(?m)^\s*AKRScenario\s*=", text):
         raise RuntimeError(
             "Sandbox already contains First Week settings; refusing duplicate insertion"
         )
     end = text.rfind("}")
     if end < 0:
         raise RuntimeError("Malformed sandbox source")
-    return text[:end] + ("    LofersScenario = { Enabled = true },\n") + text[end:]
+    return text[:end] + ("    AKRScenario = { Enabled = true },\n") + text[end:]
 
 
 def write_private(path, text):
@@ -73,7 +71,7 @@ def build(m):
     m.run([m.PYTHON, m.ROOT / "scripts/build_scenario_agent.py", "--test"])
     m.run([m.PYTHON, m.ROOT / "scripts/build_scenario_map.py"])
     (m.ROOT / "artifacts/scenario-agent/scenario.properties").write_text(
-        f"side=server\nscenario.enabled=true\nworld={m.WORLD}\nsocket=/run/lofers/npc.sock\n"
+        f"side=server\nscenario.enabled=true\nworld={m.WORLD}\nsocket=/run/akr/npc.sock\n"
         f"bandits_update_file={BANDITS_SOURCE}\n"
     )
     m.compose("--profile", "scenario", "build", "npc")
@@ -117,7 +115,7 @@ def create_test(m):
             "UDPPort": 16282,
             "RCONPort": 27035,
             "Public": "false",
-            "PublicName": "Lofers First Week validation",
+            "PublicName": "AKR First Week validation",
             "SpawnPoint": ",".join(map(str, SPAWN)),
             "PauseEmpty": "true",
         },
@@ -130,13 +128,13 @@ def create_test(m):
     (server / f"{world}_spawnregions.lua").write_text(
         'function SpawnRegions() return { { name="Muldraugh, KY", file="media/maps/Muldraugh, KY/spawnpoints.lua" } } end\n'
     )
-    shutil.copytree(m.ROOT / "mods/LofersStoryteller", cachedir / "mods/LofersStoryteller")
+    shutil.copytree(m.ROOT / "mods/AKRStoryteller", cachedir / "mods/AKRStoryteller")
     config = json.loads((m.ROOT / "data/game-files/ProjectZomboid64.json").read_text())
     config["vmArgs"] = [a for a in config["vmArgs"] if not a.startswith("-Xmx")] + ["-Xmx3g"]
     (target / "ProjectZomboid64.json").write_text(json.dumps(config, indent=2) + "\n")
     (target / "ipc").mkdir(mode=0o700)
     (target / "scenario.properties").write_text(
-        f"side=server\nscenario.enabled=true\nworld={world}\nsocket=/run/lofers/npc.sock\nbandits_update_file={BANDITS_SOURCE}\n"
+        f"side=server\nscenario.enabled=true\nworld={world}\nsocket=/run/akr/npc.sock\nbandits_update_file={BANDITS_SOURCE}\n"
     )
     accounts = m.ROOT / f"data/Zomboid/db/{m.WORLD}.db"
     if accounts.is_file():
@@ -155,8 +153,8 @@ def create_test(m):
     receipt = {
         "world": world,
         "path": str(target),
-        "container": "lofers-scenario-test",
-        "worker_container": "lofers-scenario-test-npc",
+        "container": "akr-scenario-test",
+        "worker_container": "akr-scenario-test-npc",
         "ports": [16281, 16282, 27035],
         "spawn": SPAWN,
         "created_at": stamp,
@@ -189,7 +187,7 @@ def free_ports():
 
 def start_test(m):
     receipt, target = test_receipt(m)
-    jar = m.ROOT / "artifacts/scenario-agent/lofers-scenario-agent.jar"
+    jar = m.ROOT / "artifacts/scenario-agent/akr-scenario-agent.jar"
     if not jar.is_file():
         raise RuntimeError("Build the scenario agent first")
     free_ports()
@@ -201,9 +199,9 @@ def start_test(m):
             raise RuntimeError(f"{name} already running")
         m.run([m.PODMAN, "rm", name], capture=True, check=False)
     # Refresh only the stopped disposable world's original mod.
-    mod = target / "Zomboid/mods/LofersStoryteller"
+    mod = target / "Zomboid/mods/AKRStoryteller"
     shutil.rmtree(mod)
-    shutil.copytree(m.ROOT / "mods/LofersStoryteller", mod)
+    shutil.copytree(m.ROOT / "mods/AKRStoryteller", mod)
     m.run(
         [
             m.PODMAN,
@@ -219,20 +217,20 @@ def start_test(m):
             "--network=none",
             "--read-only",
             "-v",
-            f"{target}/ipc:/run/lofers:z",
+            f"{target}/ipc:/run/akr:z",
             "-v",
-            f"{m.ROOT}/artifacts/scenario-map:/opt/lofers/map:ro,z",
+            f"{m.ROOT}/artifacts/scenario-map:/opt/akr/map:ro,z",
             "localhost/zomboid-dayone_npc:latest",
             "--socket",
-            "/run/lofers/npc.sock",
+            "/run/akr/npc.sock",
             "--world",
             receipt["world"],
             "--rules",
-            "/opt/lofers/rules",
+            "/opt/akr/rules",
             "--workers",
             "2",
             "--map-index",
-            "/opt/lofers/map/map-index.pb",
+            "/opt/akr/map/map-index.pb",
         ]
     )
     try:
@@ -255,7 +253,7 @@ def start_test(m):
                 "-e",
                 f"PZ_WORLD={receipt['world']}",
                 "-e",
-                "JAVA_TOOL_OPTIONS=-javaagent:/opt/scenario/lofers-scenario-agent.jar=/opt/scenario/scenario.properties",
+                "JAVA_TOOL_OPTIONS=-javaagent:/opt/scenario/akr-scenario-agent.jar=/opt/scenario/scenario.properties",
                 "-v",
                 f"{m.ROOT}/data/game-files:/pzserver:z",
                 "-v",
@@ -263,11 +261,11 @@ def start_test(m):
                 "-v",
                 f"{target}/Zomboid:/home/pzuser/Zomboid:z",
                 "-v",
-                f"{jar}:/opt/scenario/lofers-scenario-agent.jar:ro,z",
+                f"{jar}:/opt/scenario/akr-scenario-agent.jar:ro,z",
                 "-v",
                 f"{target}/scenario.properties:/opt/scenario/scenario.properties:ro,z",
                 "-v",
-                f"{target}/ipc:/run/lofers:z",
+                f"{target}/ipc:/run/akr:z",
                 "-v",
                 f"{m.ROOT}/secrets/admin-password:/run/secrets/admin-password:ro,z",
                 "-v",
@@ -356,7 +354,7 @@ def archive_reset(m):
         shutil.copy2(path, archive / path.name)
     ini = replace_ini(
         (server / f"{m.WORLD}.ini").read_text(),
-        {"SpawnPoint": ",".join(map(str, SPAWN)), "PublicName": "Lofers First Week"},
+        {"SpawnPoint": ",".join(map(str, SPAWN)), "PublicName": "AKR First Week"},
     )
     write_private(server / f"{m.WORLD}.ini", ini)
     write_private(

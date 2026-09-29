@@ -1,6 +1,6 @@
 syntax = "proto3";
 package akr.runtime.v1;
-option java_package = "net.lofers.scenario.protocol";
+option java_package = "net.akr.scenario.protocol";
 option java_outer_classname = "RuntimeControl";
 
 // Private operator protocol, separate from planner traffic. No arbitrary evaluation.
@@ -31,7 +31,8 @@ message PedestrianCase {
   // the last route point to spot, chase and bite the standing Actor at route[0].
   uint32 hunter_zombies = 9;
   // Hunter cases only: once the hunter targets the Actor it runs directly away at this speed
-  // (0 = stand). trip_after_seconds > 0 makes it trip (stock bumped fall) after running that long.
+  // (0 = stand). trip_after_seconds > 0 makes it trip (stock bumped fall) after running that
+  // long.
   double flee_tiles_per_second = 10;
   uint32 trip_after_seconds = 11;
   // Hunter cases only: stock speed setup applied after spawn (SANDBOX keeps the random pick).

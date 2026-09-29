@@ -111,18 +111,13 @@ K.Dispatch.on(core.dispatch, "OnTick", "AKRDevTools.poolWatch", function()
             hunts[i] = found[id] or V.body(nil, player, id, list:size() > 256, crowd)
         end
     end
-    sendClientCommand(
-        player,
-        "AKRDevTools",
-        "poolView",
-        {
-            epoch = epoch,
-            wave = config.wave,
-            actors = entries,
-            hunters = hunts,
-            stage = stage,
-            observer_x = player:getX(),
-            observer_y = player:getY(),
-        }
-    )
+    sendClientCommand(player, "AKRDevTools", "poolView", {
+        epoch = epoch,
+        wave = config.wave,
+        actors = entries,
+        hunters = hunts,
+        stage = stage,
+        observer_x = player:getX(),
+        observer_y = player:getY(),
+    })
 end)

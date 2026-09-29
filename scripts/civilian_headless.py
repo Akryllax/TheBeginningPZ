@@ -81,7 +81,7 @@ def prepare(m, combat_probe=False, survival=False, planner=False):
     (target / "ProjectZomboid64.json").write_text(json.dumps(config, indent=2) + "\n")
     (target / "ipc").mkdir(mode=0o700)
     (target / "agent").mkdir()
-    jar = m.ROOT / "artifacts/scenario-agent/lofers-scenario-agent.jar"
+    jar = m.ROOT / "artifacts/scenario-agent/akr-scenario-agent.jar"
     manifest = json.loads(jar.with_name("manifest.json").read_text())
     if hashlib.sha256(jar.read_bytes()).hexdigest() != manifest["jar_sha256"]:
         raise RuntimeError("Agent artifact/manifest mismatch")
@@ -89,9 +89,9 @@ def prepare(m, combat_probe=False, survival=False, planner=False):
     shutil.copy2(jar.with_name("manifest.json"), target / "agent/manifest.json")
     scenario.write_private(
         target / "scenario.properties",
-        f"side=server\nscenario.enabled=true\nworld={world}\nsocket=/run/lofers/npc.sock\n"
-        "runtime.enabled=true\nruntime.socket=/run/lofers/runtime.sock\n"
-        "headless.enabled=true\nheadless.report=/run/lofers/native-report.json\n"
+        f"side=server\nscenario.enabled=true\nworld={world}\nsocket=/run/akr/npc.sock\n"
+        "runtime.enabled=true\nruntime.socket=/run/akr/runtime.sock\n"
+        "headless.enabled=true\nheadless.report=/run/akr/native-report.json\n"
         f"headless.combat_probe={str(combat_probe).lower()}\n"
         f"headless.survival={str(survival).lower()}\n"
         f"headless.planner={str(planner).lower()}\n"
@@ -155,7 +155,7 @@ def run(m, combat_probe=False, survival=False, planner=False):
             "-e",
             f"PZ_WORLD={data['world']}",
             "-e",
-            "JAVA_TOOL_OPTIONS=-javaagent:/opt/scenario/lofers-scenario-agent.jar=/opt/scenario/scenario.properties",
+            "JAVA_TOOL_OPTIONS=-javaagent:/opt/scenario/akr-scenario-agent.jar=/opt/scenario/scenario.properties",
             "-v",
             f"{m.ROOT}/data/game-files:/pzserver:ro,z",
             "-v",
@@ -163,11 +163,11 @@ def run(m, combat_probe=False, survival=False, planner=False):
             "-v",
             f"{target}/Zomboid:/home/pzuser/Zomboid:z",
             "-v",
-            f"{target}/agent/lofers-scenario-agent.jar:/opt/scenario/lofers-scenario-agent.jar:ro,z",
+            f"{target}/agent/akr-scenario-agent.jar:/opt/scenario/akr-scenario-agent.jar:ro,z",
             "-v",
             f"{target}/scenario.properties:/opt/scenario/scenario.properties:ro,z",
             "-v",
-            f"{target}/ipc:/run/lofers:z",
+            f"{target}/ipc:/run/akr:z",
             "-v",
             f"{m.ROOT}/artifacts/npc-service-runtime:/opt/npc-runtime:ro,z",
             "-v",

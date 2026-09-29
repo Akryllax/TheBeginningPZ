@@ -10,8 +10,15 @@ local C = {
         return true
     end,
 }
-local G =
-    { callbacks = {}, wrappers = {}, members = {}, depth = 0, error = nil, shield_calls = 0, shield_ms = 0 }
+local G = {
+    callbacks = {},
+    wrappers = {},
+    members = {},
+    depth = 0,
+    error = nil,
+    shield_calls = 0,
+    shield_ms = 0,
+}
 AKRPedestrianGate = G
 local expected =
     { OnZombieUpdate = 2062, OnHitZombie = 2328, OnZombieDead = 2395, OnDeadBodySpawn = 2601 }

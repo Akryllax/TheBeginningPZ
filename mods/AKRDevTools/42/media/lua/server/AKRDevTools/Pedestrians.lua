@@ -46,21 +46,18 @@ local function factory(id, x, y)
     end
     local refusal
     local ok, err = pcall(function()
-        local allowed, why = LofersNative.spawn(function()
-            BanditServer.Spawner.Individual(
-                players:get(0),
-                {
-                    bid = id,
-                    x = x,
-                    y = y,
-                    z = 0,
-                    program = "AKRRemoteCivilian",
-                    hostile = false,
-                    hostileP = false,
-                    fullname = "Civilian",
-                    permanent = false,
-                }
-            )
+        local allowed, why = AKRNative.spawn(function()
+            BanditServer.Spawner.Individual(players:get(0), {
+                bid = id,
+                x = x,
+                y = y,
+                z = 0,
+                program = "AKRRemoteCivilian",
+                hostile = false,
+                hostileP = false,
+                fullname = "Civilian",
+                permanent = false,
+            })
         end, {})
         if not allowed then
             if why == "spawn_not_authorized" then
@@ -97,7 +94,7 @@ local function factory(id, x, y)
                         local brain = cluster and cluster[outfit]
                         actor:setHealth(brain and brain.health or 1)
                         actor:getModData().AKRPedestrian = { id = id, epoch = AKRRuntime.epoch }
-                        if not LofersNative.bind(actor, id, 1, 1, -1) then
+                        if not AKRNative.bind(actor, id, 1, 1, -1) then
                             error("bind_failed")
                         end
                         R.actors[id] = actor
@@ -124,7 +121,7 @@ local function retire(actor, id)
     if not entry then
         return false
     end
-    if not LofersNative.removeOwned(actor) then
+    if not AKRNative.removeOwned(actor) then
         return false
     end
     local cluster = GetBanditClusterData(entry.outfit)
@@ -154,7 +151,7 @@ local function initialize()
         )
         return
     end
-    local permitted, permitWhy = LofersNative.spawn(function()
+    local permitted, permitWhy = AKRNative.spawn(function()
         return true
     end, {})
     if not permitted then

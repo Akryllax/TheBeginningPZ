@@ -345,5 +345,5 @@ def run(binary):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--binary", type=Path, default=TOOLS / "build/lofers-npc-service")
+    parser.add_argument("--binary", type=Path, default=TOOLS / "build/akr-npc-service")
     run(parser.parse_args().binary.resolve())

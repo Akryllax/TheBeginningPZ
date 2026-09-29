@@ -1,4 +1,4 @@
-# Lofers NPC planning service
+# AKR NPC planning service
 
 The service computes proposals from detached observations. The game remains the
 authority for identities, action execution, inventory, infection, persistence,
@@ -15,7 +15,7 @@ not a portable public distribution.
 Run:
 
 ```sh
-.tooling/npc-service/build/lofers-npc-service \
+.tooling/npc-service/build/akr-npc-service \
   --socket data/npc-ipc/npc.sock --world AKR_DayOne \
   --rules npc-service/rules --workers 2 \
   --map-index artifacts/scenario-map/map-index.pb

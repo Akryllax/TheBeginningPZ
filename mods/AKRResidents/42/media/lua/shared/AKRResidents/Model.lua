@@ -69,28 +69,23 @@ local function navigate(r, out, now, escape)
     r.nextRepath = now + 1
     if escape then
         -- Geometry and danger-aware reachability are the NavigationPort's responsibility.
-        emit(
-            r,
-            out,
-            "navigate",
-            {
-                mode = "flee",
-                origin = P.copy(r.position),
-                threats = P.copy(r.threats or {}),
-                radius = 16,
-                allowClimb = true,
-            }
-        )
+        emit(r, out, "navigate", {
+            mode = "flee",
+            origin = P.copy(r.position),
+            threats = P.copy(r.threats or {}),
+            radius = 16,
+            allowClimb = true,
+        })
         r.plannedThreats = P.copy(r.threats or {})
     else
         local action = r.planEnabled and G.current(r)
         local target = action and action.target or r.anchors[random(r, #r.anchors)]
-        emit(
-            r,
-            out,
-            "navigate",
-            { mode = "roam", origin = P.copy(r.position), target = P.copy(target), allowClimb = false }
-        )
+        emit(r, out, "navigate", {
+            mode = "roam",
+            origin = P.copy(r.position),
+            target = P.copy(target),
+            allowClimb = false,
+        })
     end
 end
 local function dangerMoved(r)
@@ -217,13 +212,11 @@ function M.tick(r, now, observation)
         if reply.status == "found" then
             r.moving = true
             r.followRevision = reply.revision
-            emit(
-                r,
-                out,
-                "follow",
-                { route = P.copy(reply.route), mode = r.state, gait = r.state == "FLEE" and "RUN"
-                    or "WALK" }
-            )
+            emit(r, out, "follow", {
+                route = P.copy(reply.route),
+                mode = r.state,
+                gait = r.state == "FLEE" and "RUN" or "WALK",
+            })
         elseif r.moving and o.routeSafe == true then
             r.nextRepath = now + 0.5
         else
@@ -291,20 +284,15 @@ function M.tick(r, now, observation)
         interrupt(r, out, "DEFEND")
         r.combatDeadline = now + 0.8
         r.nextDefense = now + 1.5
-        emit(
-            r,
-            out,
-            "defend",
-            {
-                target = tostring(target.id),
-                targetGeneration = target.generation,
-                style = combat.weaponUsable
-                        and combat.endurance
-                        and combat.endurance >= 0.2
-                        and "melee"
-                    or "shove",
-            }
-        )
+        emit(r, out, "defend", {
+            target = tostring(target.id),
+            targetGeneration = target.generation,
+            style = combat.weaponUsable
+                    and combat.endurance
+                    and combat.endurance >= 0.2
+                    and "melee"
+                or "shove",
+        })
         return out
     end
     if (o.arrivedRevision ~= nil and o.arrivedRevision == r.followRevision) and r.moving then

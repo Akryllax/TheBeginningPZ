@@ -204,7 +204,7 @@ bool process(Session &s, const pb::Envelope &input, const std::string &world, Po
         s.last_request = input.request_id();
         s.greeted = true;
         auto out = response(world, s, input.request_id());
-        out.mutable_hello()->set_build("lofers-npc-service/0.2.0 cpp20 lua5.4.9 protobuf7.36.1");
+        out.mutable_hello()->set_build("akr-npc-service/0.2.0 cpp20 lua5.4.9 protobuf7.36.1");
         out.mutable_hello()->set_mod_version("0.2.0");
         out.mutable_hello()->set_registry_hash(hash);
         out.mutable_hello()->set_max_frame_bytes(kMaxFrame);

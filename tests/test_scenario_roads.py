@@ -181,7 +181,9 @@ def test_swept_footprint_covers_off_center_obstacles_and_preserves_corner():
 def test_diagonal_across_road_corner_fails_even_when_entire_centerline_is_asphalt():
     # Two perpendicular six-tile roads: every point on the diagonal lies on
     # asphalt, but a car-sized disk cuts the inside sidewalk corner.
-    road = lambda x, y: 0 <= y < 6 or 6 <= x < 12
+    def road(x, y):
+        return 0 <= y < 6 or 6 <= x < 12
+
     start, end = (4.5, 3.5), (8.5, -0.5)
     from observer.roads import cells_on_line
 

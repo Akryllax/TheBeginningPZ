@@ -3,7 +3,11 @@ local P = require("AKRPopulation/Population")
 local R = require("AKRResidents/Residents")
 local C = {}
 function C.new(root, epoch, ports)
-    return { population = assert(P.open(root, epoch)), residents = assert(R.open(root)), ports = ports }
+    return {
+        population = assert(P.open(root, epoch)),
+        residents = assert(R.open(root)),
+        ports = ports,
+    }
 end
 function C.materialize(c, id)
     local r = assert(c.residents.residents[id], "unknown_resident")

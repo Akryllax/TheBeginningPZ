@@ -20,8 +20,14 @@ function V.footprint(x, y, player)
     return loaded, hidden
 end
 function V.body(body, player, id, unknown, crowd)
-    local entry =
-        { id = id, present = body ~= nil, on_screen = false, hidden = true, loaded = false, visible = false }
+    local entry = {
+        id = id,
+        present = body ~= nil,
+        on_screen = false,
+        hidden = true,
+        loaded = false,
+        visible = false,
+    }
     if unknown then
         entry.present = "unknown"
         entry.on_screen = "unknown"

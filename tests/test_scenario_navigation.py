@@ -167,8 +167,10 @@ def test_clearance_never_overstates_distance_to_blocked_tile_boundary():
 
 def test_baked_scores_reject_narrow_roads_and_swept_diagonal_corner(tmp_path):
     bounds = (-4, -6, 16, 10)
-    width = bounds[2] - bounds[0]
-    road = lambda x, y: 0 <= y < 6 or 6 <= x < 12
+
+    def road(x, y):
+        return 0 <= y < 6 or 6 <= x < 12
+
     costs = [
         10 if road(x, y) else 0
         for y in range(bounds[1], bounds[3])
