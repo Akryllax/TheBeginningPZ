@@ -56,6 +56,8 @@ by controlled restart. Read that task and the latest Current State before contin
 Use `dayone-test-iteration` for the native implementation/qualification loop and
 `dayone-watched-testing` for watched tests. The latter preserves automatic placement,
 protection, daylight, the loaded 9mm loadout, announcements and feedback after the batch.
+Default to one spectator spot on every startup. Increase it only when the user explicitly
+requests guests for that test; do not inherit an earlier multiplayer test's seat count.
 
 Read `vault/Home.md` for the design index and `vault/Runbooks/Operations.md` for commands.
 Use `./dayone` for project operations. Keep downloads, caches, images, references,

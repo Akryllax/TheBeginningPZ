@@ -113,3 +113,19 @@ def test_source_capture_includes_split_java_roots(tmp_path):
         file.write_text("example")
     hashes = ops.source_manifest(tmp_path)
     assert len(hashes) == 4
+
+
+def test_viewing_spots_require_explicit_current_start_option():
+    import spectator_options
+
+    assert spectator_options.parse(["start"]) == (["start"], 1)
+    assert spectator_options.parse(["start", "--viewers", "2"]) == (["start"], 2)
+    assert spectator_options.parse(["start"]) == (["start"], 1)
+    for args in (
+        ["start", "--viewers", "0"],
+        ["start", "--viewers", "5"],
+        ["run", "--viewers", "2"],
+        ["start", "--viewers"],
+    ):
+        with pytest.raises(ValueError):
+            spectator_options.parse(args)

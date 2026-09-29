@@ -33,7 +33,16 @@ K.Dispatch.on(
             return
         end
         local p = getSpecificPlayer(0)
-        if not p or p:getUsername() ~= "akr" or p:getAccessLevel() ~= "admin" then
+        local allowed = p
+            and (
+                (known.viewers and known.viewers[p:getUsername()] ~= nil)
+                or (
+                    not known.viewers
+                    and p:getUsername() == "akr"
+                    and p:getAccessLevel() == "admin"
+                )
+            )
+        if not allowed or (known.event and args.event ~= known.event) then
             return
         end
         local key = args.epoch .. ":" .. (args.event or "session")

@@ -18,6 +18,29 @@ This is a grouped operator batch, not a new unified hot-reload API: NPC runtime 
 are automated together; pooling/chase/lifecycle and vehicle probes have separate harnesses.
 Do not claim that all groups run under one command or one server process.
 
+## Spectator startup parameter
+
+Default to **one** spot for every startup, including after a previous multiplayer test.
+Only use more when the user explicitly announces guests for this test:
+
+```sh
+./dayone visual-test prepare --viewers 2
+./dayone civilian-combat start --viewers 2
+```
+
+The runtime encounter and dedicated lifecycle harness support 1–4 spots. `akr` is seat 1;
+other connected players fill remaining seats in username order. The full roster must be
+present before setup; it is fixed for the case. Each receives a distinct adjacent position,
+god/invisible/ghost protection, the loadout, and independent visibility/loadout/drift checks.
+Guests do not receive admin rights. Missing/replaced/extra connections block progression.
+Cleanup considers all viewers. Per-viewer telemetry is recorded in the typed case report.
+
+The parameter is rejected for other launch commands. Legacy pooling/chase and vehicle
+harnesses still have their original single-viewer assumptions: multi-viewer preparation
+marks those cases BLOCKED rather than silently treating them as covered. Do not run them
+with additional viewers until their own visibility/cleanup gates are adapted. No two-client
+qualification is implied by these changes. Nothing auto-starts from the preparation command.
+
 ## Shared procedure
 
 Follow [[Watched Testing]]. Preserve automatic unobstructed positioning/facing before

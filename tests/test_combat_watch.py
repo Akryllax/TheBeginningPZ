@@ -153,3 +153,25 @@ def test_loadout_ack_is_scoped_to_current_player_and_event():
         now=12000;Events.OnTick.callbacks[1]()
     """)
     assert lua.globals().requests == 3
+
+
+def test_guest_loadout_uses_explicit_roster_without_granting_admin():
+    lua = fixture()
+    lua.execute("""
+        AKREncounterWatch={epoch='current',event='case-1',viewers={akr=1,eric=2}}
+        guest={getUsername=function() return 'eric' end,getAccessLevel=function() return 'none' end}
+        stranger={getUsername=function() return 'other' end,getAccessLevel=function() return 'admin' end}
+    """)
+    lua.execute(
+        (ROOT / "mods/AKRDevTools/42/media/lua/server/AKRDevTools/ObserverLoadout.lua").read_text()
+    )
+    lua.execute("""
+        local function grant(p)
+            Events.OnClientCommand.callbacks[1]('AKRDevTools','observerLoadoutReady',p,
+                {epoch='current',event='case-1',loaded=true})
+        end
+        grant(guest);grant(stranger)
+    """)
+    assert lua.eval("AKRObserverLoadoutReports.eric.player == guest")
+    assert lua.eval("AKRObserverLoadoutReports.other == nil")
+    assert lua.eval("guest:getAccessLevel()") == "none"

@@ -55,6 +55,14 @@ final class EncounterRuntimeFixture {
   }
 
   static void run() {
+    assert EncounterCleanupGate.clearance(2, 2, true, true, 2);
+    assert !EncounterCleanupGate.clearance(2, 2, true, true, 1);
+    assert !EncounterCleanupGate.clearance(1, 1, true, true, 2);
+    assert !EncounterCleanupGate.clearance(2, 2, false, true, 2);
+    assert !EncounterCleanupGate.absent(2, 2, false, 2);
+    assert EncounterCleanupGate.absent(2, 2, true, 2);
+    assert EncounterCleanupGate.absent(0, 0, false, 2);
+
     assert EncounterObserverGate.evaluate(true, false, true, 1, 100)
         == EncounterObserverGate.State.WAITING;
     assert EncounterObserverGate.evaluate(true, true, true, 2, 100)

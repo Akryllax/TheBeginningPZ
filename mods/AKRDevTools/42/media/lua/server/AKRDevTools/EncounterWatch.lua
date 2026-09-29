@@ -26,7 +26,10 @@ K.Dispatch.on(
         if module ~= "AKRDevTools" or command ~= "encounterView" or not c or not AKRRuntime then
             return
         end
-        if not getServerName():match("^AKR_DayOne_Test_") or p:getUsername() ~= "akr" then
+        if
+            not getServerName():match("^AKR_DayOne_Test_")
+            or not (c.viewers or { akr = 1 })[p:getUsername()]
+        then
             return
         end
         if
@@ -42,10 +45,13 @@ K.Dispatch.on(
             return
         end
         local now = getTimestampMs()
+        AKREncounterReports = AKREncounterReports or {}
+        local previous = AKREncounterReports[p:getUsername()]
         if
-            AKREncounterReport
-            and AKREncounterReport.event == c.event
-            and now - AKREncounterReport.received_ms < 80
+            previous
+            and previous.player == p
+            and previous.event == c.event
+            and now - previous.received_ms < 80
         then
             return
         end
@@ -111,7 +117,7 @@ K.Dispatch.on(
             row.hunter_diagnostic = tostring(r.hunter_diagnostic or ""):sub(1, 200)
             rows[i] = row
         end
-        AKREncounterReport = {
+        local report = {
             player = p,
             epoch = c.epoch,
             event = c.event,
@@ -119,5 +125,9 @@ K.Dispatch.on(
             received_ms = now,
             pairs = rows,
         }
+        AKREncounterReports[p:getUsername()] = report
+        if p:getUsername() == "akr" then
+            AKREncounterReport = report
+        end
     end
 )

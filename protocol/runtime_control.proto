@@ -179,6 +179,8 @@ message EncounterProgress {
   bool same_actor_reused = 16;
   string lifecycle_failure = 17;
   string inventory_digest = 18;
+  uint32 viewing_spots = 19;
+  repeated EncounterViewer viewers = 20;
 }
 
 message EncounterTiming {
@@ -186,4 +188,14 @@ message EncounterTiming {
   double p95_ms = 2;
   double p99_ms = 3;
   double max_ms = 4;
+}
+
+// Per-connection observations; one viewer cannot satisfy another viewer's visibility gate.
+message EncounterViewer {
+  string username = 1;
+  uint32 seat = 2;
+  bool fresh = 3;
+  double age_ms = 4;
+  repeated ActorSample actors = 5;
+  double replica_peak_gap = 6;
 }

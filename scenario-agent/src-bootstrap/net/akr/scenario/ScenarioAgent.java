@@ -120,7 +120,8 @@ public final class ScenarioAgent {
                 world,
                 epoch,
                 Path.of(p.getProperty("encounter.directory", "/run/akr")),
-                Boolean.parseBoolean(p.getProperty("encounter.lifecycle", "false"))));
+                Boolean.parseBoolean(p.getProperty("encounter.lifecycle", "false")),
+                Integer.parseInt(p.getProperty("encounter.viewers", "1"))));
       }
       runtime = new RuntimeSession(world, epoch, new RuntimeSession.Routed(backends));
       runtimeSocket = new RuntimeSocket(Path.of(p.getProperty("runtime.socket", "")), runtime);

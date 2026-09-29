@@ -1,4 +1,4 @@
--- Explicit user-requested test loadout, only akr on disposable worlds under AKRRuntime.
+-- Test loadout for the explicit spectator roster, on disposable worlds only.
 local K = require("AKRCore/Core")
 local last = 0
 local function event()
@@ -6,6 +6,13 @@ local function event()
             and AKREncounterWatch.epoch == AKRRuntime.epoch
             and AKREncounterWatch.event
         or "session"
+end
+local function authorized(p)
+    local roster = AKREncounterWatch and AKREncounterWatch.viewers
+    if roster then
+        return roster[p:getUsername()] ~= nil
+    end
+    return p:getUsername() == "akr" and p:getAccessLevel() == "admin"
 end
 K.Dispatch.on(K.instance().dispatch, "OnTick", "AKRDevTools.observerLoadout", function()
     if not AKRRuntime or not getServerName():match("^AKR_DayOne_Test_") then
@@ -19,10 +26,10 @@ K.Dispatch.on(K.instance().dispatch, "OnTick", "AKRDevTools.observerLoadout", fu
     local players = getOnlinePlayers()
     for i = 0, math.min(players:size(), 16) - 1 do
         local p = players:get(i)
-        local ack = AKRObserverLoadoutReady
+        AKRObserverLoadoutReports = AKRObserverLoadoutReports or {}
+        local ack = AKRObserverLoadoutReports[p:getUsername()]
         if
-            p:getUsername() == "akr"
-            and p:getAccessLevel() == "admin"
+            authorized(p)
             and (
                 not ack
                 or ack.player ~= p
@@ -47,11 +54,7 @@ K.Dispatch.on(
         if module ~= "AKRDevTools" or command ~= "observerLoadoutReady" or not AKRRuntime then
             return
         end
-        if
-            not getServerName():match("^AKR_DayOne_Test_")
-            or player:getUsername() ~= "akr"
-            or player:getAccessLevel() ~= "admin"
-        then
+        if not getServerName():match("^AKR_DayOne_Test_") or not authorized(player) then
             return
         end
         if
@@ -62,9 +65,16 @@ K.Dispatch.on(
         then
             return
         end
-        AKRObserverLoadoutReady = { player = player, epoch = args.epoch, event = args.event }
+        AKRObserverLoadoutReports = AKRObserverLoadoutReports or {}
+        AKRObserverLoadoutReports[player:getUsername()] =
+            { player = player, epoch = args.epoch, event = args.event }
+        if player:getUsername() == "akr" then
+            AKRObserverLoadoutReady = AKRObserverLoadoutReports.akr
+        end
         print(
-            "[AKRObserverLoadout] akr confirmed loaded 9mm pistol and spare magazines for "
+            "[AKRObserverLoadout] "
+                .. player:getUsername()
+                .. " confirmed loaded 9mm pistol and spare magazines for "
                 .. args.event
         )
     end

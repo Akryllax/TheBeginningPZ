@@ -35,6 +35,12 @@ K.Dispatch.on(
         if type(args.stage) ~= "string" or #args.stage > 32 then
             return
         end
+        if args.viewers then
+            local p = getSpecificPlayer(0)
+            if not p or not args.viewers[p:getUsername()] then
+                return
+            end
+        end
         local ids = {}
         local hunters = {}
         for _, row in ipairs(args.pairs) do
@@ -71,6 +77,8 @@ K.Dispatch.on(
             end
         end
         AKREncounterClient = {
+            viewers = args.viewers,
+            event = args.event,
             epoch = args.epoch,
             event = args.event,
             count = args.count,

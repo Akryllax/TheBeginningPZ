@@ -31,6 +31,9 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
   private final Path directory;
   private final boolean lifecycleSession;
   private final int capacity;
+  private final int viewingSpots;
+  private final List<IsoPlayer> viewers = new ArrayList<>();
+  private final Map<IsoPlayer, Long> teleportedAt = new IdentityHashMap<>();
   private final TerminalJournal journal;
   private String lastCleanupError = "";
   private String scenarioOutcome = "PENDING";
@@ -50,7 +53,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
   private final List<IsoGridSquare> doorSquares = new ArrayList<>();
   private final Set<EventResources.Resource> resources = new LinkedHashSet<>();
   private String stage = "IDLE";
-  private long tick, stageAt, activeAt, holdAt, lastTeleport, clearAt, aftermathVisibleAt;
+  private long tick, stageAt, activeAt, holdAt, clearAt, aftermathVisibleAt;
   private int preparation, fixtureCursor;
   private boolean cleanupStarted, cleanupVerified;
   private ProbeTiming controllerWork = new ProbeTiming();
@@ -67,6 +70,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
 
   private static final class Pair {
     final ReplicaDriftGate drift = new ReplicaDriftGate();
+    final Map<IsoPlayer, ReplicaDriftGate> viewerDrift = new IdentityHashMap<>();
     CivilianPool.Token token;
     IsoPlayer actor;
     IsoZombie hunter;
@@ -100,6 +104,14 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
   }
 
   NativeEncounterBackend(String world, String epoch, Path directory, boolean lifecycleSession) {
+    this(world, epoch, directory, lifecycleSession, 1);
+  }
+
+  NativeEncounterBackend(
+      String world, String epoch, Path directory, boolean lifecycleSession, int viewingSpots) {
+    if (viewingSpots < 1 || viewingSpots > 4)
+      throw new IllegalArgumentException("viewing_spots_1_to_4");
+    this.viewingSpots = viewingSpots;
     if (!world.startsWith("AKR_DayOne_Test_")
         || world.contains("Headless")
         || !directory.isAbsolute()
@@ -153,37 +165,96 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
     return null;
   }
 
+  /**
+   * Enrol exactly the requested connections, with akr first; never replace a lost viewer mid-case.
+   */
+  private boolean enrolViewers() {
+    if (!viewers.isEmpty()) return rosterPresent();
+    var primary = observer();
+    if (primary == null
+        || GameServer.Players.size() != viewingSpots
+        || GameServer.udpEngine.connections.size() != viewingSpots) return false;
+    var others = new ArrayList<IsoPlayer>();
+    for (var p : GameServer.Players) {
+      var connection = GameServer.getConnectionFromPlayer(p);
+      if (p == null
+          || p.getSquare() == null
+          || connection == null
+          || !connection.isFullyConnected()) return false;
+      if (p != primary) others.add(p);
+    }
+    others.sort(Comparator.comparing(IsoPlayer::getUsername));
+    viewers.add(primary);
+    viewers.addAll(others);
+    return true;
+  }
+
+  private boolean rosterPresent() {
+    if (viewers.size() != viewingSpots
+        || GameServer.Players.size() != viewingSpots
+        || GameServer.udpEngine.connections.size() != viewingSpots) return false;
+    for (var p : viewers) {
+      var c = GameServer.getConnectionFromPlayer(p);
+      if (!GameServer.Players.contains(p) || c == null || !c.isFullyConnected()) return false;
+    }
+    return true;
+  }
+
   private IsoPlayer protect() {
-    var p = observer();
-    require(p != null, "observer_disconnected");
-    require(
-        p.getVehicle() == null
-            && p.getRole() != null
-            && "admin".equalsIgnoreCase(p.getRole().getName()),
-        "observer_admin_on_foot_required");
-    if (!p.isGodMod() || !p.isInvisible() || !p.isGhostMode()) {
-      p.setGodMod(true, true);
-      p.setInvisible(true, true);
-      p.setGhostMode(true, true);
-      GameServer.sendPlayerExtraInfo(p, null, true);
+    require(rosterPresent(), "observer_disconnected_or_unexpected_connection");
+    for (var p : viewers) {
+      require(p.getVehicle() == null && p.getSquare() != null, "observer_on_foot_loaded_required");
+      require(
+          !"akr".equals(p.getUsername())
+              || p.getRole() != null && "admin".equalsIgnoreCase(p.getRole().getName()),
+          "observer_admin_on_foot_required");
+      if (!p.isGodMod() || !p.isInvisible() || !p.isGhostMode()) {
+        p.setGodMod(true, true);
+        p.setInvisible(true, true);
+        p.setGhostMode(true, true);
+        GameServer.sendPlayerExtraInfo(p, null, true);
+      }
     }
-    return p;
+    return viewers.getFirst();
   }
 
-  private boolean loadoutReady(IsoPlayer p) {
-    return LuaManager.env.rawget("AKRObserverLoadoutReady") instanceof KahluaTable r
-        && r.rawget("player") == p
-        && epoch.equals(r.rawget("epoch"))
-        && event.id().equals(r.rawget("event"));
+  private boolean loadoutReady(IsoPlayer ignored) {
+    if (!(LuaManager.env.rawget("AKRObserverLoadoutReports") instanceof KahluaTable reports))
+      return false;
+    for (var p : viewers) {
+      if (!(reports.rawget(p.getUsername()) instanceof KahluaTable r)
+          || r.rawget("player") != p
+          || !epoch.equals(r.rawget("epoch"))
+          || !event.id().equals(r.rawget("event"))) return false;
+    }
+    return rosterPresent();
   }
 
-  private boolean teleport(IsoPlayer p, float x, float y, long now) {
-    if (Math.hypot(p.getX() - x, p.getY() - y) <= 2 && Math.abs(p.getZ()) < .1) return true;
-    if (now - lastTeleport > 3_000_000_000L) {
-      GameServer.sendTeleport(p, x, y, 0);
-      lastTeleport = now;
+  /**
+   * Place the fixed roster in adjacent ground-level spots; retain independent teleport deadlines.
+   */
+  private boolean teleport(IsoPlayer ignored, float x, float y, long now) {
+    boolean ready = true;
+    for (int i = 0; i < viewers.size(); i++) {
+      var p = viewers.get(i);
+      float spotX = x + i * 1.5f;
+      if (Math.hypot(p.getX() - spotX, p.getY() - y) <= .65 && Math.abs(p.getZ()) < .1) continue;
+      var square =
+          ServerMap.instance.getGridSquare((int) Math.floor(spotX), (int) Math.floor(y), 0);
+      if (square == null) {
+        ready = false;
+        continue;
+      }
+      require(
+          square.TreatAsSolidFloor() && !square.HasStairs() && square.isFree(false),
+          "observer_spot_obstructed");
+      ready = false;
+      if (now - teleportedAt.getOrDefault(p, 0L) > 3_000_000_000L) {
+        GameServer.sendTeleport(p, spotX, y, 0);
+        teleportedAt.put(p, now);
+      }
     }
-    return false;
+    return ready && viewers.size() == viewingSpots;
   }
 
   private void interest() {
@@ -202,15 +273,23 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
     require(lifecycle() == lifecycleSession, "lifecycle_requires_dedicated_one_actor_session");
     scenarioOutcome = "PENDING";
     sameActorReused = false;
+    LuaManager.env.rawset("AKREncounterReports", LuaManager.platform.newTable());
+    LuaManager.env.rawset("AKRObserverLoadoutReports", LuaManager.platform.newTable());
+    viewers.clear();
+    teleportedAt.clear();
     pairs.clear();
     doors.clear();
     doorSquares.clear();
     preparation = fixtureCursor = 0;
-    activeAt = holdAt = lastTeleport = clearAt = aftermathVisibleAt = 0;
+    activeAt = holdAt = clearAt = aftermathVisibleAt = 0;
     cleanupStarted = cleanupVerified = false;
     stride = null;
     controllerWork = new ProbeTiming();
     stage("WAIT_OBSERVER");
+    announce(
+        "Waiting for "
+            + viewingSpots
+            + " spectator connection(s), including akr; automatic placement follows.");
   }
 
   public boolean prepare() {
@@ -231,6 +310,10 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
     require(
         readiness != EncounterObserverGate.State.TIMED_OUT, "encounter_prepare_timeout:" + stage);
     if (readiness == EncounterObserverGate.State.WAITING) return false;
+    if (!enrolViewers()) {
+      require(preparation == 0, "observer_disconnected_or_unexpected_connection");
+      return false;
+    }
     protect();
     try {
       if (preparation == 0) {
@@ -914,12 +997,15 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
 
   private boolean clientActorFlag(Pair c, String key, boolean expected) {
     if (!clientFresh()) return false;
-    var r = (KahluaTable) LuaManager.env.rawget("AKREncounterReport");
-    return r.rawget("stage").equals(stage)
-        && r.rawget("pairs") instanceof KahluaTable rows
-        && rows.rawget((double) c.slot + 1) instanceof KahluaTable row
-        && Double.valueOf(c.token.generation()).equals(row.rawget("generation"))
-        && Boolean.valueOf(expected).equals(row.rawget(key));
+    for (var p : viewers) {
+      var r = viewerReport(p);
+      if (!stage.equals(r.rawget("stage"))
+          || !(r.rawget("pairs") instanceof KahluaTable rows)
+          || !(rows.rawget((double) c.slot + 1) instanceof KahluaTable row)
+          || !Double.valueOf(c.token.generation()).equals(row.rawget("generation"))
+          || !Boolean.valueOf(expected).equals(row.rawget(key))) return false;
+    }
+    return true;
   }
 
   private boolean noConnections() {
@@ -940,10 +1026,13 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
       clearAt = 0;
       return false;
     }
-    // This fixture has one reporting observer. Additional/unidentified connections retain
-    // ownership.
+    // Every configured connection must remain identifiable; unknown viewers retain ownership.
     if (!EncounterCleanupGate.clearance(
-        GameServer.udpEngine.connections.size(), GameServer.Players.size(), p != null, true)) {
+        GameServer.udpEngine.connections.size(),
+        GameServer.Players.size(),
+        rosterPresent(),
+        true,
+        viewingSpots)) {
       clearAt = 0;
       return false;
     }
@@ -1004,55 +1093,84 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
           actors.replicate(c.actor, 0, 0, false);
   }
 
-  private boolean clientFresh() {
-    if (!(LuaManager.env.rawget("AKREncounterReport") instanceof KahluaTable r)) return false;
-    return r.rawget("player") == observer()
+  private KahluaTable viewerReport(IsoPlayer p) {
+    if (!(LuaManager.env.rawget("AKREncounterReports") instanceof KahluaTable reports)) return null;
+    return reports.rawget(p.getUsername()) instanceof KahluaTable r ? r : null;
+  }
+
+  private boolean reportFresh(IsoPlayer p, KahluaTable r) {
+    return r != null
+        && r.rawget("player") == p
         && epoch.equals(r.rawget("epoch"))
         && event.id().equals(r.rawget("event"))
         && r.rawget("received_ms") instanceof Number n
+        && System.currentTimeMillis() - n.longValue() >= 0
         && System.currentTimeMillis() - n.longValue() <= 2500;
   }
 
+  private boolean clientFresh() {
+    if (!rosterPresent()) return false;
+    for (var p : viewers) if (!reportFresh(p, viewerReport(p))) return false;
+    return true;
+  }
+
   private void checkReplica(Pair c, long now) {
-    if (!(LuaManager.env.rawget("AKREncounterReport") instanceof KahluaTable report)
-        || !(report.rawget("pairs") instanceof KahluaTable rows)
-        || !(rows.rawget((double) c.slot + 1) instanceof KahluaTable row)) return;
-    boolean fresh =
-        report.rawget("received_ms") instanceof Number received
-            && System.currentTimeMillis() - received.longValue() < 500
-            && Boolean.TRUE.equals(row.rawget("actor_present"));
-    double gap =
-        row.rawget("actor_x") instanceof Number x && row.rawget("actor_y") instanceof Number y
-            ? Math.hypot(c.actor.getX() - x.doubleValue(), c.actor.getY() - y.doubleValue())
-            : 0;
-    require(
-        !c.drift.sample(now, fresh, gap),
-        "client_replica_divergence:" + c.slot + ":" + String.format(Locale.ROOT, "%.2f", gap));
+    for (var viewer : viewers) {
+      var report = viewerReport(viewer);
+      if (report == null
+          || !(report.rawget("pairs") instanceof KahluaTable rows)
+          || !(rows.rawget((double) c.slot + 1) instanceof KahluaTable row)) return;
+      boolean fresh =
+          report.rawget("received_ms") instanceof Number received
+              && System.currentTimeMillis() - received.longValue() < 500
+              && Boolean.TRUE.equals(row.rawget("actor_present"));
+      double gap =
+          row.rawget("actor_x") instanceof Number x && row.rawget("actor_y") instanceof Number y
+              ? Math.hypot(c.actor.getX() - x.doubleValue(), c.actor.getY() - y.doubleValue())
+              : 0;
+      require(
+          !c.viewerDrift
+              .computeIfAbsent(
+                  viewer, v -> v == viewers.getFirst() ? c.drift : new ReplicaDriftGate())
+              .sample(now, fresh, gap),
+          "client_replica_divergence:"
+              + viewer.getUsername()
+              + ":"
+              + c.slot
+              + ":"
+              + String.format(Locale.ROOT, "%.2f", gap));
+    }
   }
 
   private boolean clientExitClear(Pair c) {
     if (!clientFresh()) return false;
-    var report = (KahluaTable) LuaManager.env.rawget("AKREncounterReport");
-    if (!(report.rawget("pairs") instanceof KahluaTable rows)
-        || !(rows.rawget((double) c.slot + 1) instanceof KahluaTable row)) return false;
-    return Boolean.TRUE.equals(row.rawget("exit_clear"));
+    for (var p : viewers) {
+      var report = viewerReport(p);
+      if (!(report.rawget("pairs") instanceof KahluaTable rows)
+          || !(rows.rawget((double) c.slot + 1) instanceof KahluaTable row)) return false;
+      if (!Boolean.TRUE.equals(row.rawget("exit_clear"))) return false;
+    }
+    return true;
   }
 
   private boolean clientReady(boolean absent) {
     if (!clientFresh()) return false;
-    var r = (KahluaTable) LuaManager.env.rawget("AKREncounterReport");
-    if (!(r.rawget("pairs") instanceof KahluaTable list)) return false;
-    for (int i = 0; i < pairs.size(); i++) {
-      if (!(list.rawget((double) i + 1) instanceof KahluaTable row)) return false;
-      if (absent) {
-        if (!Boolean.FALSE.equals(row.rawget("actor_present"))
-            || !Boolean.FALSE.equals(row.rawget("hunter_present"))) return false;
-        if (pairs.get(i).death != null
-            && pairs.get(i).death.corpse != null
-            && (!Boolean.FALSE.equals(row.rawget("corpse_present"))
-                || !Boolean.FALSE.equals(row.rawget("reanimated_present")))) return false;
-      } else if (!Boolean.TRUE.equals(row.rawget("actor_visible"))
-          || !actorOnly() && !Boolean.TRUE.equals(row.rawget("hunter_visible"))) return false;
+    for (var viewer : viewers) {
+      var r = viewerReport(viewer);
+      if (absent && !stage.equals(r.rawget("stage"))) return false;
+      if (!(r.rawget("pairs") instanceof KahluaTable list)) return false;
+      for (int i = 0; i < pairs.size(); i++) {
+        if (!(list.rawget((double) i + 1) instanceof KahluaTable row)) return false;
+        if (absent) {
+          if (!Boolean.FALSE.equals(row.rawget("actor_present"))
+              || !Boolean.FALSE.equals(row.rawget("hunter_present"))) return false;
+          if (pairs.get(i).death != null
+              && pairs.get(i).death.corpse != null
+              && (!Boolean.FALSE.equals(row.rawget("corpse_present"))
+                  || !Boolean.FALSE.equals(row.rawget("reanimated_present")))) return false;
+        } else if (!Boolean.TRUE.equals(row.rawget("actor_visible"))
+            || !actorOnly() && !Boolean.TRUE.equals(row.rawget("hunter_visible"))) return false;
+      }
     }
     return true;
   }
@@ -1065,6 +1183,11 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
     config.rawset("stage", stage);
     config.rawset("count", (double) definition.actors());
     config.rawset("actor_only", actorOnly());
+    config.rawset("viewing_spots", (double) viewingSpots);
+    var roster = LuaManager.platform.newTable();
+    for (int i = 0; i < viewers.size(); i++)
+      roster.rawset(viewers.get(i).getUsername(), (double) i + 1);
+    config.rawset("viewers", roster);
     var list = LuaManager.platform.newTable();
     for (int i = 0; i < pairs.size(); i++) {
       Pair c = pairs.get(i);
@@ -1254,7 +1377,8 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
           || !EncounterCleanupGate.absent(
               GameServer.udpEngine.connections.size(),
               GameServer.Players.size(),
-              clientReady(true))) return false;
+              clientReady(true),
+              viewingSpots)) return false;
       require(
           actors.constructed == capacity && actors.parkedCount() == capacity && resources.isEmpty(),
           "pool_cleanup_baseline");
@@ -1298,6 +1422,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
   public EncounterProgress encounter() {
     var result =
         EncounterProgress.newBuilder()
+            .setViewingSpots(viewingSpots)
             .setStage(stage)
             .setCleanupVerified(cleanupVerified)
             .setScenarioOutcome(scenarioOutcome)
@@ -1308,6 +1433,33 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
             .setSameActorReused(sameActorReused)
             .setControllerP95Ms(controllerWork.percentile(.95))
             .setControllerP99Ms(controllerWork.percentile(.99));
+    for (int seat = 0; seat < viewers.size(); seat++) {
+      var viewer = viewers.get(seat);
+      var report = viewerReport(viewer);
+      var sample =
+          EncounterViewer.newBuilder()
+              .setUsername(viewer.getUsername())
+              .setSeat(seat + 1)
+              .setFresh(reportFresh(viewer, report));
+      if (report != null && report.rawget("received_ms") instanceof Number at)
+        sample.setAgeMs(Math.max(0, System.currentTimeMillis() - at.longValue()));
+      double peak = 0;
+      for (Pair c : pairs) {
+        if (c.token == null) continue;
+        var drift = c.viewerDrift.get(viewer);
+        if (drift != null) peak = Math.max(peak, drift.peak());
+        if (report == null
+            || !(report.rawget("pairs") instanceof KahluaTable rows)
+            || !(rows.rawget((double) c.slot + 1) instanceof KahluaTable row)) continue;
+        if (row.rawget("actor_x") instanceof Number x && row.rawget("actor_y") instanceof Number y)
+          sample.addActors(
+              ActorSample.newBuilder()
+                  .setOnlineId(c.token.slot())
+                  .setPosition(Point.newBuilder().setX(x.doubleValue()).setY(y.doubleValue()))
+                  .setAction(Objects.toString(row.rawget("actor_state"), "")));
+      }
+      result.addViewers(sample.setReplicaPeakGap(peak));
+    }
     if (lifecycle() && !pairs.isEmpty() && pairs.getFirst().death != null) {
       var d = pairs.getFirst().death;
       result

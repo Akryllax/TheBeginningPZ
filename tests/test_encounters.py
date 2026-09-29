@@ -180,3 +180,29 @@ def test_lifecycle_is_single_actor_not_added_to_default_batch():
     with pytest.raises(ValueError):
         ops.planned_cases("lifecycle", 4)
     assert not any(c["scenario"] == "LIFECYCLE" for c in ops.planned_cases())
+
+
+def test_each_viewer_has_independent_freshness_and_connection_identity():
+    lua = server()
+    lua.execute("""
+        AKREncounterWatch.viewers={akr=1,eric=2}
+        primary=p
+        report('event',2)
+        p={getUsername=function() return 'eric' end}
+        guest=p
+        report('event',2)
+    """)
+    assert lua.eval("AKREncounterReports.akr.player == primary")
+    assert lua.eval("AKREncounterReports.eric.player == guest")
+    assert lua.eval("AKREncounterReport.player == primary")
+    lua.execute("""
+        p={getUsername=function() return 'uninvited' end}
+        report('event',2)
+    """)
+    assert lua.eval("AKREncounterReports.uninvited == nil")
+    lua.execute("""
+        p={getUsername=function() return 'eric' end}
+        report('event',2)
+    """)
+    assert lua.eval("AKREncounterReports.eric.player == p")
+    assert lua.eval("AKREncounterReports.eric.player ~= guest")

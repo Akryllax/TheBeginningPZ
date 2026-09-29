@@ -7,6 +7,8 @@ CRITICAL_REASONS = (
     "observer_disconnected",
     "observer_report_stale",
     "observer_admin_on_foot",
+    "observer_on_foot_loaded",
+    "observer_spot_obstructed",
     "identity_changed",
     "previous_encounter_owned",
     "previous_cleanup_unverified",

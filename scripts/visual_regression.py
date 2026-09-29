@@ -103,13 +103,14 @@ def catalogue():
     return cases
 
 
-def prepare(root):
+def prepare(root, viewers=1):
     """Freeze source hashes, available route artifacts and the operator checklist, with no deployment."""
     root = Path(root)
     stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime()) + "-" + uuid.uuid4().hex[:8]
     target = root / "artifacts/visual-regression" / stamp
     target.mkdir(parents=True, mode=0o700)
     plan = {
+        "viewing_spots": viewers,
         "id": stamp,
         "status": "prepared_not_run",
         "path": str(target),
@@ -135,7 +136,15 @@ def prepare(root):
     }
     hashes = encounters.source_manifest(root)
     for case in plan["cases"]:
+        case["viewing_spots"] = viewers
         case["status"] = "not_run"
+        if viewers > 1 and case["mode"] in {"startup_harness", "operator_probe"}:
+            case["status"] = "blocked_multi_viewer_harness"
+        if "commands" in case and case["mode"] == "runtime_separate_world":
+            case["commands"] = [
+                c + f" --viewers {viewers}" if c == "civilian-combat start" else c
+                for c in case["commands"]
+            ]
         case["human_verdict"] = "pending"
         if "route" in case:
             source = root / "artifacts/scenario-map" / case["route"]
@@ -160,6 +169,7 @@ def prepare(root):
         "# Prepared visual regression",
         "",
         "Preparation only. No server/client has been launched.",
+        f"Spectator spots: {viewers}. Start encounter/lifecycle worlds with ./dayone civilian-combat start --viewers {viewers}.",
         "",
         "Run groups in order: NPC runtime → four-Actor reuse → off-screen chase → lifecycle → vehicle probes.",
         "Harness boundaries require a controlled disposable-server switch and fresh in-world readiness; never reuse an old ready reply.",
@@ -187,8 +197,11 @@ def prepare(root):
 
 
 def dispatch(m, args):
+    import spectator_options
+
+    args, viewers = spectator_options.parse(args)
     if args == ["prepare"]:
-        return prepare(m.ROOT)
+        return prepare(m.ROOT, viewers)
     if args == ["status"]:
         pointer = json.loads((m.ROOT / "artifacts/visual-regression/current.json").read_text())
         target = Path(pointer["path"]).resolve()

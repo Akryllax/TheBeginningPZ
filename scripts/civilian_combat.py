@@ -9,6 +9,9 @@ import scenario_ops as scenario
 
 
 def dispatch(m, args):
+    import spectator_options
+
+    args, viewers = spectator_options.parse(args)
     action = args[0] if args else "status"
     if action in {"lifecycle-create", "encounter-create", "run", "cancel", "record-feedback"}:
         import civilian_encounter
@@ -79,6 +82,26 @@ def dispatch(m, args):
         raise RuntimeError("Current disposable world is not a watched combat test")
     report = target / "ipc/combat-report.json"
     if action == "start":
+        if viewers > 1 and receipt.get("watched_combat", {}).get("scope") != "moving_encounter":
+            raise ValueError("Multiple viewing spots require encounter-create or lifecycle-create")
+        active = m.run(
+            [m.PODMAN, "ps", "--filter", f"name=^{receipt['container']}$", "--format", "{{.ID}}"],
+            capture=True,
+        )
+        if active.stdout.strip():
+            raise RuntimeError(
+                "Viewing spots are a startup setting; disposable server is already running"
+            )
+        props = target / "scenario.properties"
+        text = "\n".join(
+            line
+            for line in props.read_text().splitlines()
+            if not line.startswith("encounter.viewers=")
+        )
+        scenario.write_private(props, text + f"\nencounter.viewers={viewers}\n")
+        receipt["watched_combat"]["viewing_spots"] = viewers
+        for path in (target / "receipt.json", m.ROOT / "artifacts/scenario-tests/current.json"):
+            scenario.write_private(path, json.dumps(receipt, indent=2) + "\n")
         watched.install_client(m, target)
         pedestrian.start(m)
         if receipt.get("watched_combat", {}).get("scope") == "moving_encounter":

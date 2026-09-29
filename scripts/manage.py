@@ -456,7 +456,16 @@ def main():
     parser.add_argument(
         "--check", action="store_true", help="check formatting without editing files"
     )
+    parser.add_argument(
+        "--viewers", type=int, help="Explicit spectator spots (1..4); default 1 per start"
+    )
     args = parser.parse_args()
+    if args.viewers is not None:
+        if args.command not in {"civilian-combat", "visual-test"}:
+            parser.error(
+                "--viewers currently applies to civilian-combat start or visual-test prepare"
+            )
+        args.args.extend(["--viewers", str(args.viewers)])
     if args.command in {"format", "lint", "docs"}:
         if args.command == "docs":
             run([sys.executable, ROOT / "scripts/java_docs.py", *args.args])

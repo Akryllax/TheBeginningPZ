@@ -210,6 +210,7 @@ def run(m, selection="batch", actors=1):
             "path": str(folder),
             "status": "running",
             "selection": selection,
+            "viewing_spots": receipt["watched_combat"].get("viewing_spots", 1),
             "cases": [],
             "scope": "ordinary-client "
             + ("fatal lifecycle" if selection == "lifecycle" else "encounter regression")

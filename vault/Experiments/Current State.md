@@ -6,6 +6,32 @@ updated: 2026-09-29
 
 # Current state
 
+## Explicit spectator spots (2026-09-29)
+
+`civilian-combat start --viewers N` now configures 1–4 spectator spots for runtime encounter
+and lifecycle sessions. Every start defaults to 1 unless explicitly overridden; this preference
+is also in AGENTS.md. `visual-test prepare --viewers N` records the same requested count.
+The current prepared batch is still **one spectator**:
+`artifacts/visual-regression/20260929-125816-168ad3a1/`.
+
+The roster requires akr plus exactly N−1 other distinct connected players, ordered by name.
+It stays fixed for each case. Adjacent floor-checked positions, protection and loadouts apply
+to every viewer; guests are not elevated to admin. Visibility, lifecycle viewing, loadout
+acks, replica drift and cleanup now require independent per-player reports. Connection
+identity prevents old/reconnected player objects from supplying current readiness. New
+additive typed viewer samples record per-viewer positions, freshness and drift peaks.
+Unknown connections retain resources rather than weakening cleanup.
+
+Legacy pooling/chase/vehicle harnesses remain single-viewer: multi-viewer preparation marks
+those groups blocked instead of pretending their old cleanup supports extra spectators.
+No live world/client changed and no second viewer was assumed or launched. Actual two-client
+presentation and ownership behavior remain unvalidated.
+
+Full offline runtime suite passed at
+`artifacts/runtime-tests/20260929-125721-3e46f6e7/`; lint also passed. The final targeted
+Python/Lua run passed 21 tests, including per-viewer rate limits, outsider rejection,
+connection-scoped reports, guest loadouts without admin and default-seat reset.
+
 ## Cross-feature visual regression prepared (2026-09-29)
 
 The user requested preparation of a watched batch covering implemented vehicles, NPCs,
