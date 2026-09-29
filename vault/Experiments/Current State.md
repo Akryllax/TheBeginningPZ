@@ -35,6 +35,14 @@ Observer web TypeScript/Vite build. `./dayone lint`, `./dayone docs java`, the
 Observer agent build and the C++ worker tests also passed locally. These checks do
 not establish an in-game AKR migration, a watched NPC run or two-client replication.
 
+A fresh disposable native world, `AKR_DayOne_Test_Headless_20260929_114249_8158e8`,
+then passed all 23 headless checks with the renamed AKR build. The cases covered
+walking and cancellation, locked/open doors, four-slot Actor reuse across residents,
+terminal receipts, corpse handoff, reanimation, and 32-body prewarm. The report is
+`artifacts/civilian-headless/20260929-114249-8158e8/ipc/native-report.json`;
+the isolated test container stopped after the run. This is a functional engine check
+without clients, not a watched or multiplayer qualification.
+
 ## Source checkpoint and tomorrow's task (2026-09-29)
 
 The accepted next plan is saved in
