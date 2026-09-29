@@ -60,10 +60,22 @@ def build(cache: Path, game_jar: Path, test: bool = False, generate_only: bool =
             for name in upstream.namelist():
                 if not name.endswith("/") and name != "META-INF/MANIFEST.MF":
                     archive.writestr(name, upstream.read(name))
-    guard_source = (ROOT / "scenario-agent/src/net/lofers/scenario/BuildGuard.java").read_text()
-    guards = dict(re.findall(r'Map.entry\("([^"]+)","([a-f0-9]{64})"\)', guard_source))
-    native_library = re.search(r'SERVER_PHYSICS_LIBRARY="([^"]+)"', guard_source).group(1)
-    native_hash = re.search(r'SERVER_PHYSICS_SHA256="([a-f0-9]{64})"', guard_source).group(1)
+    # Read the compiled compatibility contract. Source-text regexes silently lost every
+    # guard when a Java formatter inserted spaces around Map.entry arguments.
+    contract = subprocess.run(
+        [str(jdk / "bin/java"), "-cp", f"{classes}:{cp}", "net.lofers.scenario.BuildManifest"],
+        check=True, capture_output=True, text=True,
+    ).stdout.splitlines()
+    native = [line.split("\t") for line in contract if line.startswith("native\t")]
+    guarded = [line.split("\t") for line in contract if line.startswith("class\t")]
+    if len(native) != 1 or len(native[0]) != 3 or len(guarded) < 40:
+        raise ValueError("Incomplete compiled build guard contract")
+    native_library, native_hash = native[0][1:]
+    guards = {name: digest for _, name, digest in guarded}
+    if len(guards) != len(guarded) or any(not re.fullmatch(r"[a-f0-9]{64}", digest) for digest in guards.values()):
+        raise ValueError("Duplicate or malformed guarded class hash")
+    if not re.fullmatch(r"[a-f0-9]{64}", native_hash):
+        raise ValueError("Malformed guarded native library hash")
     with zipfile.ZipFile(game_jar) as game:
         for name, expected_hash in guards.items():
             if hashlib.sha256(game.read(name + ".class")).hexdigest() != expected_hash:
