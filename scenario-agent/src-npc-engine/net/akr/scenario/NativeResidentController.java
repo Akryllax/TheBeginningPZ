@@ -211,6 +211,7 @@ public final class NativeResidentController {
     g.rawset("outcomes", retained);
   }
 
+  /** Accept a newer detached long-horizon plan while the current action remains engine-safe. */
   void acceptPlan(KahluaTable plan) {
     if (terminal || body.isDead() || pool.body(token) != body) return;
     var result = call("acceptPlan", resident, plan);
@@ -370,6 +371,7 @@ public final class NativeResidentController {
     }
   }
 
+  /** Invalidate captured geometry after a door, wall or traversal state changes. */
   public void geometryChanged() {
     mapRevision++;
     assessed = reachable = false;
@@ -392,6 +394,7 @@ public final class NativeResidentController {
     assessed = reachable = false;
   }
 
+  /** Request a bounded movement stop without discarding the retained resident goal. */
   public void stop() {
     if (traversal != null) traversal.cancel();
     clearCandidate();
@@ -412,6 +415,7 @@ public final class NativeResidentController {
     return routeKey == null ? 0 : routeKey.actionRevision();
   }
 
+  /** Release this controller's planning state after the owning Actor is retired. */
   public void dispose() {
     if (body.isDead()) died();
     stop();
@@ -427,6 +431,7 @@ public final class NativeResidentController {
   }
 
   /** Caller schedules at most four adapters: eight geometry nodes and 32 A* polls each per tick. */
+  /** Reconcile engine state, threats and buffered actions under one game-thread budget. */
   public void tick(long now, boolean online) {
     GameHooks.ownThread();
     long began = System.nanoTime();
@@ -616,6 +621,7 @@ public final class NativeResidentController {
     }
   }
 
+  /** Translate an accepted Lua intent into safe engine action boundaries. */
   private void apply(KahluaTable intent, long now) {
     long rev = ((Number) intent.rawget("revision")).longValue();
     if (rev < revision) return;

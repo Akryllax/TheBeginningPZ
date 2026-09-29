@@ -26,6 +26,7 @@ final class PlannerTransport implements Runnable {
   final Path socket;
   volatile String health = "connecting", lastError = "";
 
+  /** Bind a reconnecting worker channel to one world, epoch and rules registry. */
   PlannerTransport(Path socket, String world, String epoch, String registryHash) {
     this(socket, world, epoch, registryHash, ResidentPlannerBridge.outcomes);
   }
@@ -47,6 +48,7 @@ final class PlannerTransport implements Runnable {
         .setRequestId(id);
   }
 
+  /** Exchange detached observations and receipts with bounded reconnect attempts. */
   public void run() {
     while (!Thread.currentThread().isInterrupted()) {
       try (SocketChannel channel = SocketChannel.open(StandardProtocolFamily.UNIX)) {
@@ -132,6 +134,7 @@ final class PlannerTransport implements Runnable {
     }
   }
 
+  /** Reject stale or malformed worker envelopes before plans reach the game thread. */
   void validate(Envelope e, long request) throws IOException {
     if (e.getProtocolVersion() != 1
         || !world.equals(e.getWorld())
@@ -140,6 +143,7 @@ final class PlannerTransport implements Runnable {
       throw new IOException("Protocol/world/epoch/request mismatch");
   }
 
+  /** Write one size-bounded, length-prefixed protobuf envelope. */
   static void write(SocketChannel channel, Envelope e) throws IOException {
     byte[] bytes = e.toByteArray();
     if (bytes.length == 0 || bytes.length > MAX_FRAME) throw new IOException("Frame limit");
@@ -152,6 +156,7 @@ final class PlannerTransport implements Runnable {
     transfer(channel, b, true);
   }
 
+  /** Read and parse one complete size-bounded protobuf envelope. */
   static Envelope read(SocketChannel channel) throws IOException {
     ByteBuffer header = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN);
     transfer(channel, header, false);

@@ -148,6 +148,7 @@ public final class ServerActors implements RuntimeSession.Backend {
   /** Owner connection of the live hunter (game thread); read by the NetworkZombiePacker hook. */
   private static UdpConnection hunterOwner;
 
+  /** Preserve stock neighbor visibility while admitting only connected Actor replicas. */
   public static boolean neighborPlayer(boolean stock, UdpConnection connection) {
     return stock
         || (connection != null && connection == hunterOwner)
@@ -178,6 +179,7 @@ public final class ServerActors implements RuntimeSession.Backend {
   }
 
   /** True only for the live body of a pooled Actor (never a real player). */
+  /** Identify a body currently owned by the bounded Actor pool. */
   public static boolean isActor(IsoPlayer player) {
     return ScenarioAgent.server
         && ((instance != null && instance.bindings.containsKey(player))
@@ -186,6 +188,7 @@ public final class ServerActors implements RuntimeSession.Backend {
 
   // ---- sentinel: stock IsoPlayer.update/postupdate must never run for an Actor (hooked by
   // ScenarioTransformer) ----
+  /** Start timing only for native updates of owned Actor bodies. */
   public static void beginNativeStep(IsoPlayer player) {
     NativeCivilianActors.noteStockUpdate(player);
     if (instance == null || !ScenarioAgent.server) return;
@@ -196,6 +199,7 @@ public final class ServerActors implements RuntimeSession.Backend {
     slot.nativeStepAt = System.nanoTime();
   }
 
+  /** Finish the paired native update timing without charging ordinary players. */
   public static void endNativeStep(IsoPlayer player) {
     if (instance == null || !ScenarioAgent.server) return;
     Slot slot = instance.bindings.get(player);
@@ -206,6 +210,7 @@ public final class ServerActors implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Bind one admitted Actor event without allocating or releasing a pooled body. */
   public void begin(EventScheduler.View event, EventScheduler scheduler) {
     if (slot != null
         || acquired
@@ -221,6 +226,7 @@ public final class ServerActors implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Reserve and initialize an Actor body, or retain partial ownership for later cleanup. */
   public boolean prepare() {
     GameHooks.ownThread();
     if (definition.entity() != PedestrianDefinition.Entity.ACTOR)
@@ -531,6 +537,7 @@ public final class ServerActors implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Advance the current Actor route and hunter interactions on the game thread. */
   public boolean update() {
     GameHooks.ownThread();
     long now = System.nanoTime();
@@ -949,6 +956,7 @@ public final class ServerActors implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Retire network/world registration and retain any body whose absence is uncertain. */
   public boolean cleanup() {
     GameHooks.ownThread();
     if (!retireHunter()) return false;
@@ -1114,6 +1122,7 @@ public final class ServerActors implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Return detached progress, timing and ownership samples for the control reply. */
   public List<ActorSample> samples() {
     if (slot == null || slot.body == null) return List.of();
     IsoPlayer player = slot.body.player;

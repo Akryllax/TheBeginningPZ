@@ -105,6 +105,7 @@ final class EventScheduler {
   private Thread gameThread;
   private long sequence;
 
+  /** Bind event IDs and bounded queue/receipt capacity to one world and server epoch. */
   EventScheduler(String world, String epoch, int queueCapacity, int receiptCapacity) {
     identifier(world);
     identifier(epoch);
@@ -134,6 +135,7 @@ final class EventScheduler {
     if (gameThread != Thread.currentThread()) throw new IllegalStateException("not_game_thread");
   }
 
+  /** Reserve a queue slot idempotently; a repeated request ID returns its first receipt. */
   synchronized Reply submit(Context context, Definition definition) {
     context(context);
     Objects.requireNonNull(definition);
@@ -157,6 +159,7 @@ final class EventScheduler {
   /**
    * Cancellation does not consume queue or receipt capacity, and repeated requests are harmless.
    */
+  /** Request cancellation while retaining resources until verified cleanup. */
   synchronized Reply cancel(Context context, String eventId) {
     context(context);
     Event event = events.get(eventId);
@@ -174,6 +177,7 @@ final class EventScheduler {
   }
 
   /** Call once from the resident game-thread hook; execution happens outside the scheduler lock. */
+  /** Admit one queued event on the bound game thread and return its current view. */
   synchronized View next() {
     gameThread();
     if (active == null) {
@@ -194,6 +198,7 @@ final class EventScheduler {
     return active;
   }
 
+  /** Mark a prepared event active after its backend has established ownership. */
   synchronized void running(String id) {
     Event event = active(id);
     if (event.phase != Phase.PREPARING || event.cancel)
@@ -201,6 +206,7 @@ final class EventScheduler {
     event.phase = Phase.RUNNING;
   }
 
+  /** Record an owned native resource before subsequent effects can run. */
   synchronized void acquire(String id, EventResources.Resource resource) {
     Event event = active(id);
     if ((event.phase != Phase.PREPARING && event.phase != Phase.RUNNING) || event.cancel)
@@ -214,6 +220,7 @@ final class EventScheduler {
   }
 
   /** Execution finishing is not event completion. Braking must finish before calling this. */
+  /** Enter cleanup, recording whether execution failed and why. */
   synchronized void cleaning(String id, boolean failed, String reason) {
     Event event = active(id);
     if (event.phase == Phase.CLEANING || event.phase == Phase.CLEANUP_BLOCKED)
@@ -224,6 +231,7 @@ final class EventScheduler {
     event.phase = Phase.CLEANING;
   }
 
+  /** Complete cleanup only when every resource and the baseline are verified absent. */
   synchronized boolean cleaned(String id, boolean baselineVerified) {
     Event event = active(id);
     if (event.phase != Phase.CLEANING && event.phase != Phase.CLEANUP_BLOCKED)
@@ -237,11 +245,13 @@ final class EventScheduler {
     return true;
   }
 
+  /** Return the latest bounded view for one event ID. */
   synchronized View status(String id) {
     Event event = events.get(id);
     return event == null ? null : event.view();
   }
 
+  /** Page terminal receipts without exposing mutable scheduler internals. */
   synchronized List<View> outcomes(int offset, int limit) {
     if (offset < 0 || limit < 1 || limit > 64) throw new IllegalArgumentException("pagination");
     return events.values().stream()

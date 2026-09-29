@@ -1,10 +1,19 @@
 ---
 type: runbook
 status: active
-updated: 2026-09-28
+updated: 2026-09-29
 ---
 
 # Operations
+
+The AKR source build is separate from the running previous development build.
+`artifacts/legacy-builds/230ead9/` retains the previous agent JAR and matching
+source with checksums. Keep existing saves and mounts with that build. Start a new
+disposable world before deploying `AKRStoryteller` and `akr-scenario-agent.jar`.
+For source changes, run `./dayone format`, `./dayone lint`,
+`./dayone runtime-test offline` and `./dayone docs java` as appropriate;
+see [source style](../../CODE_STYLE.md). These commands do not replace running
+services.
 
 The next accepted task is [Four-resident neighborhood](../../TASK_Four_Resident_Neighborhood.md),
 planned for 2026-09-30. Its checkpoint/restore operations are planned, not available yet.
@@ -168,7 +177,7 @@ scenario/module iterations are intended to remain in the same session afterward.
 ## Command interface
 
 `./dayone vehicle-probe-create driver-model` prepares the isolated original seated-driver
-variant. It packages only our mesh, palette and vehicle script as `LofersDriverProbe`;
+variant. It packages only our mesh, palette and vehicle script as `AKRDriverProbe`;
 clients need that ordinary asset mod. The default probe still uses the stock empty car.
 Use `vehicle-probe-route`, `vehicle-probe-start`, `vehicle-probe-control start` and
 `vehicle-probe-stop` as before. A completed probe removes its disposable car; it is not
@@ -239,7 +248,7 @@ and the separate route-artifact preparation command.
 
 ## Disposable server vehicle probe
 
-The probe has its own fresh world under `artifacts/vehicle-probe/`, a private copy of the built agent JAR and read-only core game files. The default has no loaded game mods; `vehicle-probe-create driver-model` adds only the original `LofersDriverProbe` assets and disposable-server visibility setup. It uses an unoccupied vehicle, no NPCs, no fake players and no planner. Clients use the ordinary game, plus that asset mod when selected. The probe deliberately does not pause when empty; whether native physics advances without a real player is a test result to record.
+The probe has its own fresh world under `artifacts/vehicle-probe/`, a private copy of the built agent JAR and read-only core game files. The default has no loaded game mods; `vehicle-probe-create driver-model` adds only the original `AKRDriverProbe` assets and disposable-server visibility setup. It uses an unoccupied vehicle, no NPCs, no fake players and no planner. Clients use the ordinary game, plus that asset mod when selected. The probe deliberately does not pause when empty; whether native physics advances without a real player is a test result to record.
 
 Both disposable harnesses use `.132` UDP **16281/16282** and loopback TCP **27035**. Stop the existing scenario test with `scenario-test-stop` before starting the probe; use `vehicle-probe-stop` before starting the other harness. They never share the normal world's save or Observer state.
 

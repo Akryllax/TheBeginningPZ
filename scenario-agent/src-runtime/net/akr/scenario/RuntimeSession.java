@@ -6,14 +6,19 @@ import net.akr.scenario.protocol.RuntimeControl.*;
 /** One game-thread backend; transport threads see detached protobuf snapshots only. */
 final class RuntimeSession {
   interface Backend {
+    /** Bind the admitted event and scheduler before any engine work begins. */
     void begin(EventScheduler.View event, EventScheduler scheduler);
 
+    /** Prepare bounded resources; return false to continue on a later game tick. */
     boolean prepare();
 
+    /** Advance the active event; return true when execution should enter cleanup. */
     boolean update();
 
+    /** Release owned effects; return true only after verified cleanup. */
     boolean cleanup();
 
+    /** Return detached actor metrics suitable for a protobuf reply. */
     List<ActorSample> samples();
 
     default EncounterProgress encounter() {
@@ -75,6 +80,7 @@ final class RuntimeSession {
   private volatile boolean ticked;
   private volatile Reply sample = Reply.getDefaultInstance();
 
+  /** Create one session with an eight-event queue and 256 retained receipts. */
   RuntimeSession(String world, String epoch, Backend backend) {
     this.world = world;
     this.epoch = epoch;
@@ -82,6 +88,7 @@ final class RuntimeSession {
     scheduler = new EventScheduler(world, epoch, 8, 256);
   }
 
+  /** Validate and route one detached control request without touching engine actors. */
   Reply handle(Request request) {
     Reply.Builder reply =
         Reply.newBuilder()
@@ -181,6 +188,7 @@ final class RuntimeSession {
     }
   }
 
+  /** Advance the admitted backend and scheduler from the native game thread. */
   void tick() {
     ticked = true;
     long started = System.nanoTime();

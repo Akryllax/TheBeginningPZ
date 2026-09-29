@@ -62,6 +62,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
     instance = this;
   }
 
+  /** Register the Lua factory and retire callbacks after the game environment starts. */
   void register(LuaClosure factory, LuaClosure retire) {
     GameHooks.ownThread();
     if (!actors.isEmpty() || uncertainSpawn) throw new IllegalStateException("owned_entities");
@@ -70,6 +71,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
   }
 
   /** Civilian disguised-zombie bindings: goal gating (sight/sound/wander) applies to these only. */
+  /** Check whether a zombie-shaped engine body belongs to this civilian adapter. */
   public static boolean owns(IsoZombie zombie) {
     return ScenarioAgent.server && instance != null && instance.bindings.containsKey(zombie);
   }
@@ -104,6 +106,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
    * a client authOwner as remote, so a server-simulated hunter would never accept a sighting
    * (NetworkZombieManager.canSpotted) or record aggro. The server is its simulator.
    */
+  /** Identify a native hunter whose target acquisition is controlled by this event. */
   public static boolean hunts(IsoZombie zombie) {
     return ScenarioAgent.server && hunters.contains(zombie);
   }
@@ -114,12 +117,14 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
    * (attack -> idle when bCanSeeTarget is false). For hunters targeting an Actor only, answer with
    * the same stock line-of-sight primitive AttackState itself checks, within 20 tiles.
    */
+  /** Allow an owned hunter to use the event's reviewed target-visibility result. */
   public static boolean overridesTargetVisibility(IsoZombie zombie) {
     return hunts(zombie)
         && zombie.getTarget() instanceof IsoPlayer target
         && ServerActors.isActor(target);
   }
 
+  /** Return the scoped target-visibility result for an owned hunter. */
   public static boolean actorTargetVisible(IsoZombie zombie) {
     var target = zombie.getTarget();
     if (target == null || zombie.getCurrentSquare() == null || target.getCurrentSquare() == null)
@@ -140,6 +145,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
   }
 
   /** AnimationPlayer.DoAngles hook: procedural turning for hunters (no server root rotation). */
+  /** Use procedural turning when the dedicated server omits deferred animation rotation. */
   public static boolean serverTurnFallback(IsoGameCharacter character) {
     return character instanceof IsoZombie zombie && hunts(zombie);
   }
@@ -149,6 +155,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
     return owns(zombie) || hunts(zombie);
   }
 
+  /** Start native movement timing only for managed civilians or hunters. */
   public static void beginNativeStep(IsoZombie zombie) {
     if (!ScenarioAgent.server) return;
     if (hunters.contains(zombie)) {
@@ -161,6 +168,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
     if (actor != null) actor.nativeStepAt = System.nanoTime();
   }
 
+  /** Finish the paired timing sample without charging ordinary zombies. */
   public static void endNativeStep(IsoZombie zombie) {
     if (!ScenarioAgent.server) return;
     if (hunterStep == zombie && hunterStepAt != 0) {
@@ -225,6 +233,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
   }
 
   /** The stock server scheduler excludes every zombie. Admit only our bounded set. */
+  /** Admit bounded managed bodies to the server's native moving-object scheduler. */
   public static void scheduleActors(MovingObjectUpdateScheduler scheduler) {
     if (!ScenarioAgent.server
         || ((instance == null || instance.actors.isEmpty()) && hunters.isEmpty())) return;
@@ -286,6 +295,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Bind one admitted pedestrian event to its Lua factory and resource ledger. */
   public void begin(EventScheduler.View event, EventScheduler scheduler) {
     if (!actors.isEmpty() || uncertainSpawn)
       throw new IllegalStateException("unresolved_previous_event");
@@ -298,6 +308,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Create or claim a body only when the event can record its exact ownership. */
   public boolean prepare() {
     if (factory == null || retire == null)
       throw new IllegalStateException("pedestrian_lua_adapter_missing");
@@ -349,6 +360,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Follow bounded path progress while preserving native collision checks. */
   public boolean update() {
     long now = System.nanoTime();
     if (now - started > definition.timeoutSeconds() * 1_000_000_000L)
@@ -381,6 +393,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Retire managed bodies and require acknowledgment before releasing ownership. */
   public boolean cleanup() {
     if (uncertainSpawn) return false;
     if (actors.isEmpty()) return true;
@@ -421,6 +434,7 @@ public final class ServerPedestrians implements RuntimeSession.Backend {
   }
 
   @Override
+  /** Return detached timing and progress metrics for the control channel. */
   public List<ActorSample> samples() {
     var result = new ArrayList<ActorSample>();
     for (Actor actor : actors.values()) {

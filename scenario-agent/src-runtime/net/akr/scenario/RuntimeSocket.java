@@ -20,6 +20,7 @@ final class RuntimeSocket implements AutoCloseable {
   private final FileLock lock;
   private volatile boolean closed;
 
+  /** Claim a private Unix socket for one runtime session, refusing an active owner. */
   RuntimeSocket(Path path, RuntimeSession runtime) throws IOException {
     this.path = path;
     this.runtime = runtime;
@@ -105,6 +106,7 @@ final class RuntimeSocket implements AutoCloseable {
     }
   }
 
+  /** Read one bounded control frame without accepting partial protobufs. */
   static byte[] readFrame(SocketChannel channel) throws IOException {
     ByteBuffer header = ByteBuffer.allocate(4);
     PlannerTransport.transfer(channel, header, false);
@@ -116,6 +118,7 @@ final class RuntimeSocket implements AutoCloseable {
     return body.array();
   }
 
+  /** Write one bounded control frame with its fixed-width length prefix. */
   static void writeFrame(SocketChannel channel, byte[] data) throws IOException {
     if (data.length < 1 || data.length > MAX_FRAME) throw new IOException("frame_limit");
     ByteBuffer frame = ByteBuffer.allocate(data.length + 4).putInt(data.length).put(data);
@@ -123,6 +126,7 @@ final class RuntimeSocket implements AutoCloseable {
     PlannerTransport.transfer(channel, frame, true);
   }
 
+  /** Stop accepting commands and release the socket only if this session owns it. */
   public void close() throws IOException {
     closed = true;
     listener.close();
