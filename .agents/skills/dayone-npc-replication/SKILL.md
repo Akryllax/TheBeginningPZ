@@ -10,6 +10,12 @@ Reverify integration hashes after dependency updates. Never update hashes merely
 a rejection. All modifications belong to original companion/bridge code, not redistributed
 Bandits source.
 
+The current civilian backend uses server-controlled pooled IsoPlayer Actors (Decision
+0006); ordinary zombies retain native client ownership. The Bandits-specific guidance
+below applies to that dependency's own callbacks, not a switch of Actor authority.
+Read the latest Current State before treating historical blockers as current.
+For watched iteration use dayone-watched-testing; for qualification use dayone-test-iteration.
+
 Maintain one logical resident and physical generation across walking, driving, abstraction,
 infection and death. Match the execution lease to confirmed native ownership. The native
 zombie manager does more bookkeeping than setting an owner field directly.

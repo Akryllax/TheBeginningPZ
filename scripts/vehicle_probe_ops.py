@@ -279,10 +279,12 @@ def configure_route(m, source):
         offset=payload.get('impact_lateral_offset',0)
         if type(offset) not in (int,float) or not math.isfinite(offset) or abs(offset)>1.1:raise ValueError('Invalid impact lateral offset')
         if abs((tx*dy-ty*dx)/span-offset)>.05 or not 15<=progress<=span-15:raise ValueError('Impact approach/runout insufficient')
+    opposing=payload.get('opposing',False)
+    if type(opposing) is not bool or opposing and (not extended or payload.get('impact_rock_mesh',False) or abs(progress-span/2)>.05 or abs(offset)>.05):raise ValueError('Opposing cars require a centered extended impact without rock mesh')
     script=payload.get('vehicle_script', 'Base.LofersSmallCar' if receipt.get('driver_model') else 'Base.SmallCar')
     if script not in ('Base.SmallCar','Base.LofersSmallCar') and not (extended and script=='Base.SportsCar'):raise ValueError('Unreviewed vehicle script')
     dx, dy = points[1][0] - points[0][0], points[1][1] - points[0][1]
-    changes = {'vehicle_probe.extended_impact': str(extended).lower(), 'vehicle_probe.script': script,
+    changes = {'vehicle_probe.opposing':str(opposing).lower(), 'vehicle_probe.extended_impact': str(extended).lower(), 'vehicle_probe.script': script,
                'vehicle_probe.impact_rock_mesh': str(payload.get('impact_rock_mesh',False) if extended else False).lower(),
                'vehicle_probe.impact_sprite': payload.get('impact_sprite','appliances_com_01_94') if extended else 'appliances_com_01_94',
                'vehicle_probe.impact_lateral_offset': payload.get('impact_lateral_offset',0) if extended else 0,

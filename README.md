@@ -76,6 +76,7 @@ The separate `.160` game and Observer are outside this project's operations.
 ```sh
 ./dayone --help
 ./dayone test
+./dayone runtime-test offline
 python3 scripts/build_npc_service.py --test --bundle
 python3 scripts/build_scenario_agent.py --test
 .tooling/venv/bin/python scripts/build_scenario_map.py --bake-navigation

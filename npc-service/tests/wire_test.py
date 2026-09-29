@@ -174,6 +174,29 @@ def run(binary):
                     timings.append((time.perf_counter()-sent)*1000)
                 assert max(timings) < 1000, timings
             time.sleep(0.03)
+            with connect(path, "progress-epoch") as sock:
+                progress = observation(epoch="progress-epoch")
+                r = progress.observations.residents[0]
+                e = r.execution
+                e.routine_enabled = True
+                e.activity.CopyFrom(r.position)
+                e.goal, e.action_id, e.status = "civilian_routine", "accepted-action", "executing"
+                e.route_revision, e.completed_edges, e.buffered_edges = 9, 12, 8
+                sock.sendall(packed(progress))
+                answer = receive(sock)
+                assert answer.HasField("plans") and not answer.plans.plans and answer.plans.observation_revision == 1
+                done = envelope(3, "progress-epoch")
+                done.receipt.resident_id, done.receipt.action_id, done.receipt.state = r.id, e.action_id, "completed"
+                for request_id in (3, 4):
+                    done.request_id = request_id
+                    sock.sendall(packed(done))
+                    assert receive(sock).status.detail == "receipt_observed"
+                progress.request_id, progress.observations.revision = 5, 2
+                e.status, e.routine_phase = "needs_plan", 1
+                sock.sendall(packed(progress))
+                answer = receive(sock)
+                assert [a.kind for a in answer.plans.plans[0].actions] == [pb.WAIT, pb.WALK]
+            time.sleep(0.03)
             with connect(path, "navigation-epoch") as sock:
                 trip = observation(epoch="navigation-epoch")
                 b = trip.observations
@@ -217,7 +240,7 @@ def run(binary):
                 message.status.health = "heartbeat"
                 sock.sendall(packed(message))
                 assert receive(sock).status.workers == 2
-            report = {"scenarios": ["handshake", "fragmentation", "C++ protobuf plans", "stale revision", "NaN validation", "receipt ack", "epoch rejection", "reconnect", "coalescing", "queue bounds", "malformed frame", "heartbeat", "active socket protection"],
+            report = {"scenarios": ["handshake", "fragmentation", "C++ protobuf plans", "stale revision", "NaN validation", "receipt ack", "progress without replanning", "duplicate terminal acknowledgment", "phase-based continuation", "epoch rejection", "reconnect", "coalescing", "queue bounds", "malformed frame", "heartbeat", "active socket protection"],
                       "batch_residents": 32, "batches": len(timings), "round_trip_ms_p50": statistics.median(timings), "round_trip_ms_p95": sorted(timings)[int(len(timings)*.95)-1], "round_trip_ms_max": max(timings)}
             (TOOLS / "wire-test-report.json").write_text(json.dumps(report, indent=2)+"\n")
             print(json.dumps(report))

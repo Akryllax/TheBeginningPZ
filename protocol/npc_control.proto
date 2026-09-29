@@ -19,6 +19,25 @@ message VehicleObservation {
   uint64 occupancy_revision = 7;
   Point entry_point = 8;
 }
+// Detached tactical facts. The game validates the target again at contact.
+message CombatThreat {
+  string id = 1; Point position = 2; bool visible = 3;
+  bool zombie = 4; bool alive = 5; uint64 generation = 6;
+}
+message CombatObservation {
+  bool known = 1; bool escape_reachable = 2; bool path_pending = 3;
+  bool knocked_down = 4; bool attacking = 5; double endurance = 6;
+  string weapon_id = 7; bool weapon_usable = 8;
+  repeated CombatThreat threats = 9;
+  Point escape_target = 10;
+  bool escape_assessed = 11; // False means unknown; never interpret it as blocked.
+}
+message ExecutionContext {
+  bool routine_enabled = 1; uint32 routine_phase = 2; Point activity = 3;
+  string goal = 4; string action_id = 5; string status = 6; string interrupt_reason = 7;
+  uint64 route_revision = 8; uint64 completed_edges = 9; uint32 buffered_edges = 10;
+}
+enum Locomotion { LOCOMOTION_UNSPECIFIED = 0; IDLE = 1; WALK_GAIT = 2; RUN = 3; }
 message Resident {
   string id = 1; uint64 revision = 2; uint64 generation = 3;
   string name = 4; string role = 5; Point position = 6;
@@ -31,12 +50,15 @@ message Resident {
   uint64 lease_epoch = 25; double exposed_hour = 26;
   bool in_vehicle = 27; // Actual current seat occupancy; ownership is has_vehicle.
   VehicleObservation vehicle_observation = 28;
+  CombatObservation combat = 29;
+  ExecutionContext execution = 30;
 }
 enum ActionKind {
   ACTION_UNSPECIFIED = 0; WAIT = 1; WALK = 2; EAT = 3; REST = 4;
   WORK = 5; SHOP = 6; SOCIALIZE = 7; SEEK_HELP = 8; FLEE = 9;
   DRIVE = 10; PARK = 11; ENTER_VEHICLE = 12; EXIT_VEHICLE = 13;
   TREAT = 14; PATROL = 15; SCAVENGE = 16; SHELTER = 17;
+  DEFEND = 18;
 }
 message Action {
   string id = 1; ActionKind kind = 2; Point target = 3;
@@ -44,6 +66,7 @@ message Action {
   repeated Point route = 6; string animation = 7;
   string navigation_id = 8;
   repeated uint32 road_node_ids = 9;
+  Locomotion locomotion = 10;
 }
 message Plan {
   string resident_id = 1; uint64 based_on_revision = 2;

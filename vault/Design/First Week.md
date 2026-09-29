@@ -6,6 +6,21 @@ updated: 2026-09-26
 
 # First Week
 
+## Accepted priority revision — 2026-09-27
+
+Follow [[Design/NPC First Slice]]: minimum reusable controls and measurements, then the one/four
+server-pedestrian feasibility gate **before** full reload/soak. Bandits2 remains the
+initial spawn/presentation dependency. Shared accounting belongs to AKRPopulation;
+AKRResidents contains both resident and cheap crowd controllers. Moving traffic and
+commute/driving acceptance below are deferred beyond the first pedestrian slice.
+Server simulation is not yet validated. Planner absence will use server Lua fallback.
+The prior detailed roadmap below is retained as background, subordinate to this revision.
+
+
+Civilian entity revision (2026-09-27): zombies must natively target healthy civilians, so
+Bandits-spawned disguised zombies are no longer the planned civilian entity. See
+[[Decisions/0006 Targetable Civilians]] for the proposed server-hosted player civilians.
+
 Implementation note: the user selected **server-only JVM injection with ordinary Lua clients**.
 The initial client-agent prototype is superseded; it was never installed or launched in the
 local game. Pedestrian execution has been adapted to Lua, with gameplay validation pending.

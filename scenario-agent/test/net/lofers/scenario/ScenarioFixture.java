@@ -35,14 +35,45 @@ public final class ScenarioFixture {
         };
         rejects(()->BuildGuard.verify(tampered),"Unknown build accepted");
         check(!LaunchGuard.isPinnedDiscovery("zombie.pzexe","pzexe.jar",tampered),"Unknown launcher helper exempted");
+        PedestrianConditionFixture.run();
+        // Real pooled native Path/PathNode contract; does not initialize a solver or game world.
+        var pooledPath=new zombie.pathfind.Path();pooledPath.addNode(10.5f,11.5f,0,13);pooledPath.addNode(12.5f,11.5f,0,4);
+        var detachedPath=new NativeCivilianNavigation().copy(pooledPath);
+        pooledPath.getNode(0).x=999;pooledPath.clear();
+        check(detachedPath.size()==2&&detachedPath.getFirst().x()==10.5f&&detachedPath.getFirst().flags()==13,"Pooled native path copied with flags");
         try(ZipFile game=new ZipFile(args[0])){
             ProbeCrashFeedbackFixture.run(game);
             ProbeRockColliderFixture.run(game);
             for(String name:ScenarioTransformer.TARGETS){
+                check(BuildGuard.HASHES.containsKey(name),"Unguarded transformed class "+name);
                 byte[] original=game.getInputStream(game.getEntry(name+".class")).readAllBytes();
                 byte[] changed=ScenarioTransformer.instrument(name,original,ScenarioFixture.class.getClassLoader());
                 check(!Arrays.equals(original,changed),"Missing hook "+name);
                 var errors=ClassFile.of().verify(changed);check(errors.isEmpty(),"Invalid JVM bytecode "+name+errors);
+                if(name.equals("zombie/CombatManager")){
+                    int originalUi=0,guardedUi=0,remainingUi=0;
+                    for(var method:ClassFile.of().parse(original).methods())if(method.methodName().equalsString("attackCollisionCheck"))
+                        for(var code:method.code().orElseThrow())if(code instanceof java.lang.classfile.instruction.InvokeInstruction call&&call.owner().asInternalName().equals("zombie/ui/MoodlesUI")&&call.name().equalsString("wiggle"))originalUi++;
+                    for(var method:ClassFile.of().parse(changed).methods())if(method.methodName().equalsString("attackCollisionCheck"))
+                        for(var code:method.code().orElseThrow())if(code instanceof java.lang.classfile.instruction.InvokeInstruction call&&call.name().equalsString("wiggle")){
+                            if(call.owner().asInternalName().equals("net/lofers/scenario/NativeCombatRelay"))guardedUi++;
+                            if(call.owner().asInternalName().equals("zombie/ui/MoodlesUI"))remainingUi++;
+                        }
+                    check(originalUi>0&&guardedUi==originalUi&&remainingUi==0,"Scoped native combat UI guard coverage");
+                }
+                if(name.equals("zombie/characters/IsoPlayer")) {
+                    for(String entry:List.of("update","postupdate")) {
+                        var method=ClassFile.of().parse(changed).methods().stream().filter(m->m.methodName().stringValue().equals(entry)
+                            &&m.methodType().stringValue().equals("()V")).findFirst().orElseThrow();
+                        int begin=0,end=0;
+                        for(var element:method.code().orElseThrow())if(element instanceof java.lang.classfile.instruction.InvokeInstruction call
+                                &&call.owner().asInternalName().equals("net/lofers/scenario/ServerActors")) {
+                            if(call.name().stringValue().equals("beginNativeStep"))begin++;
+                            if(call.name().stringValue().equals("endNativeStep"))end++;
+                        }
+                        check(begin==1&&end>=1,"Actor sentinel hook sites "+entry);
+                    }
+                }
             }
         }
         PrimitiveCopy copy=new PrimitiveCopy(lua("revision",1d,"residents",lua(1d,lua("id","r-1","position",lua("x",42d,"y",43d,"z",0d)))));

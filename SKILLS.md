@@ -4,6 +4,8 @@ Codex discovers these workflows under `.agents/skills/`. Read the applicable ski
 
 | Skill | Use for |
 | --- | --- |
+| [dayone-watched-testing](.agents/skills/dayone-watched-testing/SKILL.md) | Launching, repeating and assessing announced ordinary-client test batches |
+| [dayone-test-iteration](.agents/skills/dayone-test-iteration/SKILL.md) | Native NPC implementation, automated/headless coverage, measurements and handoffs |
 | [dayone-multiplayer-compatibility](.agents/skills/dayone-multiplayer-compatibility/SKILL.md) | Checking build/mod compatibility, Bandits integration and real two-client behavior |
 | [dayone-storyteller](.agents/skills/dayone-storyteller/SKILL.md) | Implementing event scheduling, lifecycle, persistence, budgets and recovery |
 | [dayone-spatial-profiling](.agents/skills/dayone-spatial-profiling/SKILL.md) | Base inference, inventory signals, sparse fields and performance measurement |
@@ -14,11 +16,10 @@ Codex discovers these workflows under `.agents/skills/`. Read the applicable ski
 | [dayone-scenario-validation](.agents/skills/dayone-scenario-validation/SKILL.md) | Calm-opening and two-client acceptance in disposable worlds, then fresh-world rollout |
 | [dayone-java-inspection](.agents/skills/dayone-java-inspection/SKILL.md) | Inspecting pinned game Java classes, bytecode, ownership paths and compatibility evidence |
 
-For the current iteration milestone, start with [the scheduler plan](PLAN_SchedulerAPI.md),
-[the runtime design](vault/Design/Live%20Event%20Runtime.md) and
-[the current handoff](vault/Experiments/Current%20State.md). Use the existing Java inspection,
-scenario validation and native-worker workflows as applicable. Planned reload/batch commands
-are not available yet; the handoff distinguishes validated runtime artifacts from incomplete
-source edits.
+For the current iteration milestone, start with [the NPC-first design](vault/Design/NPC%20First%20Slice.md),
+[the pedestrian runbook](vault/Runbooks/Pedestrian%20Experiment.md) and
+[the current handoff](vault/Experiments/Current%20State.md). Use Java inspection, NPC replication
+and scenario validation for the one/four-actor feasibility gate. Typed private controls now
+exist for the experiment; generic reload/batch commands and campaign NPC capability remain pending.
 
 Keep skills focused on decisions that are easy to get wrong in this project. Put research evidence and evolving design in the vault; avoid copying long design documents into each skill.

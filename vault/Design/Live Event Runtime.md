@@ -1,17 +1,73 @@
 ---
 type: design
-status: planned-not-implemented
+status: resident-integration-awaiting-native-validation
 updated: 2026-09-27
 ---
 
 # Live event runtime
 
+## Accepted priority revision — 2026-09-27
+
+Follow [[Design/NPC First Slice]]: minimum reusable controls and measurements, then the one/four
+server-pedestrian feasibility gate **before** full reload/soak. Bandits2 remains the
+initial spawn/presentation dependency. Shared accounting belongs to AKRPopulation;
+AKRResidents contains both resident and cheap crowd controllers. Moving traffic and
+commute/driving acceptance below are deferred beyond the first pedestrian slice.
+Server simulation is not yet validated. Planner absence will use server Lua fallback.
+The prior detailed roadmap below is retained as background, subordinate to this revision.
+
+
 The current priority is a persistent event runtime and repeatable test batches, before
 resuming the opposing-car experiment. The user requested a reliable iteration framework
 that avoids restarting the game for each event, parameter change or compatible behavior
 update. The detailed implementation plan is [PLAN_SchedulerAPI.md](../../PLAN_SchedulerAPI.md).
-This note records its architectural rationale and boundaries. Implementation and hot reload
-have not been validated. Start a new session with [[Experiments/Current State]].
+This note records its architectural rationale and boundaries. The lifecycle core and resident
+ownership have fixture coverage; native execution of the extraction and hot reload remain unvalidated.
+Start a new session with [[Experiments/Current State]].
+
+## Implemented foundation
+
+`EventScheduler` serializes one active event and a bounded FIFO of pending definitions.
+It checks world/epoch identity, retains submission IDs for retry deduplication, supports
+cancellation without queue capacity, and distinguishes execution finish from verified
+cleanup. Unresolved cleanup holds the active slot. Only the bound game thread advances
+execution or changes resource ownership; IO-facing methods handle detached data under short
+locks, with no engine calls or IO inside them.
+
+`EventResources` limits ownership to two vehicles and eight entities, plus bounded terrain
+and reservation entries. Vehicle removal requires both Java-world and native-body evidence.
+The future engine adapter must obtain that evidence; the ledger does not query the game.
+
+This internal definition currently identifies kind, seed, scenario version and module version.
+It is not the complete public wire schema. Receipts are in memory and bounded (maximum 16384);
+capacity exhaustion rejects new submissions rather than evicting retry history. Durable
+receipts/restart reconciliation and full transport request semantics are still to implement.
+The legacy probe now enters the scheduler lifecycle and records its vehicle, native terrain
+and passing reservation. `ScenarioAgent` owns one `ResidentPhysics`, backed by the guarded
+`GamePhysicsBackend`. It initializes the native world in its existing frame and leases its
+collision map to one event. The world stays initialized between events. Partial initialization
+is unresolved rather than retried, and partial map activation retains ownership until cleanup.
+
+Vehicle cleanup requests braking before removal, refuses to remove occupied cars, verifies
+native absence and Java registry/chunk/world removal, and keeps the vehicle reference when
+those checks fail. `cleanup_blocked` prevents later starts; an explicit stop can retry cleanup.
+Legacy file commands use a 16-entry FIFO; stop bypasses capacity and cancels queued legacy
+starts. Queue saturation reports `busy:command_queue_full` through the existing status file.
+Status includes `event_id`, `event_phase`, `event_owned_resources` and `native_lease_active`.
+
+Entity creation/control still reside in `ServerVehicleProbe`; its route remains startup-bound.
+Generated fixture management and restart reconciliation are not implemented. No runtime socket,
+Lua event entry point, reload operation or batch CLI has been deployed. The source integration
+has not been installed in the disposable server; defer that restart until the iteration API
+and reload tooling are ready.
+
+Validation: full Java agent fixtures and 191 Python tests pass; 128 repeated detached
+lifecycle cases check ownership returns to empty. This does not satisfy native soak, reload,
+live tick latency or multiplayer gates. Logs: `artifacts/runtime-foundation-agent-tests.log`
+and `artifacts/runtime-foundation-python-tests.log`. The subsequent integration fixture log is
+`artifacts/runtime-resident-agent-tests.log`: it includes 100 detached lease cycles with one
+world initialization, competing-owner rejection, thread checks and partial native-operation
+failure injection. These are mocked backend calls, not real native simulation.
 
 ## Why the prototype keeps restarting
 

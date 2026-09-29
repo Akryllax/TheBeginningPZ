@@ -1,0 +1,4 @@
+name=AKR Dev Connect
+id=AKRDevConnect
+versionMin=42.20
+description=Developer-only main-menu helper 0.1.0. When the game is launched with +connect host:port and the stock server list already stores a saved account for that server, presses the stock Connect button once. Stores no credentials. Never add to a server mod list.

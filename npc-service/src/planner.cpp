@@ -34,9 +34,22 @@ bool validate(const pb::ObservationBatch& b, std::string& reason) {
                !std::isfinite(v.heading_degrees())||std::abs(v.heading_degrees())>360||
                !std::isfinite(v.speed_kmh())||v.speed_kmh()<0||v.speed_kmh()>200)return fail("invalid_vehicle_observation");
         }
+        if(r.has_combat()){
+            const auto& c=r.combat();
+            if(!std::isfinite(c.endurance())||c.endurance()<0||c.endurance()>1||c.weapon_id().size()>128||c.threats_size()>32||
+               (c.escape_reachable()&&(!c.has_escape_target()||!point_ok(c.escape_target()))))return fail("invalid_combat_observation");
+            std::set<std::string> threats;
+            for(const auto& t:c.threats())if(t.id().empty()||t.id().size()>128||t.generation()==0||!threats.insert(t.id()).second||
+                !t.has_position()||!point_ok(t.position()))return fail("invalid_combat_threat");
+        }
     }
     ids.clear();
     for (const auto& p : b.places()) if (p.id().empty() || p.id().size() > 128 || !ids.insert(p.id()).second || p.kind().size() > 32 || !p.has_position() || !point_ok(p.position())) return fail("invalid_place");
+    for(const auto& r:b.residents())if(r.has_execution()){
+        const auto& e=r.execution();
+        if(e.goal().size()>64||e.action_id().size()>160||e.status().size()>32||e.interrupt_reason().size()>128||e.routine_phase()>3||e.buffered_edges()>8||
+           (e.routine_enabled()&&(!e.has_activity()||!point_ok(e.activity())||!r.has_home()||!point_ok(r.home()))))return fail("invalid_execution_context");
+    }
     std::set<uint32_t> nodes;
     for (const auto& n : b.road_nodes()) if (!nodes.insert(n.id()).second || !n.has_position() || !point_ok(n.position()) || n.position().z() != 0) return fail("invalid_road_node");
     for (const auto& e : b.road_edges()) if (!nodes.contains(e.from()) || !nodes.contains(e.to()) || !std::isfinite(e.cost()) || e.cost() <= 0 || e.cost() > 100000) return fail("invalid_road_edge");
@@ -54,10 +67,38 @@ pb::Plan Planner::plan(const pb::ObservationBatch& batch, const pb::Resident& re
         auto* action = result.add_actions(); action->set_kind(pb::WAIT); action->set_duration_hours(0.02);
     };
     try {
+        if(resident.has_execution()&&!resident.execution().status().empty()&&resident.execution().status()!="needs_plan") {
+            result.set_goal(resident.execution().goal());result.set_reason("execution_observed");return result;
+        }
         if (batch.paused() || batch.online_players() == 0) {
             result.set_goal("paused"); wait("scenario_or_world_paused");
         } else if (resident.infection() == "dead" || resident.infection() == "reanimated" || resident.health() <= 0) {
             result.set_goal("inactive"); wait("resident_not_alive");
+        } else if (resident.has_combat() && resident.combat().known() && resident.threatened()) {
+            const auto& c=resident.combat();
+            const pb::CombatThreat* nearest=nullptr;double distance=std::numeric_limits<double>::infinity();
+            for(const auto& threat:c.threats()) {
+                if(!threat.visible()||!threat.zombie()||!threat.alive()||threat.position().z()!=resident.position().z())continue;
+                const double d=std::hypot(threat.position().x()-resident.position().x(),threat.position().y()-resident.position().y());
+                if(d<distance||(d==distance&&nearest&&threat.id()<nearest->id())) {nearest=&threat;distance=d;}
+            }
+            if(c.knocked_down()||c.attacking()) {
+                result.set_goal("contact_busy");wait("native_action_in_progress");
+            } else if(c.escape_reachable()&&c.has_escape_target()) {
+                result.set_goal("escape_danger");result.set_reason("reachable_escape");
+                auto* action=result.add_actions();action->set_kind(pb::FLEE);*action->mutable_target()=c.escape_target();
+            } else if(c.path_pending()) {
+                result.set_goal("escape_pending");wait("path_result_pending");
+            } else if(!c.escape_assessed()) {
+                result.set_goal("escape_unknown");wait("escape_not_assessed");
+            } else if(nearest&&distance<=2.0) {
+                result.set_goal("defend_to_escape");result.set_reason("escape_blocked");
+                auto* action=result.add_actions();action->set_kind(pb::DEFEND);action->set_target_id(nearest->id());
+                *action->mutable_target()=nearest->position();
+                action->set_animation(c.weapon_usable()&&c.endurance()>=0.2&&!c.weapon_id().empty()?"melee":"shove");
+            } else {
+                result.set_goal("escape_blocked");wait("no_contact_target");
+            }
         } else {
             if (!graph) graph = roads_.get(batch);
             auto domain = rules_.domain(batch, resident);
@@ -162,7 +203,10 @@ pb::Plan Planner::plan(const pb::ObservationBatch& batch, const pb::Resident& re
         }
     }
     for (int i = 0; i < result.actions_size(); ++i) {
-        std::ostringstream id;
+        std::ostringstream id;auto& action=*result.mutable_actions(i);
+        if(action.kind()==pb::WALK)action.set_locomotion(pb::WALK_GAIT);
+        else if(action.kind()==pb::FLEE)action.set_locomotion(pb::RUN);
+        else action.set_locomotion(pb::IDLE);
         id << resident.id() << ':' << resident.generation() << ':' << result.plan_revision() << ':' << resident.revision() << ':' << i;
         result.mutable_actions(i)->set_id(id.str());
         if (result.actions(i).has_target()) execution_position = result.actions(i).target();

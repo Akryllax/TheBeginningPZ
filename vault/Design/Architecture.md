@@ -51,4 +51,5 @@ Game state is under `data/Zomboid/`, Observer databases under `data/observer/`, 
 
 Container storage and language tools are project-local in `.tooling/`. Secrets stay in protected files under `secrets/`, outside source control and mod packages. Dependency source is obtained separately and recorded by version/hash.
 
+Target module and service boundaries, with diagrams and reasoning, are in [[Design/Service Segmentation]].
 See [[Design/Telemetry]], [[Design/Performance Budget]] and [[Runbooks/Operations]].

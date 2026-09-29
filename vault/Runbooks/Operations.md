@@ -1,16 +1,158 @@
 ---
 type: runbook
 status: active
-updated: 2026-09-27
+updated: 2026-09-28
 ---
 
 # Operations
+
+The next accepted task is [Four-resident neighborhood](../../TASK_Four_Resident_Neighborhood.md),
+planned for 2026-09-30. Its checkpoint/restore operations are planned, not available yet.
+The selected persistence scope is **controlled restart of living residents**. Crash
+recovery, terminal/world-save reconciliation and corpse/reanimated restoration remain
+explicit future work. Do not clear terminal receipts or restore old living snapshots
+to bypass unresolved ownership after an interrupted checkpoint.
+
+## Civilian fatal lifecycle fixture
+
+Prepare a new disposable session with `./dayone civilian-combat lifecycle-create`.
+Then use `start`, `join`, and, **after explicit spectator readiness**, `run lifecycle`.
+The existing automatic placement, protection, daylight, loaded pistol and announcements
+apply. Do not submit this case to a four-Actor encounter session: lifecycle prewarms
+exactly one body to prove reuse. `status`, `cancel` and `record-feedback` retain their
+existing interface. The default survival batch does not include this fatal case.
+
+A lifecycle scenario can be PASSED or NOT_EXERCISED independently of cleanup. Inspect
+`scenario_outcome`, `cleanup_outcome`, terminal receipt, corpse/reanimated IDs and
+`same_actor_reused`. A 120-second native non-attack is not a fabricated pass. Do not retry
+automatically. Corpse hold is eight seconds; later stages have bounded 30-second deadlines.
+A stopped world containing terminal receipts requires explicit reconciliation; create a
+fresh disposable world rather than deleting receipts or asserting a world-save transaction.
+The prior uncertain watched world must remain preserved.
+
+## Persistent resident plans and locomotion
+
+`./dayone civilian-headless planner` runs an isolated native routine, gait and reaction
+fixture with the real project-local C++ worker. Build the worker with
+`python3 scripts/build_npc_service.py --test --bundle` first. The fixture owns its worker
+container identity, private socket and logs. The worker runs in the same security/IPC
+namespace and stops with its disposable server.
+The normal .132 game and production .160 services are unaffected.
+It checks eight assignments over four prewarmed bodies, stock movement-field wire
+round-trips, an eight-edge RUN continuation without intermediate IDLE, deferred stopping
+at the next tile boundary, native reaction recovery and acknowledged terminal receipts.
+The prerequisite Java suite includes actual IPC disconnect/retry coverage. These are
+headless functional checks; running animation still requires a watched client verdict.
+
+Moving encounter creation now selects that same planner transport. Start/stop owns the
+world's worker process. A missing worker leaves the local immediate survival behavior
+operational; a native planner acceptance test explicitly rejects fallback-only success.
+See [[../Design/Resident Plans and Locomotion]].
+
+## Reusable moving encounters
+
+Read [[Watched Testing]] and the project skills `dayone-watched-testing` and
+`dayone-test-iteration`. The legacy stationary fixture remains available below.
+
+```sh
+./dayone civilian-combat encounter-create
+./dayone civilian-combat start
+./dayone civilian-combat join
+./dayone civilian-combat run
+./dayone civilian-combat status
+./dayone civilian-combat cancel
+./dayone civilian-combat record-feedback passed "Exact user feedback"
+```
+
+Preparation needs the previous disposable server stopped and client closed for Lua
+installation. `run` submits seven cases (16 assignments): walk/run with a held shambler, open escape, incoming injury,
+one defense/escape, then three waves of four. It uses the same server epoch and four
+initialized bodies; no restart between successfully cleaned cases. Narrow diagnostic
+runs are `run compare`, `run gait`, `run open`, `run injury`, `run defense` and `run defense 4`; they never stand
+in for the full batch. `run compare` requests exactly two civilians, zero zombies,
+parallel 50-tile WALK/RUN tracks and independent timing. Both lanes are checked with
+native collision before countdown. A new engine/Lua build still needs deployment/reload.
+The opening locomotion case now walks four tiles, runs eight with a staged path handoff,
+turns back and requests a deferred stop on the first edge, holds still for two seconds,
+then resumes running. Each transition is announced. The held shambler is not a chase;
+OPEN_ESCAPE is the first actual pursuit. The original eight-second scene hold and
+two-second quiet/countdown timings remain in effect.
+
+Reports and source/deployment hashes are under the world's `encounter-batches/`.
+Snapshots of retired residents are under `ipc/encounters/<event>/`. Machine reports
+are preserved; human feedback and post-failure reconciliation are separate receipts.
+A blocked cleanup stops advancement. `status` can record subsequent verified cleanup
+without rewriting the original failed report. Missing/rotated client logs are marked
+unavailable. One-client success does not qualify owner handoff or two-client agreement.
+
+## Autonomous civilian defense fixture
+
+`./dayone civilian-headless survival` runs native lifecycle checks followed by one
+and four autonomous residents across four waves, reusing the same four engine bodies.
+Game UDP ports are unpublished and the disposable server stops gracefully afterward.
+Reports preserve any failure; do not infer live zombie ownership from this fixture.
+
+For the next watched defense/escape gate, use one command at a time:
+
+```bash
+./dayone civilian-combat survival-create
+./dayone civilian-combat start
+./dayone civilian-combat join
+./dayone civilian-combat status
+./dayone civilian-combat stop
+```
+
+Keep the local game closed for installation. This prepares a fresh disposable world,
+retains the previous world, installs AKRPopulation/AKRResidents locally, and uses the
+pinned ordinary client. The server places/protects `akr`, sets noon, announces the
+stationary-zombie/locked-exit case, opens the test exit after defense, then holds the
+escaped civilian before moving the observer away for cleanup. ObserverLoadout provides
+the requested loaded 9mm pistol. Moving pursuit and incoming injuries need a later
+watched qualification; this command does not claim them.
 
 Operate from `/var/home/akr/Documents/Projects/ZomboidDayOne`. The normal launcher targets `AKR_DayOne` on `.132`. The existing game and Observer on `.160` are independent; upstream Observer examples are not deployment commands for this world.
 
 The current architecture uses server runtime Java hooks and ordinary Lua clients. Do not install the experimental client Java helper or replace installed game classes. The vehicle probe below investigates server-owned physics and stock replication; a successful build or server boot does not establish working NPC driving or multiplayer safety.
 
-## Current handoff and planned runtime
+## Current pedestrian experiment
+
+Follow [[Runbooks/Pedestrian Experiment]] for `pedestrian-test-create/start/stop` and the
+implemented private `runtime hello/submit/status/cancel` commands. The full generic runtime,
+reload and batches described below remain planned. Source/deployment evidence is in
+[[Experiments/Current State]].
+
+## Headless civilian functional tests
+
+`./dayone civilian-headless run` builds the tested agent and runs native pool/path/body/door
+cases in a fresh zero-client dedicated server, then stops it gracefully. Inspect with
+`./dayone civilian-headless status`; `./dayone civilian-headless stop` stops only that
+separate container. World/artifacts/receipt are under `artifacts/civilian-headless/`.
+Game ports 16291/16292 are unpublished; RCON 27045 is loopback only. The interactive
+16281 world and its receipt remain independent. See [[Runbooks/Civilian Qualification Batch]].
+
+## Watched civilian pooling batch
+
+The user authorized the ordinary local client and four repeated 150-tile passes.
+Use `./dayone civilian-watch stop`, `create`, `start`, `join`, and `status` for the
+disposable `.132:16281` deployment. `create` retains the preceding world; `create 32` selects the authorized 8x4 stress
+formation; `create 64 16` selects 8×8 with sixteen native fast-shambler pursuers
+(default: four Actors, no pursuers). `start`
+requires the client closed, backs up its installed AKRCore/AKRDevTools, and installs
+the current diagnostic Lua mods. Build/test the agent first with `runtime-test`.
+`join` waits for server warmup before launching the ordinary Steam client. A fresh
+world may still require its occupation/appearance screens to be completed.
+
+The batch announces every wave and completion/failure through native server chat.
+The harness automatically positions `akr` before every wave, verifies admin/god/invisible/ghost
+protection, waits for client teleport acknowledgement and fresh visibility, then starts.
+With pursuers it also moves the observer to a checked staging point before off-screen cleanup.
+There is no requirement to navigate to coordinates manually. The saved account must be admin
+(`scenario-test-rcon 'grantadmin "akr"'`); the current test account already is. It never bypasses
+the off-screen retirement gate. Reports, per-wave engine-object IDs, outgoing
+resident snapshots and copied manifests live under the current `artifacts/scenario-tests/`
+directory. See [[Civilian Qualification Batch]] for scope and limitations.
+
+## Earlier runtime handoff (historical)
 
 Read [[Experiments/Current State]] before resuming tests. The live probe remains the last
 validated single-car build; the interrupted opposing-car source edits are incomplete and
@@ -217,3 +359,70 @@ Before a visual crash test, verify daylight as well as fog: the disposable clock
 advance into night between trials. Set its game time to noon through the private
 world-scoped operator helper, clear weather, and confirm the ordinary client sees daylight.
 Keep the observer at least 12 tiles from the entire course; moving inside aborts the run.
+
+
+## Off-screen chase qualification
+
+Use `./dayone civilian-chase stop`, `create`, `start`, `join`, `status` (one action per
+command). Stop the preceding disposable scenario first with its matching command.
+`create` retains that world and copies only its test account/character into a fresh world.
+Build/test the agent first. `start` requires the client closed, backs up and installs
+AKRCore, AKRDevTools, AKRPopulation and AKRResidents locally, and starts only the isolated
+`.132:16281/16282` / loopback RCON 27035 container. `join` waits for four-body warmup and
+launches the ordinary client. No normal game or Observer changes.
+
+The observer account `akr` must be admin. The harness verifies god/invisible/ghost flags
+and positions the observer once on an open roadside before admission. Stay there and watch
+the road. Loaded-area/current-visibility admission, pursuit startup, reveal and cleanup
+must occur without further observer teleportation. Do not reuse the rejected school
+playground viewpoint. `ipc/chase-report.json` distinguishes `passed`,
+`completed_unqualified` and `failed`; only the first qualifies this one-client gate.
+Owned resources remain on uncertain failure. See [[../Design/Offscreen Chase Staging]].
+
+### Authorized 64/128 stress case
+
+`./dayone civilian-watch create 64 128` prepares four 8x8, southbound 150-tile waves,
+with 128 native fast shamblers per wave. Then use `civilian-watch start`, `join`, `status`
+and `stop`. `join` uses the pre-authorized ordinary local client. No production world
+is involved. 90% pursuit acquisition is required; cleanup accounts for all bodies.
+The server announces counts and automatically places the protected observer.
+A successful spawn or partial pass is not a completed four-wave/reuse qualification.
+
+## Pinned ordinary client (42.20.4)
+
+The Steam public client updated to 42.21 during the 2026-09-28 watched combat launch.
+Steam's advertised branches contained public/unstable 42.21, legacy41 and 42.19,
+with no 42.20 branch. The user's exact previous Linux depot was recovered through
+their authenticated Steam console: app 108600, depot 108603, manifest
+6267392422221692966, build 24909800. Download completion was confirmed before moving
+the intact depot under `.tooling/client-42.20.4/depot_108603/`. No mixed-version
+file overlay or core behavior patch was used. `references/pinned-client.json`
+records the source and SHA-256. Its game JAR matches the pinned server exactly.
+
+Use `scripts/launch-pinned-client` or the application-menu entry
+**Project Zomboid 42.20.4 (DayOne)**. Steam must be running for authentication.
+The launcher uses the installed Steam Linux runtime and rejects a changed game JAR;
+it does not invoke Steam's update-before-launch path. `pedestrian-test-join` and
+the watched/chase/combat join commands use this same launcher. The regular Steam
+Play button still launches Steam's separately managed current version.
+Saves, saved server accounts and local mods remain in `~/Zomboid`.
+
+`./dayone civilian-combat create|start|join|status|stop` selects a disposable
+one-Actor/one-zombie native hammer-contact probe. It automatically protects and
+places akr, sets noon/clear weather, announces fixture spawning and a countdown,
+relays the exact stock contact through PlayerHitZombie, holds the result for 30
+seconds, then moves the observer away before retiring owned resources. This is
+a contact/presentation probe, not autonomous DEFEND or two-client qualification.
+
+Observer loadout: AKRDevTools sends akr (admin only) a once-per-server-epoch
+loadout in disposable runtime worlds. It equips a Base.Pistol with a full inserted
+15-round magazine and a chambered round, two loaded spare magazines and a box of
+9mm ammunition. Tagged items are reused/refilled at the next server epoch; duplicate
+messages do not add items or continually replenish rounds. No production loadout
+is modified. Client item construction follows the stock admin inventory workflow.
+
+Combat audio presentation uses ordinary Lua `OnWeaponSwing` and
+`OnWeaponHitCharacter` events from the stock replicated attack. Only the exact
+configured Actor/target in the current watched epoch is handled, once per probe.
+It uses stock weapon sound names, local emitters and the Body hit surface; it
+does not send another network sound, alter damage, or affect normal player attacks.

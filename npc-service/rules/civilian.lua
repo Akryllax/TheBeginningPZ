@@ -25,6 +25,17 @@ return function(c)
             require_value=value,set_mask=set,clear_mask=clear,cost=cost,duration=duration,
             target_id=id or "",animation=animation or ""}
     end
+    if c.routine_enabled then
+        -- Three durable milestones, not a fresh location goal on each observation.
+        local VISITED,WAITED,HOME=1,2,4
+        local phase=c.routine_phase or 0
+        d.initial=phase==0 and 0 or (phase==1 and VISITED or (phase==2 and (VISITED|WAITED) or 7))
+        d.goal="civilian_routine";d.goal_mask=7;d.goal_value=7;d.reason="committed_routine"
+        add("visit_activity","WALK",c.activity,VISITED,0,VISITED,0,1,0,"","Walk")
+        add("wait_activity","WAIT",c.activity,VISITED|WAITED,VISITED,WAITED,0,1,0,"","Idle")
+        add("return_home","WALK",c.home,VISITED|WAITED|HOME,VISITED|WAITED,HOME,0,1,0,"","Walk")
+        return d
+    end
     -- Location facts are exclusive after movement. Enter/drive/park/exit is a
     -- real four-step sequence; destination interactions require being on foot.
     local function travel(label,point,bit,available)

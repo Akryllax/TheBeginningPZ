@@ -1,0 +1,4 @@
+name=AKR Core
+id=AKRCore
+description=Shared contracts for AKR Day One modules: versioned module APIs, a reload-safe event dispatcher, per-module saved state with migrations and capability reporting. No gameplay on its own. Experimental 0.1.0.
+versionMin=42.20

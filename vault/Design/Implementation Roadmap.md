@@ -6,6 +6,41 @@ updated: 2026-09-27
 
 # Implementation roadmap
 
+## Next task — planned for 2026-09-30
+
+Follow [Four-resident neighborhood](../../TASK_Four_Resident_Neighborhood.md):
+close the independent flee/turn replication regression; repeat the accepted lifecycle
+three times in one process; exercise four independent civilians; add real ground-floor
+homes and game-time routines; restore living residents after a controlled save/restart.
+This is the accepted next plan, not implemented behavior. Larger crowds, vehicle work
+and migration stay separate; two-client qualification remains pending.
+
+**Deferred milestone: crash recovery and aftermath reconciliation.** Retain explicit
+work for incomplete-checkpoint fault injection, world/ModData/terminal-receipt reconciliation,
+corpse and reanimated-state restoration, terminal precedence, duplicate prevention and
+operator-visible quarantine. Controlled restart does not qualify these behaviors.
+
+## Civilian survival checkpoint — 2026-09-28
+
+The native server adapter now consumes the existing Lua civilian policy and executes
+bounded escape navigation and timed melee/shove actions. One then four civilians
+passed 13 stationary-threat defense/escape cases with original body reuse. Continue
+with watched action timing/presentation, live owner-confirmed incoming bites, then
+integrated combat-to-death and two-client tests. Batch work p95 remains above the
+release target (latest 4.6 ms); keep larger combat crowds gated. Details and evidence:
+[[Civilian Defense and Death]]. Vehicle work and the 42.21 migration remain separate.
+
+## Accepted priority revision — 2026-09-27
+
+Follow [[Design/NPC First Slice]]: minimum reusable controls and measurements, then the one/four
+server-pedestrian feasibility gate **before** full reload/soak. Bandits2 remains the
+initial spawn/presentation dependency. Shared accounting belongs to AKRPopulation;
+AKRResidents contains both resident and cheap crowd controllers. Moving traffic and
+commute/driving acceptance below are deferred beyond the first pedestrian slice.
+Server simulation is not yet validated. Planner absence will use server Lua fallback.
+The prior detailed roadmap below is retained as background, subordinate to this revision.
+
+
 This is the accepted continuation after source checkpoint `0599298`. It supplements
 [[First Week]] and [[Navigation]]; completion evidence belongs in
 [[Experiments/Implementation Ledger]]. A controlled asphalt turn passed on the server;

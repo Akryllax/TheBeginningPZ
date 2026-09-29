@@ -1,3 +1,37 @@
 {
-    "cmake.sourceDirectory": "/home/akr/Documents/Projects/ZomboidDayOne/npc-service"
+    "cmake.sourceDirectory": "/home/akr/Documents/Projects/ZomboidDayOne/npc-service",
+
+    // Prevent container symlinks from taking searches outside this workspace.
+    // Apply existing ignore files to extension discovery without hiding folders.
+    "search.followSymlinks": false,
+    "search.experimental.useIgnoreFilesInFindFiles": true,
+
+    // Scenario agent: Eclipse project in scenario-agent/.project and .classpath, mirroring
+    // scripts/build_scenario_agent.py. A real project stops the Java language server from
+    // linking the whole repository as an invisible project, whose initial refresh walks
+    // .tooling/ and data/ (thousands of symlinks) before any resource filter applies.
+    // Generated protocol sources: python3 scripts/build_scenario_agent.py --generate-only
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-25",
+            "path": "/home/akr/Documents/Projects/ZomboidDayOne/.tooling/agent/jdk-25.0.4.1+1",
+            "default": true
+        }
+    ],
+    // Build-file discovery only. Observer's server-agent tests stub zombie.* classes.
+    "java.import.exclusions": [
+        "**/node_modules/**",
+        "**/.metadata/**",
+        "**/archetype-resources/**",
+        "**/META-INF/maven/**",
+        "**/.tooling/**",
+        "**/data/**",
+        "**/backups/**",
+        "**/observer/**",
+        "**/artifacts/**",
+        "**/game/**",
+        "**/references/**"
+    ],
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "disabled"
 }

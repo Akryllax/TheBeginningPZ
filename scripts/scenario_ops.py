@@ -132,6 +132,9 @@ def free_ports():
         for port, kind in [(16281, socket.SOCK_DGRAM), (16282, socket.SOCK_DGRAM), (27035, socket.SOCK_STREAM)]:
             sock = socket.socket(socket.AF_INET, kind)
             sockets.append(sock)
+            if kind == socket.SOCK_STREAM:
+                # Ignore closed RCON connections in TIME_WAIT; live listeners still conflict.
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(('0.0.0.0', port))
     finally:
         for sock in sockets:

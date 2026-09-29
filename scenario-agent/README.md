@@ -11,15 +11,20 @@ bodies and stock replication. Do not install a client Java agent.
 
 Current priority: [live event runtime](../vault/Design/Live%20Event%20Runtime.md) and
 [shared scheduler plan](../PLAN_SchedulerAPI.md). Read the
-[current handoff](../vault/Experiments/Current%20State.md) before building: the interrupted
-opposing-car draft references a missing helper and has not been tested or deployed. The
-resident adapter/module split and reload API remain planned.
+[current handoff](../vault/Experiments/Current%20State.md) before building. Resident world/terrain
+ownership and scheduler integration are implemented in source but not deployed/native-validated.
+The legacy opposing option rejects explicitly. Dynamic event submission and reload remain pending.
 
 Build and run the independent fixtures:
 
 ```sh
 python3 scripts/build_scenario_agent.py --test
 ```
+
+For the combined runtime suite and retained reports, use `./dayone runtime-test offline`.
+Selections `unit`, `integration` and `worker` run narrower layers. The Java builder also accepts
+`--test --test-layer unit` or `--test --test-layer integration`; plain `--test` runs both.
+See [Runtime Testing](../vault/Runbooks/Runtime%20Testing.md) for coverage and outstanding gates.
 
 The project-local pinned JDK, protoc and protobuf runtime must already exist in
 `.tooling/agent`. Output is `artifacts/scenario-agent/lofers-scenario-agent.jar`
@@ -170,3 +175,14 @@ resident revision and current state before committing actions.
 No two-client vehicle, NPC death, calm-building or ownership playtest is implied
 by these fixtures. The deployment owner records isolated game startup and actual
 playtest evidence separately.
+
+
+## Pedestrian feasibility runtime
+
+The experimental runtime adds a separate typed Protobuf Unix socket and matching server Lua
+submit/status/cancel API. It is opt-in only in `AKR_DayOne_Test_*` worlds and mutually exclusive
+with the vehicle probe. Narrow ownership/stock-zombie-stream hooks affect only registered
+experiment actors. No synthetic locomotion or client Java injection is used.
+See [the runbook](../vault/Runbooks/Pedestrian%20Experiment.md) for controls, evidence and limits.
+Native walking and two-client consistency remain pending; do not equate the advertised
+`pedestrian-experiment-unvalidated` capability with campaign support.

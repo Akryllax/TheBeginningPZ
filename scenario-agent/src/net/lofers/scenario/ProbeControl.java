@@ -7,8 +7,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Private operator files, detached diagnostics and bounded route geometry; no game objects. */
 final class ProbeControl implements Runnable {
-    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode,boolean driverModel,String vehicleScript,List<ProbeDriver.Stop> stops,boolean bypass,boolean shoulder,ProbeImpactTarget impact) {
-        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false,false,"Base.SmallCar",List.of(),false,false,null);}
+    record Config(Path directory,double x,double y,double yaw,double distance,double speed,ProbeRoute route,boolean roadMode,boolean driverModel,String vehicleScript,List<ProbeDriver.Stop> stops,boolean bypass,boolean shoulder,ProbeImpactTarget impact,boolean opposing) {
+        Config(Path directory,double x,double y,double yaw,double distance,double speed){this(directory,x,y,yaw,distance,speed,ProbeRoute.straight(x,y,yaw,distance),false,false,"Base.SmallCar",List.of(),false,false,null,false);}
         double deadlineSeconds(){return roadMode?120:30;}
         static Config read(Properties p,String world,boolean server) {
             if(!Boolean.parseBoolean(p.getProperty("vehicle_probe.enabled","false")))return null;
@@ -44,7 +44,9 @@ final class ProbeControl implements Runnable {
             if(shoulder&&!bypass)throw new IllegalArgumentException("Shoulder choice requires a reviewed bypass route");
             ProbeImpactTarget impact=ProbeImpactTarget.read(p,route,roadMode,bypass,!stops.isEmpty());
             if(extendedImpact&&(impact==null||!route.extendedImpact))throw new IllegalArgumentException("Extended course requires marked impact scene");
-            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),script,List.copyOf(stops),bypass,shoulder,impact);
+            boolean opposing=Boolean.parseBoolean(p.getProperty("vehicle_probe.opposing","false"));
+            if(opposing)throw new IllegalArgumentException("Opposing impacts require the resident runtime; legacy probe supports one vehicle only");
+            return new Config(dir,x,y,yaw,roadMode?route.length:distance,speed,route,roadMode,script.equals("Base.LofersSmallCar"),script,List.copyOf(stops),bypass,shoulder,impact,opposing);
         }
         private static double bounded(Properties p,String name,double fallback,double min,double max) {
             double n=Double.parseDouble(p.getProperty("vehicle_probe."+name,Double.toString(fallback)));
@@ -52,7 +54,7 @@ final class ProbeControl implements Runnable {
         }
     }
     record Command(long id,String action) {}
-    final AtomicReference<Command> command=new AtomicReference<>();
+    final ProbeCommands command=new ProbeCommands();
     final AtomicReference<Map<String,String>> status=new AtomicReference<>();
     final AtomicReference<TrafficBypass.Job> bypassJob=new AtomicReference<>();
     final AtomicReference<TrafficBypass.Result> bypassResult=new AtomicReference<>();
@@ -87,7 +89,9 @@ final class ProbeControl implements Runnable {
                 Path input=directory.resolve("control.properties");
                 if(Files.isRegularFile(input,LinkOption.NOFOLLOW_LINKS)) {
                     byte[] bytes;try(var in=Files.newInputStream(input,LinkOption.NOFOLLOW_LINKS)){bytes=in.readNBytes(4097);}
-                    Command c=parse(bytes,epoch,lastCommand);if(c!=null){lastCommand=c.id();command.set(c);}ioError="";
+                    Command c=parse(bytes,epoch,lastCommand);
+                    if(c!=null&&!command.offer(c))ioError="busy:command_queue_full";
+                    else{if(c!=null)lastCommand=c.id();ioError="";}
                 }
             }catch(Exception e){ioError=e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();}
             try {

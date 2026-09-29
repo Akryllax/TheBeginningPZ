@@ -8,9 +8,14 @@ import java.util.*;
 final class ProbeFixture {
     static byte[] control(String epoch,long id,String action){return ("server_epoch="+epoch+"\ncommand_id="+id+"\naction="+action+"\n").getBytes(StandardCharsets.ISO_8859_1);}
     static void run()throws Exception {
-        ProbeDriverFixture.run();
-        TrafficTileObstacleFixture.run();
-        ProbeImpactFixture.run();
+        ProbeCommands commands=new ProbeCommands();
+        for(int i=1;i<=16;i++)ScenarioFixture.check(commands.offer(new ProbeControl.Command(i,"start")),"FIFO filled early");
+        ScenarioFixture.check(!commands.offer(new ProbeControl.Command(17,"start")),"FIFO overflow accepted");
+        ScenarioFixture.check(commands.poll(false)==null,"Busy probe consumed pending start");
+        for(int i=1;i<=16;i++)ScenarioFixture.check(commands.poll(true).id()==i,"Commands overwritten or reordered");
+        for(int i=1;i<=16;i++)commands.offer(new ProbeControl.Command(i,"start"));
+        ScenarioFixture.check(commands.offer(new ProbeControl.Command(18,"stop")),"Full queue blocked stop");
+        ScenarioFixture.check(commands.poll(false).action().equals("stop")&&commands.poll(true)==null,"Stop left queued legacy restarts");
         Properties p=new Properties();p.setProperty("vehicle_probe.enabled","false");
         ScenarioFixture.check(ProbeControl.Config.read(p,"AKR_DayOne",true)==null,"Disabled probe not inert");
         p.setProperty("vehicle_probe.enabled","true");p.setProperty("vehicle_probe.directory","/private/probe");
@@ -18,6 +23,9 @@ final class ProbeFixture {
         ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"AKR_DayOne",true),"Probe accepted playable world");
         ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",false),"Probe accepted client");
         ProbeControl.Config config=ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true);
+        p.setProperty("vehicle_probe.opposing","true");
+        ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true),"Unimplemented opposing execution accepted");
+        p.setProperty("vehicle_probe.opposing","false");
         ScenarioFixture.check(!config.driverModel(),"Default car unexpectedly has driver model");
         p.setProperty("vehicle_probe.bypass","true");
         ScenarioFixture.rejects(()->ProbeControl.Config.read(p,"LofersVehicleProbe_fixture",true),"Legacy probe admitted passing");
@@ -52,8 +60,8 @@ final class ProbeFixture {
             Files.write(dir.resolve("control.properties"),control("fixture-boot",2,"start"));
             Thread thread=new Thread(io);thread.setDaemon(true);thread.start();
             long deadline=System.nanoTime()+3_000_000_000L;
-            while((io.command.get()==null||!Files.isRegularFile(dir.resolve("status.properties")))&&System.nanoTime()<deadline)Thread.sleep(5);
-            ScenarioFixture.check(io.command.get()!=null&&io.command.get().id()==2,"Private-file command not delivered");
+            while((io.command.peek()==null||!Files.isRegularFile(dir.resolve("status.properties")))&&System.nanoTime()<deadline)Thread.sleep(5);
+            ScenarioFixture.check(io.command.peek()!=null&&io.command.peek().id()==2,"Private-file command not delivered");
             Properties status=new Properties();try(var r=Files.newBufferedReader(dir.resolve("status.properties"))){status.load(r);}
             ScenarioFixture.check("armed".equals(status.getProperty("phase")),"Detached status not published");
             var ego=new TrafficFootprint(1,0,0,Math.PI/2,.69,1.68);var blocker=new TrafficFootprint(2,8.45,.4,0,.69,1.68);

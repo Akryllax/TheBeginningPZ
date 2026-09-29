@@ -19,7 +19,7 @@ final class ProtocolCodec {
             Object value=map.get(f.name);if(value==null)continue;
             if(f.repeated) {
                 if(!(value instanceof Map<?,?> values)) throw new IllegalArgumentException("Array required "+f.name);
-                int cap=switch(f.name){case "residents","plans","road_closures"->128;case "places","road_nodes"->1024;case "road_edges"->4096;case "actions"->24;case "route"->256;default->128;};
+                int cap=switch(f.name){case "residents","plans","road_closures"->128;case "places","road_nodes"->1024;case "road_edges"->4096;case "actions"->24;case "threats"->32;case "route"->256;default->128;};
                 if(values.size()>cap)throw new IllegalArgumentException("Array limit "+f.name);
                 for(int i=1;i<=values.size();i++) {Object item=values.get((double)i);if(item==null)throw new IllegalArgumentException("Sparse array");set(builder,f,item,"add");}
             } else set(builder,f,value,"set");
@@ -35,7 +35,8 @@ final class ProtocolCodec {
             case "uint64"->{arg=long.class;converted=integer(value,0,9007199254740991L);}
             case "int32"->{arg=int.class;converted=(int)integer(value,Integer.MIN_VALUE,Integer.MAX_VALUE);}
             case "uint32"->{arg=int.class;converted=(int)integer(value,0,Integer.MAX_VALUE);}
-            case "ActionKind"->{arg=int.class;name+="Value";converted=(int)integer(value,0,17);}
+            case "Locomotion"->{arg=int.class;name+="Value";converted=(int)integer(value,0,3);}
+            case "ActionKind"->{arg=int.class;name+="Value";converted=(int)integer(value,0,18);}
             default->{if(!(value instanceof Map<?,?> map))throw new IllegalArgumentException("Message required");converted=encode(f.type,map);arg=converted.getClass();}
         }
         builder.getClass().getMethod(name,arg).invoke(builder,converted);
@@ -45,10 +46,10 @@ final class ProtocolCodec {
     static Map<Object,Object> decode(String type,Object value) throws Exception {
         var result=new LinkedHashMap<Object,Object>();
         for(Field f:SCHEMA.get(type)) {
-            String suffix=f.type.equals("ActionKind")?"Value":"";
+            String suffix=(f.type.equals("ActionKind")||f.type.equals("Locomotion"))?"Value":"";
             if(f.repeated) {
                 var list=(List<?>)value.getClass().getMethod("get"+camel(f.name)+"List").invoke(value);
-                int cap=switch(f.name){case "plans","residents"->128;case "actions"->24;case "route"->256;default->4096;};
+                int cap=switch(f.name){case "plans","residents"->128;case "actions"->24;case "threats"->32;case "route"->256;default->4096;};
                 if(list.size()>cap)throw new IllegalArgumentException("Decoded array too large");
                 var arr=new LinkedHashMap<Object,Object>();int i=0;
                 for(Object item:list)arr.put((double)++i,SCHEMA.containsKey(f.type)?decode(f.type,item):item);

@@ -6,15 +6,56 @@ The accepted target is a civilian opening, manual outbreak activation, and seven
 of contagion/collapse. A planner, telemetry feed, or vanilla populated world alone is not
 completion. See `vault/Design/First Week.md` for the accepted behavior and release gates.
 
-Current priority (2026-09-27): build the persistent live event runtime and batch-testing
-framework before resuming the opposing-car test. Read `PLAN_SchedulerAPI.md`,
-`vault/Design/Live Event Runtime.md` and `vault/Experiments/Current State.md` first.
-The running single-car probe is validated; the live runtime/reload framework and two-car
-execution are planned, not implemented. The interrupted opposing-car source draft references
-a missing `ProbeOpposingCar` class and must be reconciled before building. Preserve unrelated
-working-tree changes. Routine scenarios should eventually reload between events through one
-resident engine adapter, with bounded queues and shared native-world/resource ownership;
-do not solve each new case with another startup-only probe and mandatory server restart.
+Current priority (2026-09-27): follow `vault/Design/NPC First Slice.md`.
+Build minimum reusable event controls and measurements, then prove one/four server-controlled
+pedestrians before completing Java hot reload or growing crowds. Server pedestrian simulation
+is unproven; stop at the documented feasibility gate rather than silently switching authority.
+Keep accepted car behavior as regression coverage. Read `vault/Experiments/Current State.md`
+for implementation/deployment evidence and `PLAN_SchedulerAPI.md` for the runtime contract.
+Preserve unrelated working-tree changes and uncertain resource ownership.
+
+Current iteration: civilian pooling/navigation and idle/roam/flee preparation;
+see `vault/Design/Civilian Pool and Navigation.md`. The user subsequently authorized
+headless native tests: use `./dayone civilian-headless run` in its separate disposable
+world. Walking, doors, snapshot restoration and four-slot reuse have passed there.
+Actor reuse means prewarmed engine objects reassigned across residents through
+the explicit NativeActorReset boundary. Do not substitute resident-affine caching or
+construct bodies during assignment. Busy/dead/uncertain bodies stay owned; see the design.
+Four watched reuse waves passed with one ordinary client; the user confirmed audio.
+The authorized 32-Actor 8x4 test passed four waves (128 assignments, 32 engine bodies).
+Position accuracy remains outside its target; see Current State for measurements.
+The pool class now allows 32 slots by default and headless prewarm of 32 passed;
+keep normal live admission at four until attack/contact, performance and multiplayer
+gates pass. Opt-in 32/64 stress tests do not qualify crowds or parallel path jobs.
+The user authorized four 8x8 waves of 64 Actors plus 128 native fast shamblers (two per
+Actor), in the original southbound marching direction. Announce exact counts before each
+wave. Permit up to 10% acquisition failures (at least 116/128 actual pursuits); account for
+and clean up every spawned zombie, including nonfollowers. Do not substitute single-pair
+checks or reverse approaches. The user authorized admin/god/invisible observer
+protection, and automatic spectator repositioning before every wave. Do not ask them to
+navigate coordinate-only waiting points. Preserve native zombie ownership and fail on
+unproven contact/cleanup; pursue this in the disposable watched harness only.
+The actual 64/128 run reached movement but failed on contact in wave 1; see Current State.
+Fix nearest-pursuer clearance and inspect nonmoving hunters before repeating; 64/128 reuse
+and cleanup remain unqualified. Two-client checks remain deferred. Do not auto-activate ambient modules or
+equate headless results with multiplayer qualification. Full traversal
+(stairs/windows/fences/walls as well as doors) remains required; explicit native
+execution blockers are recorded in the design and qualification runbook.
+Current defensive-combat work is in `vault/Design/Civilian Defense and Death.md`.
+The stationary-threat autonomous defense/escape watched test is accepted; moving
+pursuit, generalized incoming injuries, integrated combat death and two-client
+qualification are separate gates. Use the latest Current State, not historical blockers.
+The one-Actor stationary fatal lifecycle is now accepted with one ordinary client:
+durable terminal receipt, native corpse/reanimation, exact Actor reuse, replacement walk
+and verified cleanup. The next task, scheduled for 2026-09-30, is
+`TASK_Four_Resident_Neighborhood.md`: movement regression, repeated lifecycle,
+four independent civilians, real ground-floor homes and living-resident controlled restart.
+Crash recovery and aftermath restoration are explicitly deferred follow-ups, not qualified
+by controlled restart. Read that task and the latest Current State before continuing.
+
+Use `dayone-test-iteration` for the native implementation/qualification loop and
+`dayone-watched-testing` for watched tests. The latter preserves automatic placement,
+protection, daylight, the loaded 9mm loadout, announcements and feedback after the batch.
 
 Read `vault/Home.md` for the design index and `vault/Runbooks/Operations.md` for commands.
 Use `./dayone` for project operations. Keep downloads, caches, images, references,
@@ -42,41 +83,10 @@ never replace or patch installed core game files, and never distribute replaceme
 `zombie.*` engine classes or decompiled game code. This is an explicit user constraint for
 future distribution. Keep decompiler tools and derived research output inside this project.
 Runtime injection still depends on engine compatibility; do not describe it as update-proof.
-The current architecture investigation targets server-owned vehicle physics and stock vehicle
-replication with ordinary Lua clients. The user explicitly permits JVM injection on the
-controlled server. Do not require a client Java agent for this revised architecture;
-the isolated straight-line physics probe passed and one ordinary client reported smooth
-movement. A separate empty-server asphalt turn passed, followed by a one-client turn with clear
-visibility but incorrect lane choice, no stop-sign handling and deliberately low speed.
-Detailed seated-driver visibility is low priority by user choice. A corrected Bézier lane
-course and stop-sign dwell have passed empty-server native runs; one client confirmed a
-smooth turn after fixing braking pulses, but requested faster driving. The current iteration
-uses a 50 km/h road ceiling constrained by stock drivetrain/brakes, loaded mass and script
-steering properties. That ceiling is not a measured cruising speed on the short test course.
-One client subsequently accepted the faster run (24.1 km/h peak, about 13 km/h through the
-bend). The early abrupt parked-car stop and disappearance were rejected even after a longer
-cleanup delay. Parked cars now produce a planned stopping point and persistent wait/resume;
-one client confirmed a smooth stop and continued visibility during a 66-second wait. The
-server resumed and completed the original trip after exact fixture removal. A separate
-straight-road bypass passed two empty-server runs and one ordinary-client observation:
-the user confirmed a smooth pass, return to lane and audible honk after about 21 seconds
-waiting. Candidate geometry runs off the game thread; loaded clearance and a reserved
-entry/pass/rejoin corridor gate execution. Temperament can admit a slow dirt/grass shoulder
-fallback after road candidates fail. The first shoulder trial
-avoided the road obstacles but phased through a pole, failing physical collision acceptance.
-The planner now rejects declared vehicle-collision objects, including walkable poles.
-Native headless server cells stored obstacle shapes without activating bodies; the probe
-now owns a bounded ordinary Bullet collision map while Java remains a dedicated server.
-An empty-server 5 km/h pole contact stopped physically, caused stock hood/windshield damage,
-and requested one crash sound. One ordinary client has now confirmed collision, damage
-and sound at 5 km/h and again at 38.8 km/h with a marked pole on a reviewed impact course. Ordinary
-parked Java cars are not yet registered as native bodies, so do not claim car-to-car impact
-support. Keep existing global offsets when initializing physics: an older initializer shifted
-preloaded parked vehicles. The old disposable save is retained. All test fixtures are
-recorded separately and removed through the original game lifecycle.
-Passing reservations have detached conflict/expiry tests; managed multi-car traffic,
-NPC boarding and two-client consistency remain unvalidated. See the implementation ledger
-and traffic design for evidence, limits and next gates.
+The user permits JVM injection on the controlled server with ordinary Lua clients.
+Keep stock collision and replication semantics. Native ownership requires engine bookkeeping;
+setting an owner field alone is insufficient. Preserve the existing physics coordinate frame.
+Detailed experiment history belongs in the vault ledger, not in this instruction file.
 
 See `SKILLS.md` for task-specific workflows. Existing user authorization applies to
 routine implementation and validation; do not add repeated approval prompts.

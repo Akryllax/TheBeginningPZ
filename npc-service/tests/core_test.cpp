@@ -37,11 +37,49 @@ int main(int argc, char** argv) {
         require(argc == 2, "rules directory required");
         std::filesystem::path rules = argv[1]; Planner planner(rules);
         auto b = fixture(); std::string reason; require(validate(b, reason), "fixture must validate");
+        {
+            auto routine=fixture();auto* r=routine.mutable_residents(0);auto* e=r->mutable_execution();
+            e->set_routine_enabled(true);*e->mutable_activity()=at(110);e->set_goal("civilian_routine");
+            for(unsigned phase=0;phase<3;++phase){e->set_routine_phase(phase);auto result=planner.plan(routine,*r);
+                require(result.goal()=="civilian_routine","durable routine goal");require(result.actions_size()==3-static_cast<int>(phase),"routine continuation shape");
+                require(result.actions(result.actions_size()-1).kind()==npc::pb::WALK,"routine returns home");
+                require(result.actions(result.actions_size()-1).locomotion()==npc::pb::WALK_GAIT,"explicit gait");
+                if(phase<=1)require(result.actions(1-phase).kind()==npc::pb::WAIT,"routine wait milestone");
+            }
+            for(const auto* status:{"executing","waiting_path","paused","blocked","completed","cancelled","failed"}) {
+                e->set_status(status);e->set_action_id("committed-action");e->set_route_revision(9);e->set_completed_edges(100);e->set_buffered_edges(8);
+                require(validate(routine,reason),"progress validates");
+                require(planner.plan(routine,*r).actions_size()==0,"progress cannot replace committed action");
+            }
+            e->set_status("needs_plan");require(planner.plan(routine,*r).actions_size()==1,"explicit replan resumes remaining routine");
+            e->set_buffered_edges(9);require(!validate(routine,reason),"oversized execution window rejected");e->set_buffered_edges(0);
+            e->set_routine_phase(4);require(!validate(routine,reason),"invalid routine milestone rejected");
+        }
         auto plan = planner.plan(b, b.residents(0)); has(plan, npc::pb::WALK); has(plan, npc::pb::WORK);
         require(plan.actions_size() <= 6 && plan.expansions() <= 64, "bounded GOAP");
         b.mutable_residents(0)->set_hunger(0.9); b.mutable_residents(0)->set_has_food(false);
         plan = planner.plan(b, b.residents(0)); has(plan, npc::pb::WALK); has(plan, npc::pb::SHOP); has(plan, npc::pb::EAT);
         b = fixture(); b.mutable_residents(0)->set_threatened(true); plan = planner.plan(b,b.residents(0)); has(plan,npc::pb::FLEE);
+        b = fixture(); {
+            auto* r=b.mutable_residents(0);r->set_threatened(true);
+            auto* combat=r->mutable_combat();combat->set_known(true);combat->set_endurance(.8);
+            combat->set_weapon_id("item:14");combat->set_weapon_usable(true);
+            auto* threat=combat->add_threats();threat->set_id("z:1:7");threat->set_generation(7);
+            threat->set_visible(true);threat->set_zombie(true);threat->set_alive(true);
+            *threat->mutable_position()=at(101);
+            require(validate(b,reason),"bounded combat observation validates");
+            plan=planner.plan(b,b.residents(0));has(plan,npc::pb::WAIT);
+            require(plan.reason()=="escape_not_assessed","unknown escape never means cornered");
+            combat->set_escape_assessed(true);
+            plan=planner.plan(b,b.residents(0));has(plan,npc::pb::DEFEND);
+            require(plan.actions(0).target_id()=="z:1:7"&&plan.actions(0).animation()=="melee","worker selects equipped melee against exact target");
+            combat->set_path_pending(true);has(planner.plan(b,b.residents(0)),npc::pb::WAIT);
+            combat->set_path_pending(false);combat->set_escape_reachable(true);*combat->mutable_escape_target()=at(105);
+            has(planner.plan(b,b.residents(0)),npc::pb::FLEE);
+            combat->set_escape_reachable(false);combat->clear_escape_target();combat->set_weapon_usable(false);
+            plan=planner.plan(b,b.residents(0));require(plan.actions(0).animation()=="shove","unarmed fallback shoves");
+            threat->set_generation(0);require(!validate(b,reason)&&reason=="invalid_combat_threat","unstable target identity refused");
+        }
         b = fixture(); b.set_phase("emergency"); b.mutable_residents(0)->set_infection("symptomatic");
         plan = planner.plan(b,b.residents(0)); has(plan,npc::pb::WALK); has(plan,npc::pb::SEEK_HELP);
         b = fixture(); b.mutable_residents(0)->set_fatigue(0.8); has(planner.plan(b,b.residents(0)),npc::pb::REST);

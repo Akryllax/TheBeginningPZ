@@ -138,6 +138,9 @@ struct Rules::Impl {
             r.vehicle_observation().available()&&r.vehicle_observation().id()==r.vehicle_id());
         boolean(L, "in_vehicle", r.in_vehicle());
         boolean(L, "home_safe", r.home_safe()); boolean(L, "work_available", r.work_available()); boolean(L, "threatened", r.threatened());
+        if (r.has_execution() && r.execution().routine_enabled()) {
+            boolean(L,"routine_enabled",true);number(L,"routine_phase",r.execution().routine_phase());point(L,"activity",r.execution().activity());
+        }
         point(L, "position", r.position());
         if (r.has_home()) point(L, "home", r.home());
         if (r.has_work()) point(L, "work", r.work());

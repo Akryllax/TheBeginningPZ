@@ -21,10 +21,16 @@ public final class GameHooks {
     private record Control(double throttle,double brake,double steer,long deadline) {}
     static void ownThread(){if(thread==null)thread=Thread.currentThread();if(thread!=Thread.currentThread())throw new IllegalStateException("Scenario game-thread API");}
     public static boolean inSpawnPermit(){return permits.get()>0;}
+    /** Java-side equivalent of LofersNative.spawn: one bounded native creation inside a permit. */
+    static <T> T withSpawnPermit(java.util.function.Supplier<T> action){
+        ownThread();int depth=permits.get(),budget=factoryBudget.get();permits.set(depth+1);factoryBudget.set(1);
+        try{return action.get();}finally{permits.set(depth);factoryBudget.set(budget);}
+    }
     public static boolean populationBlocked(){return ScenarioAgent.server&&ScenarioAgent.enabled&&!background&&!inSpawnPermit();}
     public static boolean factoryBlocked(){if(inSpawnPermit()){int n=factoryBudget.get();factoryBudget.set(n-1);return n<=0;}return populationBlocked();}
     static boolean paired(){
         if(!ScenarioAgent.enabled)return false;
+        if(ScenarioAgent.pedestrianRuntimeEnabled())return true;
         Object sandbox=LuaManager.env==null?null:LuaManager.env.rawget("SandboxVars");
         Object scenario=sandbox instanceof KahluaTable t?t.rawget("LofersScenario"):null;
         return scenario instanceof KahluaTable t&&Boolean.TRUE.equals(t.rawget("Enabled"));

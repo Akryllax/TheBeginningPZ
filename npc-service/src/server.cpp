@@ -178,7 +178,11 @@ bool process(Session& s, const pb::Envelope& input, const std::string& world, Po
     if (batch->places().empty()) *batch->mutable_places() = index.places();
     Pending pending; pending.request = input.request_id(); pending.revision = batch->revision(); pending.start = Clock::now();
     auto graph=pool.roads(*batch);
-    for (int i = 0; i < batch->residents_size(); ++i) pending.futures.push_back(pool.submit(batch, i,graph));
+    for (int i = 0; i < batch->residents_size(); ++i) {
+        const auto& resident=batch->residents(i);
+        if(resident.has_execution()&&!resident.execution().status().empty()&&resident.execution().status()!="needs_plan")continue;
+        pending.futures.push_back(pool.submit(batch, i,graph));
+    }
     s.pending.push_back(std::move(pending));
     return true;
 }

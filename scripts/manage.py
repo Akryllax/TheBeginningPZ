@@ -312,10 +312,34 @@ def main():
         'stop', 'status', 'logs', 'rcon', 'backup', 'restore-test', 'test', 'package', 'install-mod',
         'scenario-build', 'scenario-test-create', 'scenario-test-start', 'scenario-test-stop',
         'scenario-test-rcon', 'scenario-reset', 'vehicle-probe-create', 'vehicle-probe-start',
-        'vehicle-probe-stop', 'vehicle-probe-status', 'vehicle-probe-control', 'vehicle-probe-route'])
+        'vehicle-probe-stop', 'vehicle-probe-status', 'vehicle-probe-control', 'vehicle-probe-route', 'runtime-test', 'runtime',
+        'pedestrian-test-create', 'pedestrian-test-start', 'pedestrian-test-stop', 'pedestrian-test-join', 'civilian-headless', 'civilian-watch', 'civilian-chase', 'civilian-combat'])
     parser.add_argument('args', nargs='*')
     args = parser.parse_args()
-    if args.command.startswith('vehicle-probe-'):
+    if args.command == 'civilian-combat':
+        # The typed encounter protocol needs the project's pinned protobuf runtime.
+        if Path(sys.prefix).resolve() != (ROOT / '.tooling/venv').resolve():
+            os.execv(str(PYTHON), [str(PYTHON), str(ROOT / 'scripts/manage.py'), 'civilian-combat', *args.args])
+        import civilian_combat
+        civilian_combat.dispatch(sys.modules[__name__], args.args)
+    elif args.command == 'civilian-chase':
+        import civilian_chase
+        civilian_chase.dispatch(sys.modules[__name__], args.args)
+    elif args.command == 'civilian-watch':
+        import civilian_watch
+        civilian_watch.dispatch(sys.modules[__name__], args.args)
+    elif args.command == 'civilian-headless':
+        import civilian_headless
+        civilian_headless.dispatch(sys.modules[__name__], args.args)
+    elif args.command.startswith('pedestrian-test-'):
+        import pedestrian_ops
+        pedestrian_ops.dispatch(sys.modules[__name__], args.command, args.args)
+    elif args.command == 'runtime':
+        run([PYTHON, ROOT / 'scripts/runtime_control.py', *args.args])
+    elif args.command == 'runtime-test':
+        import runtime_tests
+        runtime_tests.dispatch(ROOT, args.args)
+    elif args.command.startswith('vehicle-probe-'):
         import vehicle_probe_ops
         vehicle_probe_ops.dispatch(sys.modules[__name__], args.command, args.args)
     elif args.command.startswith('scenario-'):
