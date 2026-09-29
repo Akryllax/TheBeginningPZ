@@ -5,8 +5,16 @@ project(lofers_npc_service VERSION 0.2.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(NPC_DEPS "${CMAKE_CURRENT_SOURCE_DIR}/../.tooling/npc-service" CACHE PATH "Project-local downloaded sources")
-set(NPC_PROTOC "${CMAKE_CURRENT_SOURCE_DIR}/../.tooling/agent/protoc/bin/protoc" CACHE FILEPATH "Pinned protoc 36.1")
+set(NPC_DEPS
+    "${CMAKE_CURRENT_SOURCE_DIR}/../.tooling/npc-service"
+    CACHE PATH
+    "Project-local downloaded sources"
+)
+set(NPC_PROTOC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../.tooling/agent/protoc/bin/protoc"
+    CACHE FILEPATH
+    "Pinned protoc 36.1"
+)
 set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
 set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 add_subdirectory("${NPC_DEPS}/abseil-cpp-20250512.1" "deps/abseil" EXCLUDE_FROM_ALL)
@@ -24,10 +32,24 @@ target_include_directories(npc_lua PUBLIC "${NPC_DEPS}/lua-5.4.9/src")
 target_compile_definitions(npc_lua PRIVATE LUA_USE_LINUX)
 target_link_libraries(npc_lua PUBLIC m ${CMAKE_DL_LIBS})
 set(PROTO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../protocol")
-add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/npc_control.pb.cc" "${CMAKE_CURRENT_BINARY_DIR}/npc_control.pb.h"
- COMMAND "${NPC_PROTOC}" "--proto_path=${PROTO_ROOT}" "--cpp_out=${CMAKE_CURRENT_BINARY_DIR}" "${PROTO_ROOT}/npc_control.proto"
- DEPENDS "${PROTO_ROOT}/npc_control.proto" VERBATIM)
-add_library(npc_core STATIC src/planner.cpp src/rules.cpp src/road.cpp "${CMAKE_CURRENT_BINARY_DIR}/npc_control.pb.cc")
+add_custom_command(
+    OUTPUT
+        "${CMAKE_CURRENT_BINARY_DIR}/npc_control.pb.cc"
+        "${CMAKE_CURRENT_BINARY_DIR}/npc_control.pb.h"
+    COMMAND
+        "${NPC_PROTOC}" "--proto_path=${PROTO_ROOT}" "--cpp_out=${CMAKE_CURRENT_BINARY_DIR}"
+        "${PROTO_ROOT}/npc_control.proto"
+    DEPENDS "${PROTO_ROOT}/npc_control.proto"
+    VERBATIM
+)
+add_library(
+    npc_core
+    STATIC
+    src/planner.cpp
+    src/rules.cpp
+    src/road.cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/npc_control.pb.cc"
+)
 target_include_directories(npc_core PUBLIC src "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(npc_core PUBLIC protobuf::libprotobuf npc_lua)
 target_compile_options(npc_core PRIVATE -Wall -Wextra -Wpedantic)

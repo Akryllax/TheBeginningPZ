@@ -1,2 +1,7 @@
 package zombie.characters;
-public final class SurvivorDesc { public String getFullname() { return "Fixture Survivor"; } }
+
+public final class SurvivorDesc {
+  public String getFullname() {
+    return "Fixture Survivor";
+  }
+}

@@ -79,7 +79,8 @@ def setup_sources(tmp_path):
     db = sqlite3.connect(save / "vehicles.db")
     db.execute("CREATE TABLE vehicles(id,x,y,worldversion,data)")
     db.executemany(
-        "INSERT INTO vehicles VALUES(?,?,?,?,?)", [(2, 3.0, 3.0, 249, b""), (3, 40.0, 3.0, 249, b"")]
+        "INSERT INTO vehicles VALUES(?,?,?,?,?)",
+        [(2, 3.0, 3.0, 249, b""), (3, 40.0, 3.0, 249, b"")],
     )
     db.commit()
     db.close()
@@ -148,7 +149,9 @@ def test_installed_water_and_rural_surfaces(names, expected):
 
 @pytest.mark.parametrize("zoom", [-4, -3, -2, -1])
 @pytest.mark.parametrize("kind", [PAVEMENT, DIRT, WATER])
-def test_zoomed_out_roads_and_water_remain_visible_without_revealing_neighbors(tmp_path, zoom, kind):
+def test_zoomed_out_roads_and_water_remain_visible_without_revealing_neighbors(
+    tmp_path, zoom, kind
+):
     terrain = Terrain(tmp_path, tmp_path / "cache")
     # These one-tile-wide features fall between the old nearest-neighbor samples
     # at every overview zoom. The whole neighboring block is deliberately hidden.
@@ -185,7 +188,9 @@ def test_renderer_update_invalidates_disk_and_browser_tiles(tmp_path, monkeypatc
 
 def test_search_and_tiles_enforce_knowledge(tmp_path):
     save, maps = setup_sources(tmp_path)
-    state = SavedMap(tmp_path / "data", save, maps, bounds=Bounds(min_x=0, min_y=0, max_x=0, max_y=0))
+    state = SavedMap(
+        tmp_path / "data", save, maps, bounds=Bounds(min_x=0, min_y=0, max_x=0, max_y=0)
+    )
     state.poll()
     known = state.known()
     assert known == {(0, 0): 3}
@@ -215,13 +220,18 @@ def test_search_and_tiles_enforce_knowledge(tmp_path):
 
 def test_stale_sources_locked_db_and_no_false_freshness(tmp_path):
     save, maps = setup_sources(tmp_path)
-    state = SavedMap(tmp_path / "data", save, maps, bounds=Bounds(min_x=0, min_y=0, max_x=0, max_y=0))
+    state = SavedMap(
+        tmp_path / "data", save, maps, bounds=Bounds(min_x=0, min_y=0, max_x=0, max_y=0)
+    )
     state.poll()
     before = state.status()
     revision = state.revision
     state.poll()
     assert state.revision == revision
-    assert state.status()["sources"]["players"]["modified_at"] == before["sources"]["players"]["modified_at"]
+    assert (
+        state.status()["sources"]["players"]["modified_at"]
+        == before["sources"]["players"]["modified_at"]
+    )
     lock = sqlite3.connect(save / "players.db")
     lock.execute("BEGIN EXCLUSIVE")
     state.poll()
@@ -240,7 +250,9 @@ def test_stale_sources_locked_db_and_no_false_freshness(tmp_path):
 
 def test_save_markers_override_old_public_snapshot(tmp_path):
     save, maps = setup_sources(tmp_path)
-    state = SavedMap(tmp_path / "data", save, maps, bounds=Bounds(min_x=0, min_y=0, max_x=0, max_y=0))
+    state = SavedMap(
+        tmp_path / "data", save, maps, bounds=Bounds(min_x=0, min_y=0, max_x=0, max_y=0)
+    )
     state.publish("markers", [{"id": "old", "public": True}], 1, 1)
     state.poll()
     assert state.status()["markers"] == []
@@ -258,13 +270,17 @@ def test_saved_api_and_persistence(tmp_path, monkeypatch):
         assert client.get("/healthz").json()["mode"] == "saved_map"
         assert "online" not in client.get("/api/v1/world").json()
         assert client.get("/api/v1/places/search?q=library&x=4&y=5").json()["results"]
-        assert not client.get("/api/v1/places/search?q=library&x=4&y=5&observer=eric").json()["results"]
+        assert not client.get("/api/v1/places/search?q=library&x=4&y=5&observer=eric").json()[
+            "results"
+        ]
         assert client.get("/api/v1/map/tiles/0/0/0.png").headers["content-type"] == "image/png"
         assert client.get("/api/v1/map/tiles/99/0/0.png").status_code == 422
         assert client.get("/downloads/ZomboidObserver.zip").status_code == 404
         assert client.get("/api/v1/elements/vehicle:2").status_code == 404
         assert client.post("/api/v1/map/features?x=0&y=0").status_code in (404, 405)
-    reopened = SavedMap(tmp_path / "data", save, maps, bounds=Bounds(min_x=0, min_y=0, max_x=0, max_y=0))
+    reopened = SavedMap(
+        tmp_path / "data", save, maps, bounds=Bounds(min_x=0, min_y=0, max_x=0, max_y=0)
+    )
     assert reopened.known() == {(0, 0): 3}
     assert reopened.status()["players"][0]["name"] == "akryllax"
     reopened.close()
@@ -283,7 +299,13 @@ def test_search_merges_overlapping_floors_without_revealing_hidden_rooms(tmp_pat
                 "z": 0,
                 "rects": [[1, 1, 5, 5], [40, 40, 5, 5]],
             },
-            {"id": "b", "label": "Police station", "category": "police", "z": -1, "rects": [[2, 2, 5, 5]]},
+            {
+                "id": "b",
+                "label": "Police station",
+                "category": "police",
+                "z": -1,
+                "rects": [[2, 2, 5, 5]],
+            },
         ]
     }
     found = terrain.search("police", {(0, 0): 3}, 0, 0)

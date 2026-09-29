@@ -70,23 +70,48 @@ for x in range(10792, 10843):
                 kind = "window" if (x in [10800, 10810] and y in [9840, 9845]) else "wall"
                 if x == 10810 and y == 9843:
                     kind = "door"
-                objects.append(element(x, y, kind, height=2.8, rotation=90 if x in [10800, 10810] else 0))
+                objects.append(
+                    element(x, y, kind, height=2.8, rotation=90 if x in [10800, 10810] else 0)
+                )
         if x == 10804 and y in [9838, 9839, 9840]:
             objects.append(
-                element(x, y, "container", label="Kitchen cabinet", state={"variant": "cabinet"}, height=1.5)
+                element(
+                    x,
+                    y,
+                    "container",
+                    label="Kitchen cabinet",
+                    state={"variant": "cabinet"},
+                    height=1.5,
+                )
             )
         if x == 10801 and y == 9842:
             objects.append(
-                element(x, y, "furniture", label="Double bed", state={"variant": "bed"}, width=2, depth=2)
+                element(
+                    x,
+                    y,
+                    "furniture",
+                    label="Double bed",
+                    state={"variant": "bed"},
+                    width=2,
+                    depth=2,
+                )
             )
         if x == 10807 and y == 9845:
             objects.append(
                 element(
-                    x, y, "furniture", label="Dining table", state={"variant": "table"}, width=1.8, depth=1.8
+                    x,
+                    y,
+                    "furniture",
+                    label="Dining table",
+                    state={"variant": "table"},
+                    width=1.8,
+                    depth=1.8,
                 )
             )
         if x == 10807 and y in [9844, 9846]:
-            objects.append(element(x, y, "furniture", label="Dining chair", state={"variant": "chair"}))
+            objects.append(
+                element(x, y, "furniture", label="Dining chair", state={"variant": "chair"})
+            )
         if x > 10826 and (x + y * 3) % 13 == 0:
             objects.append(element(x, y, "tree", width=2, depth=2, height=4 + random.random() * 2))
         if x < 10798 and (x * 3 + y) % 9 == 0:
@@ -139,7 +164,16 @@ emit(
 )
 emit(
     kind="markers",
-    markers=[{"id": "demo-home", "author": "eric", "label": "Home", "x": 10805, "y": 9842, "public": True}],
+    markers=[
+        {
+            "id": "demo-home",
+            "author": "eric",
+            "label": "Home",
+            "x": 10805,
+            "y": 9842,
+            "public": True,
+        }
+    ],
 )
 store.close()
 print("Demo database:", target)

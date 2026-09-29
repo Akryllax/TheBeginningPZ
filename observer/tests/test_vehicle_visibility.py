@@ -147,7 +147,9 @@ def test_read_only_vehicle_db_and_living_player_keys(tmp_path):
     state = app.state.saved_map
     scripts = tmp_path / "scripts/generated/items"
     scripts.mkdir(parents=True)
-    (scripts / "container.txt").write_text("module Base {\n item KeyRing { ItemType = base:container, }\n}")
+    (scripts / "container.txt").write_text(
+        "module Base {\n item KeyRing { ItemType = base:container, }\n}"
+    )
     state.scripts = tmp_path / "scripts"
     (tmp_path / "WorldDictionaryReadable.lua").write_text(
         'registryID = 10, fulltype = "Base.CarKey",\nregistryID = 20, fulltype = "Base.KeyRing",'
@@ -156,12 +158,15 @@ def test_read_only_vehicle_db_and_living_player_keys(tmp_path):
         db.execute("CREATE TABLE networkPlayers(worldversion,data,isDead)")
         for key, dead in [(123, 0), (456, 1)]:
             db.execute(
-                "INSERT INTO networkPlayers VALUES(249,?,?)", (player([item(10, pack("iB", key, 1))]), dead)
+                "INSERT INTO networkPlayers VALUES(249,?,?)",
+                (player([item(10, pack("iB", key, 1))]), dead),
             )
     assert state.read_car_keys(tmp_path / "players.db") == [123]
     with sqlite3.connect(tmp_path / "vehicles.db") as db:
         db.execute("CREATE TABLE vehicles(id,x,y,worldversion,data)")
-        db.executemany("INSERT INTO vehicles VALUES(?,3,3,249,?)", [(1, vehicle()), (2, b"unsupported")])
+        db.executemany(
+            "INSERT INTO vehicles VALUES(?,3,3,249,?)", [(1, vehicle()), (2, b"unsupported")]
+        )
     before = (tmp_path / "vehicles.db").read_bytes()
     assert [r["id"] for r in read_positions(tmp_path / "vehicles.db", "vehicles")] == [1]
     assert (tmp_path / "vehicles.db").read_bytes() == before

@@ -4,7 +4,11 @@ option java_package = "net.lofers.scenario.protocol";
 option java_outer_classname = "RuntimeControl";
 
 // Private operator protocol, separate from planner traffic. No arbitrary evaluation.
-message Point { double x = 1; double y = 2; int32 z = 3; }
+message Point {
+  double x = 1;
+  double y = 2;
+  int32 z = 3;
+}
 message PedestrianCase {
   uint32 actors = 1;
   repeated Point route = 2;
@@ -13,7 +17,10 @@ message PedestrianCase {
   uint64 seed = 5;
   // Engine body for the case. ACTOR is a pooled, connectionless server player
   // replicated with stock player packets (Decision 0006); gate 1 stands at route[0].
-  enum Entity { DISGUISED_ZOMBIE = 0; ACTOR = 1; }
+  enum Entity {
+    DISGUISED_ZOMBIE = 0;
+    ACTOR = 1;
+  }
   Entity entity = 6;
   // ACTOR only: reassign the same pooled slot to another identity once (0 = never).
   uint32 reassign_after_seconds = 7;
@@ -28,7 +35,12 @@ message PedestrianCase {
   double flee_tiles_per_second = 10;
   uint32 trip_after_seconds = 11;
   // Hunter cases only: stock speed setup applied after spawn (SANDBOX keeps the random pick).
-  enum HunterSpeed { SANDBOX = 0; SPRINTER = 1; FAST_SHAMBLER = 2; SHAMBLER = 3; }
+  enum HunterSpeed {
+    SANDBOX = 0;
+    SPRINTER = 1;
+    FAST_SHAMBLER = 2;
+    SHAMBLER = 3;
+  }
   HunterSpeed hunter_speed = 12;
   // Hunter cases only: warm-up after the hunter gains a client owner before the server directs
   // it at the Actor, so both bodies are loaded and presented before the chase starts.
@@ -43,30 +55,57 @@ message Request {
   string world = 2;
   string epoch = 3;
   string request_id = 4;
-  enum Operation { HELLO = 0; SUBMIT = 1; STATUS = 2; CANCEL = 3; }
+  enum Operation {
+    HELLO = 0;
+    SUBMIT = 1;
+    STATUS = 2;
+    CANCEL = 3;
+  }
   Operation operation = 5;
   string event_id = 6;
   PedestrianCase pedestrian = 7;
   CivilianEncounterCase civilian_encounter = 8;
 }
 message ActorSample {
-  string id = 1; int32 online_id = 2; Point position = 3;
-  string action = 4; string path_state = 5; double path_age_ms = 6;
-  bool server_owned = 7; double distance_moved = 8;
+  string id = 1;
+  int32 online_id = 2;
+  Point position = 3;
+  string action = 4;
+  string path_state = 5;
+  double path_age_ms = 6;
+  bool server_owned = 7;
+  double distance_moved = 8;
 }
 message Reply {
-  uint32 version = 1; string world = 2; string epoch = 3; string request_id = 4;
-  bool accepted = 5; string code = 6; string event_id = 7; string phase = 8;
-  string reason = 9; repeated string resources = 10;
-  repeated ActorSample actors = 11; uint64 sample_nanos = 12;
-  double work_p95_ms = 13; double work_p99_ms = 14; double work_max_ms = 15;
+  uint32 version = 1;
+  string world = 2;
+  string epoch = 3;
+  string request_id = 4;
+  bool accepted = 5;
+  string code = 6;
+  string event_id = 7;
+  string phase = 8;
+  string reason = 9;
+  repeated string resources = 10;
+  repeated ActorSample actors = 11;
+  uint64 sample_nanos = 12;
+  double work_p95_ms = 13;
+  double work_p99_ms = 14;
+  double work_max_ms = 15;
   string capability = 16;
   EncounterProgress encounter = 17;
 }
 
 // Opt-in disposable cases; no alternate gameplay transport or arbitrary evaluation.
 message CivilianEncounterCase {
-  enum Scenario { OPEN_ESCAPE = 0; INCOMING_INJURY = 1; DEFENSE_ESCAPE = 2; LOCOMOTION = 3; STRIDE_COMPARE = 4; LIFECYCLE = 5; }
+  enum Scenario {
+    OPEN_ESCAPE = 0;
+    INCOMING_INJURY = 1;
+    DEFENSE_ESCAPE = 2;
+    LOCOMOTION = 3;
+    STRIDE_COMPARE = 4;
+    LIFECYCLE = 5;
+  }
   Scenario scenario = 1;
   uint32 actors = 2;
   uint64 seed = 3;
@@ -74,30 +113,59 @@ message CivilianEncounterCase {
   uint32 hold_seconds = 5;
 }
 message EncounterPair {
-  int32 actor = 1; uint64 generation = 2; int32 hunter = 3;
-  string state = 4; double travelled = 5; double hunter_travelled = 6;
-  uint32 contacts = 7; uint32 injury_attempts = 8; uint32 injuries = 9;
-  double health = 10; bool escaped = 11; bool owned = 12;
-  uint32 owner_changes = 13; uint32 path_requests = 14;
-  string gait = 15; string native_state = 16; string hit_reaction = 17;
-  string interrupt_reason = 18; repeated string transitions = 19;
-  uint32 pauses = 20; uint32 resumes = 21; uint32 route_replacements = 22;
-  double commanded_speed = 23; string goal = 24; string plan_source = 25;
-  bool client_observation_fresh = 26; bool client_running = 27; bool client_locked = 28;
-  string client_state = 29; string client_reaction = 30;
-  double client_walk_modifier = 31; double client_run_modifier = 32;
+  int32 actor = 1;
+  uint64 generation = 2;
+  int32 hunter = 3;
+  string state = 4;
+  double travelled = 5;
+  double hunter_travelled = 6;
+  uint32 contacts = 7;
+  uint32 injury_attempts = 8;
+  uint32 injuries = 9;
+  double health = 10;
+  bool escaped = 11;
+  bool owned = 12;
+  uint32 owner_changes = 13;
+  uint32 path_requests = 14;
+  string gait = 15;
+  string native_state = 16;
+  string hit_reaction = 17;
+  string interrupt_reason = 18;
+  repeated string transitions = 19;
+  uint32 pauses = 20;
+  uint32 resumes = 21;
+  uint32 route_replacements = 22;
+  double commanded_speed = 23;
+  string goal = 24;
+  string plan_source = 25;
+  bool client_observation_fresh = 26;
+  bool client_running = 27;
+  bool client_locked = 28;
+  string client_state = 29;
+  string client_reaction = 30;
+  double client_walk_modifier = 31;
+  double client_run_modifier = 32;
   string client_hunter_diagnostic = 33;
-  double server_walk_modifier = 34; string packet_variables = 35; string client_action = 36;
-  string perception_diagnostic = 37; uint32 buffered_edges = 38; uint64 route_revision = 39;
-  double client_x = 40; double client_y = 41;
+  double server_walk_modifier = 34;
+  string packet_variables = 35;
+  string client_action = 36;
+  string perception_diagnostic = 37;
+  uint32 buffered_edges = 38;
+  uint64 route_revision = 39;
+  double client_x = 40;
+  double client_y = 41;
   double replica_peak_gap = 42;
   string client_visibility = 43;
 }
 message EncounterProgress {
-  string stage = 1; repeated EncounterPair pairs = 2;
-  uint32 constructed = 3; uint32 reused = 4; uint32 parked = 5;
+  string stage = 1;
+  repeated EncounterPair pairs = 2;
+  uint32 constructed = 3;
+  uint32 reused = 4;
+  uint32 parked = 5;
   bool cleanup_verified = 6;
-  double controller_p95_ms = 7; double controller_p99_ms = 8;
+  double controller_p95_ms = 7;
+  double controller_p99_ms = 8;
   double warmup_max_ms = 9;
   repeated EncounterTiming timings = 10;
   string scenario_outcome = 11;
@@ -110,4 +178,9 @@ message EncounterProgress {
   string inventory_digest = 18;
 }
 
-message EncounterTiming { string component = 1; double p95_ms = 2; double p99_ms = 3; double max_ms = 4; }
+message EncounterTiming {
+  string component = 1;
+  double p95_ms = 2;
+  double p99_ms = 3;
+  double max_ms = 4;
+}

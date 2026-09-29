@@ -25,7 +25,10 @@ CATEGORIES = {
     "bookshop": ("Bookshop", {"bookstore", "bookstorestorage"}),
     "mechanic": ("Mechanics shop", {"mechanic", "mechanicstorage", "autoshop", "carrepair"}),
     "garage": ("Garage", {"garage", "garagestorage"}),
-    "hardware": ("Hardware / tool shop", {"toolstore", "toolstorage", "hardwarestore", "hardwarestorage"}),
+    "hardware": (
+        "Hardware / tool shop",
+        {"toolstore", "toolstorage", "hardwarestore", "hardwarestorage"},
+    ),
     "construction": (
         "Construction supplies / workshop",
         {
@@ -60,7 +63,10 @@ CATEGORIES = {
     ),
     "surplus": ("Military surplus store", {"armysurplus", "armysurplusguns"}),
     "gunstore": ("Gun store", {"gunstore", "gunstorestorage", "gunstorage"}),
-    "armory": ("Armory / weapons storage", {"armory", "policegunstorage", "prisonarmory", "policeswat"}),
+    "armory": (
+        "Armory / weapons storage",
+        {"armory", "policegunstorage", "prisonarmory", "policeswat"},
+    ),
     "military": ("Military site / storage", {"armystorage", "armytent", "oldarmy"}),
     "hunting": ("Hunting shop / section", {"hunting"}),
     "police": (
@@ -380,7 +386,9 @@ class Terrain:
                 entries.append(
                     {
                         "id": identity,
-                        "label": "Residential garage" if category == "garage" and residential else label,
+                        "label": "Residential garage"
+                        if category == "garage" and residential
+                        else label,
                         "category": category,
                         "z": min(r["z"] for r in matching),
                         "rects": rects,
@@ -391,7 +399,12 @@ class Terrain:
     def index_known(self, known):
         if not self.root.is_dir():
             raise FileNotFoundError("Installed map directory is unavailable")
-        cells = {(x // 256 + dx, y // 256 + dy) for x, y in known for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
+        cells = {
+            (x // 256 + dx, y // 256 + dy)
+            for x, y in known
+            for dx in (-1, 0, 1)
+            for dy in (-1, 0, 1)
+        }
         with self.lock:
             for cx, cy in sorted(cells):
                 if (self.root / f"{cx}_{cy}.lotheader").exists():
@@ -415,14 +428,17 @@ class Terrain:
                         if place["category"] not in categories:
                             continue
                     elif not all(
-                        word in (place["label"] + " " + place["category"]).lower() for word in query.split()
+                        word in (place["label"] + " " + place["category"]).lower()
+                        for word in query.split()
                     ):
                         continue
                     rects = visible_rects(place["rects"], known)
                     if not rects:
                         continue
                     # Anchor inside a known matching room, never in an unknown centroid.
-                    rect = min(rects, key=lambda r: (r[0] + r[2] / 2 - x) ** 2 + (r[1] + r[3] / 2 - y) ** 2)
+                    rect = min(
+                        rects, key=lambda r: (r[0] + r[2] / 2 - x) ** 2 + (r[1] + r[3] / 2 - y) ** 2
+                    )
                     px, py = rect[0] + rect[2] / 2, rect[1] + rect[3] / 2
                     results[place["id"]] = {k: v for k, v in place.items() if k != "rects"} | {
                         "x": px,
@@ -445,7 +461,8 @@ class Terrain:
             if overlaps:
                 primary = overlaps[0]
                 primary["rects"] = [
-                    list(r) for r in sorted({tuple(r) for p in [place, *overlaps] for r in p["rects"]})
+                    list(r)
+                    for r in sorted({tuple(r) for p in [place, *overlaps] for r in p["rects"]})
                 ]
                 for duplicate in overlaps[1:]:
                     merged.remove(duplicate)
@@ -458,7 +475,9 @@ class Terrain:
         p = self.root / f"world_{cx}_{cy}.lotpack"
         stat = p.stat()
         fingerprint = hashlib.sha256(
-            repr((RENDER_VERSION, self.headers[(cx, cy)][0], stat.st_size, stat.st_mtime_ns)).encode()
+            repr(
+                (RENDER_VERSION, self.headers[(cx, cy)][0], stat.st_size, stat.st_mtime_ns)
+            ).encode()
         ).hexdigest()[:16]
         target = self.cache / f"{cx}_{cy}_{fingerprint}.png"
         if target.exists():
@@ -487,7 +506,9 @@ class Terrain:
                 return self.tiles[key]
             result = Image.new("RGB", (256, 256), UNKNOWN)
             blocks = [
-                (x, y) for x, y in known if x < x0 + span and x + 32 > x0 and y < y0 + span and y + 32 > y0
+                (x, y)
+                for x, y in known
+                if x < x0 + span and x + 32 > x0 and y < y0 + span and y + 32 > y0
             ]
             cells = {}
             scale = 256 / span
@@ -510,7 +531,9 @@ class Terrain:
                 # sampling can miss an entire narrow rural road or stream. Cropping
                 # before filtering prevents hidden neighbors from leaking through.
                 result.paste(
-                    crop.resize(size, Image.Resampling.BOX if scale < 1 else Image.Resampling.NEAREST),
+                    crop.resize(
+                        size, Image.Resampling.BOX if scale < 1 else Image.Resampling.NEAREST
+                    ),
                     (round((a - x0) * scale), round((b - y0) * scale)),
                 )
             output = io.BytesIO()

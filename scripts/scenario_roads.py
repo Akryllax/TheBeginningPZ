@@ -4,6 +4,7 @@ The Observer raster is a navigation hint: PAVEMENT includes sidewalks. Vehicle
 probes additionally require explicit installed floor materials and room/collision
 checks on the live server. This module never reads or writes a world save.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -22,22 +23,27 @@ from observer.terrain import Binary, read_header
 def probe_waypoints(rows):
     """Match the disposable runtime's ground-only bounded route contract."""
     if not isinstance(rows, list) or not 2 <= len(rows) <= 16:
-        raise ValueError('Probe route needs 2..16 waypoints')
+        raise ValueError("Probe route needs 2..16 waypoints")
     points = []
     for row in rows:
         if not isinstance(row, dict):
-            raise ValueError('Waypoints must be x/y objects')
-        z = row.get('z', 0)
+            raise ValueError("Waypoints must be x/y objects")
+        z = row.get("z", 0)
         if isinstance(z, bool) or not isinstance(z, (float, int)) or z != 0:
-            raise ValueError('Probe route must remain at ground level')
-        point = tuple(row.get(k) for k in ('x', 'y'))
-        if any(isinstance(v, bool) or not isinstance(v, (float, int)) or
-               not math.isfinite(v) or not -20000 <= v <= 60000 for v in point):
-            raise ValueError('Waypoints must contain bounded finite x/y coordinates')
+            raise ValueError("Probe route must remain at ground level")
+        point = tuple(row.get(k) for k in ("x", "y"))
+        if any(
+            isinstance(v, bool)
+            or not isinstance(v, (float, int))
+            or not math.isfinite(v)
+            or not -20000 <= v <= 60000
+            for v in point
+        ):
+            raise ValueError("Waypoints must contain bounded finite x/y coordinates")
         points.append(point)
     distances = [math.dist(a, b) for a, b in zip(points, points[1:])]
     if any(not 0.5 <= d <= 40 for d in distances) or not 2 <= sum(distances) <= 60:
-        raise ValueError('Probe route needs segment length 0.5..40 and total length 2..60 tiles')
+        raise ValueError("Probe route needs segment length 0.5..40 and total length 2..60 tiles")
     return points
 
 
@@ -109,8 +115,10 @@ def physical_tile_obstacle(name, props):
     if "PhysicsShape" in props:
         return props["PhysicsShape"] != "Floor"
     return props.get("MoveType") != "WallObject" and (
-        "lighting_outdoor_" in name or name in {
-            "recreational_sports_01_19", "recreational_sports_01_21", "recreational_sports_01_32"})
+        "lighting_outdoor_" in name
+        or name
+        in {"recreational_sports_01_19", "recreational_sports_01_21", "recreational_sports_01_32"}
+    )
 
 
 def explicit_road_floor(names, properties, materials=frozenset({"Road_06"})):
@@ -189,8 +197,13 @@ def corridor_cells(points, radius=2.25, step=0.25):
     A disk containing the entire vehicle footprint is invariant under heading.
     Samples expand by half a step so gaps between samples cannot hide a tile.
     """
-    if (not 2 <= len(points) <= 128 or not math.isfinite(radius) or not math.isfinite(step)
-            or not 0 < radius <= 8 or not 0 < step <= 1):
+    if (
+        not 2 <= len(points) <= 128
+        or not math.isfinite(radius)
+        or not math.isfinite(step)
+        or not 0 < radius <= 8
+        or not 0 < step <= 1
+    ):
         raise ValueError("Invalid bounded corridor")
     if any(len(p) != 2 or any(not math.isfinite(v) for v in p) for p in points):
         raise ValueError("Invalid route point")

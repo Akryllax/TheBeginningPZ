@@ -106,7 +106,9 @@ def read_roads(path):
                 if not 0 <= length <= 32767:
                     raise ValueError("Invalid road geometry")
                 rings.append(
-                    tuple((cx * 256 + x, cy * 256 + y) for x, y in (read("2h") for _ in range(length)))
+                    tuple(
+                        (cx * 256 + x, cy * 256 + y) for x, y in (read("2h") for _ in range(length))
+                    )
                 )
             props = {}
             for _ in range(read("B")):
@@ -153,7 +155,9 @@ class Roads:
         pack = self.root / f"world_{cx}_{cy}.lotpack"
         try:
             identity = [(p.stat().st_size, p.stat().st_mtime_ns) for p in (header, pack)]
-            digest = hashlib.sha256(repr((ROAD_VERSION, self.revision, identity)).encode()).hexdigest()[:16]
+            digest = hashlib.sha256(
+                repr((ROAD_VERSION, self.revision, identity)).encode()
+            ).hexdigest()[:16]
             target = self.cache / f"{cx}_{cy}_{digest}.bin"
             if target.exists() and target.stat().st_size == 65536:
                 result = target.read_bytes()
@@ -280,7 +284,12 @@ class Search:
             for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)):
                 q = x + dx, y + dy
                 weight = self.cost(*q)
-                if not weight or dx and dy and (not self.cost(x + dx, y) or not self.cost(x, y + dy)):
+                if (
+                    not weight
+                    or dx
+                    and dy
+                    and (not self.cost(x + dx, y) or not self.cost(x, y + dy))
+                ):
                     continue
                 candidate = g + (math.sqrt(2) if dx and dy else 1) * (here + weight) / 2
                 if candidate < distance.get(q, math.inf):
@@ -312,7 +321,11 @@ class Search:
             furthest, index = -1, first + 1
             for i in range(first + 1, last):
                 p = corners[i]
-                t = max(0, min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length)) if length else 0
+                t = (
+                    max(0, min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length))
+                    if length
+                    else 0
+                )
                 d = math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy)
                 if d > furthest:
                     furthest, index = d, i
@@ -373,11 +386,20 @@ class Search:
             else:
                 stops.append(dict(b))
                 for i, mode in enumerate(modes):
-                    if geometry and geometry[-1]["from"] == a["id"] and geometry[-1]["kind"] == mode:
+                    if (
+                        geometry
+                        and geometry[-1]["from"] == a["id"]
+                        and geometry[-1]["kind"] == mode
+                    ):
                         geometry[-1]["points"].append(path[i + 1])
                     else:
                         geometry.append(
-                            {"from": a["id"], "to": b["id"], "kind": mode, "points": [path[i], path[i + 1]]}
+                            {
+                                "from": a["id"],
+                                "to": b["id"],
+                                "kind": mode,
+                                "points": [path[i], path[i + 1]],
+                            }
                         )
             for i, mode in enumerate(modes):
                 d = math.dist(path[i], path[i + 1])
@@ -387,7 +409,8 @@ class Search:
                     access_distance += d
             if len(stops) > MAX_STOPS:
                 raise RouteFailure(
-                    "limit", "This route has more than 256 checkpoints. Split it into shorter trips."
+                    "limit",
+                    "This route has more than 256 checkpoints. Split it into shorter trips.",
                 )
         return {
             "status": "ready",
@@ -418,6 +441,9 @@ def calculate(root, cache, known, anchors, turns, terrain_revision=0):
     except RouteFailure as exc:
         result = {"status": exc.status, "message": exc.message}
     except (OSError, ValueError, struct.error, IndexError):
-        result = {"status": "unavailable", "message": "Installed road data is unavailable or unsupported."}
+        result = {
+            "status": "unavailable",
+            "message": "Installed road data is unavailable or unsupported.",
+        }
     result["elapsed_ms"] = round((time.monotonic() - started) * 1000)
     return result

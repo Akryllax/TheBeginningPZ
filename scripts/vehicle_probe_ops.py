@@ -1,4 +1,5 @@
 """Operate the disposable server-owned vehicle experiment, without client injection."""
+
 import hashlib
 import json
 import math
@@ -16,10 +17,10 @@ import scenario_ops as scenario
 
 @contextmanager
 def operation_lock(m):
-    base = m.ROOT / 'artifacts/vehicle-probe'
+    base = m.ROOT / "artifacts/vehicle-probe"
     base.mkdir(parents=True, exist_ok=True)
-    path = base / '.operations.lock'
-    with path.open('a') as lock:
+    path = base / ".operations.lock"
+    with path.open("a") as lock:
         path.chmod(0o600)
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         try:
@@ -33,97 +34,134 @@ def serialized(function):
     def invoke(m, *args, **kwargs):
         with operation_lock(m):
             return function(m, *args, **kwargs)
+
     return invoke
 
 
 def current(m):
-    receipt = json.loads((m.ROOT / 'artifacts/vehicle-probe/current.json').read_text())
-    target = Path(receipt['path']).resolve()
-    if not target.is_relative_to((m.ROOT / 'artifacts/vehicle-probe').resolve()):
-        raise RuntimeError('Probe path outside project')
-    if not receipt['world'].startswith('LofersVehicleProbe_'):
-        raise RuntimeError('Not a disposable vehicle-probe world')
+    receipt = json.loads((m.ROOT / "artifacts/vehicle-probe/current.json").read_text())
+    target = Path(receipt["path"]).resolve()
+    if not target.is_relative_to((m.ROOT / "artifacts/vehicle-probe").resolve()):
+        raise RuntimeError("Probe path outside project")
+    if not receipt["world"].startswith("LofersVehicleProbe_"):
+        raise RuntimeError("Not a disposable vehicle-probe world")
     return receipt, target
 
 
 @serialized
 def prepare(m, driver_model=False):
-    base = m.ROOT / 'artifacts/vehicle-probe'
+    base = m.ROOT / "artifacts/vehicle-probe"
     base.mkdir(parents=True, exist_ok=True)
-    active = m.run([m.PODMAN, 'ps', '--filter', 'name=^lofers-vehicle-probe$', '--format', '{{.ID}}'], capture=True)
+    active = m.run(
+        [m.PODMAN, "ps", "--filter", "name=^lofers-vehicle-probe$", "--format", "{{.ID}}"],
+        capture=True,
+    )
     if active.stdout.strip():
-        raise RuntimeError('Stop the previous vehicle probe before preparing another')
-    stamp = time.strftime('%Y%m%d_%H%M%S', time.gmtime()) + '_' + uuid.uuid4().hex[:6]
-    world = 'LofersVehicleProbe_' + stamp
+        raise RuntimeError("Stop the previous vehicle probe before preparing another")
+    stamp = time.strftime("%Y%m%d_%H%M%S", time.gmtime()) + "_" + uuid.uuid4().hex[:6]
+    world = "LofersVehicleProbe_" + stamp
     target = base / stamp
-    server = target / 'Zomboid/Server'
+    server = target / "Zomboid/Server"
     server.mkdir(parents=True, mode=0o700)
     target.chmod(0o700)
-    source = m.ROOT / 'data/Zomboid/Server'
-    ini = scenario.replace_ini((source / f'{m.WORLD}.ini').read_text(), {
-        'DefaultPort': 16281, 'UDPPort': 16282, 'RCONPort': 27035,
-        'Public': 'false', 'PublicName': 'Lofers vehicle physics experiment',
-        'SpawnPoint': '10753,9848,0', 'PauseEmpty': 'false',
-        'Mods': '\\LofersDriverProbe' if driver_model else '', 'WorkshopItems': '',
-    })
-    scenario.write_private(server / f'{world}.ini', ini)
-    sandbox = scenario.scenario_sandbox((source / f'{m.WORLD}_SandboxVars.lua').read_text())
-    sandbox = sandbox.replace('LofersScenario = { Enabled = true }', 'LofersScenario = { Enabled = false }')
-    scenario.write_private(server / f'{world}_SandboxVars.lua', sandbox)
-    (server / f'{world}_spawnregions.lua').write_text('function SpawnRegions() return { { name="Muldraugh, KY", file="media/maps/Muldraugh, KY/spawnpoints.lua" } } end\n')
-    config = json.loads((m.ROOT / 'data/game-files/ProjectZomboid64.json').read_text())
-    config['vmArgs'] = [a for a in config['vmArgs'] if not a.startswith('-Xmx')] + ['-Xmx3g']
-    (target / 'ProjectZomboid64.json').write_text(json.dumps(config, indent=2) + '\n')
-    (target / 'probe').mkdir(mode=0o700)
-    (target / 'Zomboid/mods').mkdir()
+    source = m.ROOT / "data/Zomboid/Server"
+    ini = scenario.replace_ini(
+        (source / f"{m.WORLD}.ini").read_text(),
+        {
+            "DefaultPort": 16281,
+            "UDPPort": 16282,
+            "RCONPort": 27035,
+            "Public": "false",
+            "PublicName": "Lofers vehicle physics experiment",
+            "SpawnPoint": "10753,9848,0",
+            "PauseEmpty": "false",
+            "Mods": "\\LofersDriverProbe" if driver_model else "",
+            "WorkshopItems": "",
+        },
+    )
+    scenario.write_private(server / f"{world}.ini", ini)
+    sandbox = scenario.scenario_sandbox((source / f"{m.WORLD}_SandboxVars.lua").read_text())
+    sandbox = sandbox.replace(
+        "LofersScenario = { Enabled = true }", "LofersScenario = { Enabled = false }"
+    )
+    scenario.write_private(server / f"{world}_SandboxVars.lua", sandbox)
+    (server / f"{world}_spawnregions.lua").write_text(
+        'function SpawnRegions() return { { name="Muldraugh, KY", file="media/maps/Muldraugh, KY/spawnpoints.lua" } } end\n'
+    )
+    config = json.loads((m.ROOT / "data/game-files/ProjectZomboid64.json").read_text())
+    config["vmArgs"] = [a for a in config["vmArgs"] if not a.startswith("-Xmx")] + ["-Xmx3g"]
+    (target / "ProjectZomboid64.json").write_text(json.dumps(config, indent=2) + "\n")
+    (target / "probe").mkdir(mode=0o700)
+    (target / "Zomboid/mods").mkdir()
     if driver_model:
-        package_driver_assets(m.ROOT, target / 'Zomboid/mods/LofersDriverProbe')
-    (target / 'agent').mkdir()
-    accounts = m.ROOT / f'data/Zomboid/db/{m.WORLD}.db'
+        package_driver_assets(m.ROOT, target / "Zomboid/mods/LofersDriverProbe")
+    (target / "agent").mkdir()
+    accounts = m.ROOT / f"data/Zomboid/db/{m.WORLD}.db"
     if accounts.is_file():
-        dbpath = target / 'Zomboid/db' / f'{world}.db'
+        dbpath = target / "Zomboid/db" / f"{world}.db"
         dbpath.parent.mkdir(exist_ok=True)
-        with sqlite3.connect(f'file:{accounts}?mode=ro', uri=True) as src, sqlite3.connect(dbpath) as dst:
+        with (
+            sqlite3.connect(f"file:{accounts}?mode=ro", uri=True) as src,
+            sqlite3.connect(dbpath) as dst,
+        ):
             src.backup(dst)
-            dst.execute('UPDATE whitelist SET world=?', (world,))
-            dst.execute("UPDATE whitelist SET role=(SELECT id FROM role WHERE name='admin') WHERE username='akr'")
+            dst.execute("UPDATE whitelist SET world=?", (world,))
+            dst.execute(
+                "UPDATE whitelist SET role=(SELECT id FROM role WHERE name='admin') WHERE username='akr'"
+            )
         dbpath.chmod(0o600)
-    props = (f'side=server\nscenario.enabled=true\nworld={world}\n'
-             'socket=/run/lofers/no-planner.sock\n'
-             f'bandits_update_file={scenario.BANDITS_SOURCE}\n'
-             'vehicle_probe.enabled=true\nvehicle_probe.directory=/opt/vehicle-probe\n'
-             'vehicle_probe.x=10756.5\nvehicle_probe.y=9856.5\nvehicle_probe.z=0\n'
-             'vehicle_probe.heading_degrees=90\nvehicle_probe.script='
-             + ('Base.LofersSmallCar' if driver_model else 'Base.SmallCar') + '\n')
-    scenario.write_private(target / 'scenario.properties', props)
-    receipt = {'world': world, 'path': str(target), 'container': 'lofers-vehicle-probe',
-               'ports': [16281, 16282, 27035], 'kind': 'disposable-vehicle-probe',
-               'vehicle': [10756.5, 9856.5, 0], 'status': 'prepared', 'client_java_required': False,
-               'driver_model': driver_model}
-    scenario.write_private(target / 'receipt.json', json.dumps(receipt, indent=2) + '\n')
-    scenario.write_private(base / 'current.json', json.dumps(receipt, indent=2) + '\n')
-    print(f'Prepared isolated vehicle probe {world}. Playable world preserved.')
+    props = (
+        f"side=server\nscenario.enabled=true\nworld={world}\n"
+        "socket=/run/lofers/no-planner.sock\n"
+        f"bandits_update_file={scenario.BANDITS_SOURCE}\n"
+        "vehicle_probe.enabled=true\nvehicle_probe.directory=/opt/vehicle-probe\n"
+        "vehicle_probe.x=10756.5\nvehicle_probe.y=9856.5\nvehicle_probe.z=0\n"
+        "vehicle_probe.heading_degrees=90\nvehicle_probe.script="
+        + ("Base.LofersSmallCar" if driver_model else "Base.SmallCar")
+        + "\n"
+    )
+    scenario.write_private(target / "scenario.properties", props)
+    receipt = {
+        "world": world,
+        "path": str(target),
+        "container": "lofers-vehicle-probe",
+        "ports": [16281, 16282, 27035],
+        "kind": "disposable-vehicle-probe",
+        "vehicle": [10756.5, 9856.5, 0],
+        "status": "prepared",
+        "client_java_required": False,
+        "driver_model": driver_model,
+    }
+    scenario.write_private(target / "receipt.json", json.dumps(receipt, indent=2) + "\n")
+    scenario.write_private(base / "current.json", json.dumps(receipt, indent=2) + "\n")
+    print(f"Prepared isolated vehicle probe {world}. Playable world preserved.")
 
 
 def package_driver_assets(root, destination):
     """An isolated original visual test mod with disposable-world visibility setup."""
-    media = root / 'mods/LofersStoryteller/42/media'
-    (destination / 'common').mkdir(parents=True, exist_ok=True)
-    version = destination / '42'
+    media = root / "mods/LofersStoryteller/42/media"
+    (destination / "common").mkdir(parents=True, exist_ok=True)
+    version = destination / "42"
     version.mkdir(exist_ok=True)
-    for scope in ('common', '42'):
-        for name in ('AnimSets', 'actiongroups'):
-            (destination / scope / 'media' / name).mkdir(parents=True, exist_ok=True)
-    (version / 'mod.info').write_text('name=Lofers original driver test\nid=LofersDriverProbe\nversionMin=42.20\n'
-                                    'description=Original static seated driver; disposable visual test only.\n')
-    files = ['models_X/Lofers/SeatedDriver.x', 'textures/Lofers/DriverPalette.png', 'scripts/lofers_driver.txt']
+    for scope in ("common", "42"):
+        for name in ("AnimSets", "actiongroups"):
+            (destination / scope / "media" / name).mkdir(parents=True, exist_ok=True)
+    (version / "mod.info").write_text(
+        "name=Lofers original driver test\nid=LofersDriverProbe\nversionMin=42.20\n"
+        "description=Original static seated driver; disposable visual test only.\n"
+    )
+    files = [
+        "models_X/Lofers/SeatedDriver.x",
+        "textures/Lofers/DriverPalette.png",
+        "scripts/lofers_driver.txt",
+    ]
     for name in files:
-        output = version / 'media' / name
+        output = version / "media" / name
         output.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(media / name, output)
-    weather = version / 'media/lua/server/LofersDriverProbeWeather.lua'
+    weather = version / "media/lua/server/LofersDriverProbeWeather.lua"
     weather.parent.mkdir(parents=True, exist_ok=True)
-    weather.write_text('''-- Original visibility setup, restricted to disposable driver tests.
+    weather.write_text("""-- Original visibility setup, restricted to disposable driver tests.
 local ticks=0
 local function clearFog()
     if not isServer() or not string.find(getServerName(), "^LofersVehicleProbe_") then
@@ -145,223 +183,379 @@ local function clearFog()
     end
 end
 Events.OnTick.Add(clearFog)
-''')
+""")
 
 
 @serialized
 def start(m):
     receipt, target = current(m)
     scenario.free_ports()
-    active = m.run([m.PODMAN, 'ps', '--filter', 'name=^lofers-vehicle-probe$', '--format', '{{.ID}}'], capture=True)
+    active = m.run(
+        [m.PODMAN, "ps", "--filter", "name=^lofers-vehicle-probe$", "--format", "{{.ID}}"],
+        capture=True,
+    )
     if active.stdout.strip():
-        raise RuntimeError('Vehicle probe already running')
-    jar = m.ROOT / 'artifacts/scenario-agent/lofers-scenario-agent.jar'
-    manifest = json.loads((jar.parent / 'manifest.json').read_text())
-    if hashlib.sha256(jar.read_bytes()).hexdigest() != manifest['jar_sha256']:
-        raise RuntimeError('Scenario agent artifact does not match its build manifest')
+        raise RuntimeError("Vehicle probe already running")
+    jar = m.ROOT / "artifacts/scenario-agent/lofers-scenario-agent.jar"
+    manifest = json.loads((jar.parent / "manifest.json").read_text())
+    if hashlib.sha256(jar.read_bytes()).hexdigest() != manifest["jar_sha256"]:
+        raise RuntimeError("Scenario agent artifact does not match its build manifest")
     # Each test runs a private immutable copy; rebuilding source cannot replace a loaded JAR.
-    shutil.copy2(jar, target / 'agent/lofers-scenario-agent.jar')
-    shutil.copy2(jar.parent / 'manifest.json', target / 'agent/manifest.json')
-    m.run([m.PODMAN, 'rm', receipt['container']], capture=True, check=False)
-    m.run([m.PODMAN, 'run', '-d', '--name', receipt['container'], '--userns=keep-id',
-           '--memory=5g', '--cpus=4', '--ulimit', 'core=0:0',
-           '-p', '192.168.1.132:16281:16281/udp', '-p', '192.168.1.132:16282:16282/udp',
-           '-p', '127.0.0.1:27035:27035/tcp', '-e', f"PZ_WORLD={receipt['world']}",
-           '-e', 'JAVA_TOOL_OPTIONS=-javaagent:/opt/scenario/lofers-scenario-agent.jar=/opt/scenario/scenario.properties',
-           '-v', f'{m.ROOT}/data/game-files:/pzserver:ro,z',
-           '-v', f'{target}/ProjectZomboid64.json:/pzserver/ProjectZomboid64.json:ro,z',
-           '-v', f'{target}/Zomboid:/home/pzuser/Zomboid:z',
-           '-v', f'{target}/agent/lofers-scenario-agent.jar:/opt/scenario/lofers-scenario-agent.jar:ro,z',
-           '-v', f'{target}/scenario.properties:/opt/scenario/scenario.properties:ro,z',
-           '-v', f'{target}/probe:/opt/vehicle-probe:z',
-           '-v', f'{m.ROOT}/secrets/admin-password:/run/secrets/admin-password:ro,z',
-           '-v', f'{m.ROOT}/game/entrypoint.sh:/home/pzuser/entrypoint.sh:ro,z',
-           'localhost/zomboid-dayone_game:latest'])
-    detail = 'original LofersDriverProbe asset mod required' if receipt.get('driver_model') else 'no game mods'
-    print(f'Vehicle probe server starting on 192.168.1.132:16281; ordinary clients, {detail}.')
+    shutil.copy2(jar, target / "agent/lofers-scenario-agent.jar")
+    shutil.copy2(jar.parent / "manifest.json", target / "agent/manifest.json")
+    m.run([m.PODMAN, "rm", receipt["container"]], capture=True, check=False)
+    m.run(
+        [
+            m.PODMAN,
+            "run",
+            "-d",
+            "--name",
+            receipt["container"],
+            "--userns=keep-id",
+            "--memory=5g",
+            "--cpus=4",
+            "--ulimit",
+            "core=0:0",
+            "-p",
+            "192.168.1.132:16281:16281/udp",
+            "-p",
+            "192.168.1.132:16282:16282/udp",
+            "-p",
+            "127.0.0.1:27035:27035/tcp",
+            "-e",
+            f"PZ_WORLD={receipt['world']}",
+            "-e",
+            "JAVA_TOOL_OPTIONS=-javaagent:/opt/scenario/lofers-scenario-agent.jar=/opt/scenario/scenario.properties",
+            "-v",
+            f"{m.ROOT}/data/game-files:/pzserver:ro,z",
+            "-v",
+            f"{target}/ProjectZomboid64.json:/pzserver/ProjectZomboid64.json:ro,z",
+            "-v",
+            f"{target}/Zomboid:/home/pzuser/Zomboid:z",
+            "-v",
+            f"{target}/agent/lofers-scenario-agent.jar:/opt/scenario/lofers-scenario-agent.jar:ro,z",
+            "-v",
+            f"{target}/scenario.properties:/opt/scenario/scenario.properties:ro,z",
+            "-v",
+            f"{target}/probe:/opt/vehicle-probe:z",
+            "-v",
+            f"{m.ROOT}/secrets/admin-password:/run/secrets/admin-password:ro,z",
+            "-v",
+            f"{m.ROOT}/game/entrypoint.sh:/home/pzuser/entrypoint.sh:ro,z",
+            "localhost/zomboid-dayone_game:latest",
+        ]
+    )
+    detail = (
+        "original LofersDriverProbe asset mod required"
+        if receipt.get("driver_model")
+        else "no game mods"
+    )
+    print(f"Vehicle probe server starting on 192.168.1.132:16281; ordinary clients, {detail}.")
 
 
 def properties(path):
-    return dict(line.split('=', 1) for line in path.read_text().splitlines()
-                if '=' in line and not line.startswith(('#', '!')))
+    return dict(
+        line.split("=", 1)
+        for line in path.read_text().splitlines()
+        if "=" in line and not line.startswith(("#", "!"))
+    )
 
 
 def route_points(payload):
     """Validate detached coordinates before modifying the stopped experiment."""
-    points = payload.get('waypoints') if isinstance(payload, dict) else None
+    points = payload.get("waypoints") if isinstance(payload, dict) else None
     if not isinstance(points, list) or not 2 <= len(points) <= 16:
-        raise ValueError('A probe route requires 2 to 16 waypoints')
+        raise ValueError("A probe route requires 2 to 16 waypoints")
     normalized = []
     for point in points:
         if not isinstance(point, dict):
-            raise ValueError('Waypoint must contain numeric x/y coordinates')
-        xy = [point.get('x'), point.get('y')]
-        if any(type(v) not in (int, float) or not math.isfinite(v) or not -20000 <= v <= 60000 for v in xy):
-            raise ValueError('Waypoint coordinate is not finite or within the probe bounds')
-        z = point.get('z', 0)
+            raise ValueError("Waypoint must contain numeric x/y coordinates")
+        xy = [point.get("x"), point.get("y")]
+        if any(
+            type(v) not in (int, float) or not math.isfinite(v) or not -20000 <= v <= 60000
+            for v in xy
+        ):
+            raise ValueError("Waypoint coordinate is not finite or within the probe bounds")
+        z = point.get("z", 0)
         if type(z) not in (int, float) or z != 0:
-            raise ValueError('Probe waypoints must be at ground level')
+            raise ValueError("Probe waypoints must be at ground level")
         normalized.append(tuple(float(v) for v in xy))
     lengths = [math.dist(a, b) for a, b in zip(normalized, normalized[1:])]
-    if min(lengths) < 0.5 or max(lengths) > 40 or not 2 <= sum(lengths) <= (600 if payload.get('extended_impact') is True else 60):
-        raise ValueError('Probe route needs segments 0.5 to 40 tiles and total length 2 to 60 tiles')
+    if (
+        min(lengths) < 0.5
+        or max(lengths) > 40
+        or not 2 <= sum(lengths) <= (600 if payload.get("extended_impact") is True else 60)
+    ):
+        raise ValueError(
+            "Probe route needs segments 0.5 to 40 tiles and total length 2 to 60 tiles"
+        )
     return normalized
 
 
 def traffic_settings(payload, points):
-    lane=payload.get('lane_mode',False)
-    speed=payload.get('speed_kmh',4)
-    ceiling=(120 if payload.get('extended_impact') is True else 50) if lane and payload.get('beziers') else 15 if lane else 5
-    if type(lane) is not bool or type(speed) not in (int,float) or not math.isfinite(speed) or not 1<=speed<=ceiling:
-        raise ValueError('Invalid lane mode or bounded speed')
-    rows=payload.get('stops',[])
-    if not isinstance(rows,list) or len(rows)>4:raise ValueError('At most four stops')
-    length=sum(math.dist(a,b) for a,b in zip(points,points[1:]))
-    stops=[];previous=0
+    lane = payload.get("lane_mode", False)
+    speed = payload.get("speed_kmh", 4)
+    ceiling = (
+        (120 if payload.get("extended_impact") is True else 50)
+        if lane and payload.get("beziers")
+        else 15
+        if lane
+        else 5
+    )
+    if (
+        type(lane) is not bool
+        or type(speed) not in (int, float)
+        or not math.isfinite(speed)
+        or not 1 <= speed <= ceiling
+    ):
+        raise ValueError("Invalid lane mode or bounded speed")
+    rows = payload.get("stops", [])
+    if not isinstance(rows, list) or len(rows) > 4:
+        raise ValueError("At most four stops")
+    length = sum(math.dist(a, b) for a, b in zip(points, points[1:]))
+    stops = []
+    previous = 0
     for row in rows:
-        if not isinstance(row,dict):raise ValueError('Invalid stop')
-        progress,hold=row.get('progress'),row.get('hold_seconds')
-        if any(type(n) not in (int,float) or not math.isfinite(n) for n in (progress,hold)) or not 2<=progress<=length-3 or progress<=previous or not 1<=hold<=5:
-            raise ValueError('Invalid stop progress or hold')
-        stops.append((progress,hold));previous=progress
-    return lane,speed,stops
+        if not isinstance(row, dict):
+            raise ValueError("Invalid stop")
+        progress, hold = row.get("progress"), row.get("hold_seconds")
+        if (
+            any(type(n) not in (int, float) or not math.isfinite(n) for n in (progress, hold))
+            or not 2 <= progress <= length - 3
+            or progress <= previous
+            or not 1 <= hold <= 5
+        ):
+            raise ValueError("Invalid stop progress or hold")
+        stops.append((progress, hold))
+        previous = progress
+    return lane, speed, stops
 
 
 @serialized
 def configure_route(m, source):
     receipt, target = current(m)
-    active = m.run([m.PODMAN, 'ps', '--filter', f"name=^{receipt['container']}$", '--format', '{{.ID}}'], capture=True)
+    active = m.run(
+        [m.PODMAN, "ps", "--filter", f"name=^{receipt['container']}$", "--format", "{{.ID}}"],
+        capture=True,
+    )
     if active.stdout.strip():
-        raise RuntimeError('Stop the vehicle probe before changing its route')
+        raise RuntimeError("Stop the vehicle probe before changing its route")
     source = Path(source).resolve()
-    if not source.is_relative_to((m.ROOT / 'artifacts').resolve()):
-        raise ValueError('Use a reviewed route artifact inside this project artifacts directory')
-    with source.open('rb') as stream:
+    if not source.is_relative_to((m.ROOT / "artifacts").resolve()):
+        raise ValueError("Use a reviewed route artifact inside this project artifacts directory")
+    with source.open("rb") as stream:
         data = stream.read(65537)
     if len(data) > 65536:
-        raise ValueError('Probe route artifact exceeds 64 KiB')
+        raise ValueError("Probe route artifact exceeds 64 KiB")
     payload = json.loads(data)
     points = route_points(payload)
     lane, speed, stops = traffic_settings(payload, points)
-    curves=payload.get('beziers',[])
-    curve_text=''
+    curves = payload.get("beziers", [])
+    curve_text = ""
     if curves:
-        if not lane:raise ValueError('Bezier path requires lane mode')
+        if not lane:
+            raise ValueError("Bezier path requires lane mode")
         from scenario_lanes import bezier_samples
-        samples=list(bezier_samples(curves, extended_impact=payload.get('extended_impact') is True))
-        if math.dist(samples[0][:2],points[0])>.001 or math.dist(samples[-1][:2],points[-1])>.001:
-            raise ValueError('Bezier endpoints differ from route')
-        curve_text=';'.join(','.join(f'{p[k]:.10f}' for p in curve for k in ('x','y')) for curve in curves)
-    bypass=payload.get('bypass',False)
-    if type(bypass) is not bool:raise ValueError('Bypass must be a boolean')
-    shoulder=payload.get('shoulder',False)
-    if type(shoulder) is not bool or shoulder and not bypass:raise ValueError('Shoulder choice requires a bypass route')
+
+        samples = list(
+            bezier_samples(curves, extended_impact=payload.get("extended_impact") is True)
+        )
+        if (
+            math.dist(samples[0][:2], points[0]) > 0.001
+            or math.dist(samples[-1][:2], points[-1]) > 0.001
+        ):
+            raise ValueError("Bezier endpoints differ from route")
+        curve_text = ";".join(
+            ",".join(f"{p[k]:.10f}" for p in curve for k in ("x", "y")) for curve in curves
+        )
+    bypass = payload.get("bypass", False)
+    if type(bypass) is not bool:
+        raise ValueError("Bypass must be a boolean")
+    shoulder = payload.get("shoulder", False)
+    if type(shoulder) is not bool or shoulder and not bypass:
+        raise ValueError("Shoulder choice requires a bypass route")
     if bypass:
-        if not lane or not curves or stops:raise ValueError('Bypass requires a reviewed straight curved lane route without stops')
-        dx,dy=points[-1][0]-points[0][0],points[-1][1]-points[0][1]
-        span=math.hypot(dx,dy)
-        if any(abs((p['x']-points[0][0])*dy-(p['y']-points[0][1])*dx)>span*.001 for curve in curves for p in curve):
-            raise ValueError('Bypass requires a straight road')
-    extended=payload.get('extended_impact',False)
-    if type(extended) is not bool:raise ValueError('Extended impact must be boolean')
-    impact_target=payload.get('impact_target');token=payload.get('impact_token','')
+        if not lane or not curves or stops:
+            raise ValueError("Bypass requires a reviewed straight curved lane route without stops")
+        dx, dy = points[-1][0] - points[0][0], points[-1][1] - points[0][1]
+        span = math.hypot(dx, dy)
+        if any(
+            abs((p["x"] - points[0][0]) * dy - (p["y"] - points[0][1]) * dx) > span * 0.001
+            for curve in curves
+            for p in curve
+        ):
+            raise ValueError("Bypass requires a straight road")
+    extended = payload.get("extended_impact", False)
+    if type(extended) is not bool:
+        raise ValueError("Extended impact must be boolean")
+    impact_target = payload.get("impact_target")
+    token = payload.get("impact_token", "")
     if extended:
         import re
-        if not lane or not curves or stops or bypass or shoulder:raise ValueError('Extended impact requires a straight road without stops or bypass')
-        if not isinstance(impact_target,list) or len(impact_target)!=2 or any(type(v) is not int for v in impact_target) or not re.fullmatch(r'impact-[a-f0-9]{32}',token):raise ValueError('Marked impact target required')
-        dx,dy=points[-1][0]-points[0][0],points[-1][1]-points[0][1];span=math.hypot(dx,dy)
-        if any(abs((p['x']-points[0][0])*dy-(p['y']-points[0][1])*dx)>span*.001 for curve in curves for p in curve):raise ValueError('Extended impact must be straight')
-        tx,ty=impact_target[0]+.5-points[0][0],impact_target[1]+.5-points[0][1]
-        progress=(tx*dx+ty*dy)/span
-        if payload.get('impact_sprite','appliances_com_01_94') not in ('appliances_com_01_94','boulders_0','appliances_cooking_01_16'):raise ValueError('Unreviewed impact sprite')
-        rock_mesh=payload.get('impact_rock_mesh',False)
-        if type(rock_mesh) is not bool or rock_mesh and payload.get('impact_sprite')!='boulders_0':raise ValueError('Sloped rock requires boulder scene')
-        offset=payload.get('impact_lateral_offset',0)
-        if type(offset) not in (int,float) or not math.isfinite(offset) or abs(offset)>1.1:raise ValueError('Invalid impact lateral offset')
-        if abs((tx*dy-ty*dx)/span-offset)>.05 or not 15<=progress<=span-15:raise ValueError('Impact approach/runout insufficient')
-    opposing=payload.get('opposing',False)
-    if type(opposing) is not bool or opposing and (not extended or payload.get('impact_rock_mesh',False) or abs(progress-span/2)>.05 or abs(offset)>.05):raise ValueError('Opposing cars require a centered extended impact without rock mesh')
-    script=payload.get('vehicle_script', 'Base.LofersSmallCar' if receipt.get('driver_model') else 'Base.SmallCar')
-    if script not in ('Base.SmallCar','Base.LofersSmallCar') and not (extended and script=='Base.SportsCar'):raise ValueError('Unreviewed vehicle script')
+
+        if not lane or not curves or stops or bypass or shoulder:
+            raise ValueError("Extended impact requires a straight road without stops or bypass")
+        if (
+            not isinstance(impact_target, list)
+            or len(impact_target) != 2
+            or any(type(v) is not int for v in impact_target)
+            or not re.fullmatch(r"impact-[a-f0-9]{32}", token)
+        ):
+            raise ValueError("Marked impact target required")
+        dx, dy = points[-1][0] - points[0][0], points[-1][1] - points[0][1]
+        span = math.hypot(dx, dy)
+        if any(
+            abs((p["x"] - points[0][0]) * dy - (p["y"] - points[0][1]) * dx) > span * 0.001
+            for curve in curves
+            for p in curve
+        ):
+            raise ValueError("Extended impact must be straight")
+        tx, ty = impact_target[0] + 0.5 - points[0][0], impact_target[1] + 0.5 - points[0][1]
+        progress = (tx * dx + ty * dy) / span
+        if payload.get("impact_sprite", "appliances_com_01_94") not in (
+            "appliances_com_01_94",
+            "boulders_0",
+            "appliances_cooking_01_16",
+        ):
+            raise ValueError("Unreviewed impact sprite")
+        rock_mesh = payload.get("impact_rock_mesh", False)
+        if (
+            type(rock_mesh) is not bool
+            or rock_mesh
+            and payload.get("impact_sprite") != "boulders_0"
+        ):
+            raise ValueError("Sloped rock requires boulder scene")
+        offset = payload.get("impact_lateral_offset", 0)
+        if type(offset) not in (int, float) or not math.isfinite(offset) or abs(offset) > 1.1:
+            raise ValueError("Invalid impact lateral offset")
+        if abs((tx * dy - ty * dx) / span - offset) > 0.05 or not 15 <= progress <= span - 15:
+            raise ValueError("Impact approach/runout insufficient")
+    opposing = payload.get("opposing", False)
+    if (
+        type(opposing) is not bool
+        or opposing
+        and (
+            not extended
+            or payload.get("impact_rock_mesh", False)
+            or abs(progress - span / 2) > 0.05
+            or abs(offset) > 0.05
+        )
+    ):
+        raise ValueError("Opposing cars require a centered extended impact without rock mesh")
+    script = payload.get(
+        "vehicle_script", "Base.LofersSmallCar" if receipt.get("driver_model") else "Base.SmallCar"
+    )
+    if script not in ("Base.SmallCar", "Base.LofersSmallCar") and not (
+        extended and script == "Base.SportsCar"
+    ):
+        raise ValueError("Unreviewed vehicle script")
     dx, dy = points[1][0] - points[0][0], points[1][1] - points[0][1]
-    changes = {'vehicle_probe.opposing':str(opposing).lower(), 'vehicle_probe.extended_impact': str(extended).lower(), 'vehicle_probe.script': script,
-               'vehicle_probe.impact_rock_mesh': str(payload.get('impact_rock_mesh',False) if extended else False).lower(),
-               'vehicle_probe.impact_sprite': payload.get('impact_sprite','appliances_com_01_94') if extended else 'appliances_com_01_94',
-               'vehicle_probe.impact_lateral_offset': payload.get('impact_lateral_offset',0) if extended else 0,
-               'vehicle_probe.impact_target': ','.join(map(str,impact_target)) if extended else '', 'vehicle_probe.impact_token': token if extended else '',
-               'vehicle_probe.x': points[0][0], 'vehicle_probe.y': points[0][1],
-               'vehicle_probe.heading_degrees': math.degrees(math.atan2(dx, dy)) % 360,
-               'vehicle_probe.lane_mode': str(lane).lower(),
-               'vehicle_probe.beziers': curve_text,
-               'vehicle_probe.bypass': str(bypass).lower(),
-               'vehicle_probe.shoulder': str(shoulder).lower(),
-               'vehicle_probe.speed_kmh': speed,
-               'vehicle_probe.stops': ';'.join(f'{p:.8f},{h:.8f}' for p,h in stops),
-               'vehicle_probe.waypoints': ';'.join(f'{x:.8f},{y:.8f}' for x, y in points)}
-    config = target / 'scenario.properties'
+    changes = {
+        "vehicle_probe.opposing": str(opposing).lower(),
+        "vehicle_probe.extended_impact": str(extended).lower(),
+        "vehicle_probe.script": script,
+        "vehicle_probe.impact_rock_mesh": str(
+            payload.get("impact_rock_mesh", False) if extended else False
+        ).lower(),
+        "vehicle_probe.impact_sprite": payload.get("impact_sprite", "appliances_com_01_94")
+        if extended
+        else "appliances_com_01_94",
+        "vehicle_probe.impact_lateral_offset": payload.get("impact_lateral_offset", 0)
+        if extended
+        else 0,
+        "vehicle_probe.impact_target": ",".join(map(str, impact_target)) if extended else "",
+        "vehicle_probe.impact_token": token if extended else "",
+        "vehicle_probe.x": points[0][0],
+        "vehicle_probe.y": points[0][1],
+        "vehicle_probe.heading_degrees": math.degrees(math.atan2(dx, dy)) % 360,
+        "vehicle_probe.lane_mode": str(lane).lower(),
+        "vehicle_probe.beziers": curve_text,
+        "vehicle_probe.bypass": str(bypass).lower(),
+        "vehicle_probe.shoulder": str(shoulder).lower(),
+        "vehicle_probe.speed_kmh": speed,
+        "vehicle_probe.stops": ";".join(f"{p:.8f},{h:.8f}" for p, h in stops),
+        "vehicle_probe.waypoints": ";".join(f"{x:.8f},{y:.8f}" for x, y in points),
+    }
+    config = target / "scenario.properties"
     before = config.read_text()
     # Retain exact geometry/provenance and the previous private configuration.
     digest = hashlib.sha256(data).hexdigest()
-    record = target / 'routes' / digest
-    scenario.write_private(record / 'route.json', data.decode('utf-8'))
-    if not (record / 'previous.properties').exists():
-        scenario.write_private(record / 'previous.properties', before)
-    pending = config.with_suffix('.pending')
+    record = target / "routes" / digest
+    scenario.write_private(record / "route.json", data.decode("utf-8"))
+    if not (record / "previous.properties").exists():
+        scenario.write_private(record / "previous.properties", before)
+    pending = config.with_suffix(".pending")
     scenario.write_private(pending, scenario.replace_ini(before, changes))
     pending.replace(config)
-    print(f'Configured {len(points)} waypoints; route SHA256 {digest}. Runtime road/obstacle checks still apply.')
+    print(
+        f"Configured {len(points)} waypoints; route SHA256 {digest}. Runtime road/obstacle checks still apply."
+    )
 
 
 def control(m, action):
-    if action not in {'start', 'stop', 'inspect'}:
-        raise ValueError('Probe control must be start, stop or inspect')
+    if action not in {"start", "stop", "inspect"}:
+        raise ValueError("Probe control must be start, stop or inspect")
     _, target = current(m)
-    status = properties(target / 'probe/status.properties')
-    epoch = status.get('server_epoch', '')
-    if not epoch or '\n' in epoch:
-        raise RuntimeError('Probe has no current server epoch')
-    path = target / 'probe/control.properties'
-    scenario.write_private(path.with_suffix('.pending'),
-        f'server_epoch={epoch}\ncommand_id={time.time_ns() // 1000000}\naction={action}\n')
-    path.with_suffix('.pending').replace(path)
-    print(f'Submitted {action} to the current disposable probe epoch.')
+    status = properties(target / "probe/status.properties")
+    epoch = status.get("server_epoch", "")
+    if not epoch or "\n" in epoch:
+        raise RuntimeError("Probe has no current server epoch")
+    path = target / "probe/control.properties"
+    scenario.write_private(
+        path.with_suffix(".pending"),
+        f"server_epoch={epoch}\ncommand_id={time.time_ns() // 1000000}\naction={action}\n",
+    )
+    path.with_suffix(".pending").replace(path)
+    print(f"Submitted {action} to the current disposable probe epoch.")
 
 
 @serialized
 def stop(m):
     receipt, target = current(m)
-    active = m.run([m.PODMAN, 'ps', '--filter', 'name=^lofers-vehicle-probe$', '--format', '{{.ID}}'], capture=True)
+    active = m.run(
+        [m.PODMAN, "ps", "--filter", "name=^lofers-vehicle-probe$", "--format", "{{.ID}}"],
+        capture=True,
+    )
     if active.stdout.strip():
-        if (target / 'probe/status.properties').is_file():
-            control(m, 'stop')
+        if (target / "probe/status.properties").is_file():
+            control(m, "stop")
             time.sleep(2)
         try:
-            print(m.redact(scenario.test_rcon(m, 'quit')))
+            print(m.redact(scenario.test_rcon(m, "quit")))
         except ConnectionError:
             pass
         deadline = time.monotonic() + 180
         while time.monotonic() < deadline:
-            state = m.run([m.PODMAN, 'inspect', '-f', '{{.State.Running}}', receipt['container']], capture=True).stdout.strip()
-            if state == 'false':
+            state = m.run(
+                [m.PODMAN, "inspect", "-f", "{{.State.Running}}", receipt["container"]],
+                capture=True,
+            ).stdout.strip()
+            if state == "false":
                 return
             time.sleep(2)
-        raise RuntimeError('Probe did not stop gracefully; not killing it')
+        raise RuntimeError("Probe did not stop gracefully; not killing it")
 
 
 def dispatch(m, command, args):
-    if command == 'vehicle-probe-create':
-        if args not in ([], ['driver-model']): raise ValueError('Expected optional driver-model')
+    if command == "vehicle-probe-create":
+        if args not in ([], ["driver-model"]):
+            raise ValueError("Expected optional driver-model")
         prepare(m, driver_model=bool(args))
-    elif command == 'vehicle-probe-start': start(m)
-    elif command == 'vehicle-probe-stop': stop(m)
-    elif command == 'vehicle-probe-status':
+    elif command == "vehicle-probe-start":
+        start(m)
+    elif command == "vehicle-probe-stop":
+        stop(m)
+    elif command == "vehicle-probe-status":
         _, target = current(m)
-        path = target / 'probe/status.properties'
-        print(path.read_text() if path.exists() else 'Probe status not yet available.')
-    elif command == 'vehicle-probe-control':
-        if len(args) != 1: raise ValueError('Expected start, stop or inspect')
+        path = target / "probe/status.properties"
+        print(path.read_text() if path.exists() else "Probe status not yet available.")
+    elif command == "vehicle-probe-control":
+        if len(args) != 1:
+            raise ValueError("Expected start, stop or inspect")
         control(m, args[0])
-    elif command == 'vehicle-probe-route':
-        if len(args) != 1: raise ValueError('Expected one reviewed route JSON artifact')
+    elif command == "vehicle-probe-route":
+        if len(args) != 1:
+            raise ValueError("Expected one reviewed route JSON artifact")
         configure_route(m, args[0])
-    else: raise ValueError('Unknown vehicle probe command')
+    else:
+        raise ValueError("Unknown vehicle probe command")

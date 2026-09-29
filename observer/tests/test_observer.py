@@ -83,7 +83,11 @@ def test_reject_private_fields_and_marker_leaks():
     with pytest.raises(ValidationError):
         batch(tiles=[tile([{**obj(), "inventory": ["secret"]}])])
     with pytest.raises(ValidationError):
-        batch(markers=[{"id": "1", "author": "eric", "label": "private", "x": 0, "y": 0, "public": False}])
+        batch(
+            markers=[
+                {"id": "1", "author": "eric", "label": "private", "x": 0, "y": 0, "public": False}
+            ]
+        )
 
 
 def test_marker_revocation_cannot_be_undone_by_old_save(store):
@@ -118,7 +122,9 @@ def test_partial_journal_and_replay(store, tmp_path):
     spool = tmp_path / "spool"
     spool.mkdir()
     path = spool / "observer-0.txt"
-    header = json.dumps({"format": "zomboid-observer-journal-v1", "created_at": 1, "sequence": 1}) + "\n"
+    header = (
+        json.dumps({"format": "zomboid-observer-journal-v1", "created_at": 1, "sequence": 1}) + "\n"
+    )
     record = batch(tiles=[tile()]).model_dump_json()
     path.write_text(header + record[:40])
     collector = Collector(store, spool, None)
@@ -211,7 +217,9 @@ def test_scene_revisions_and_separate_vehicle_compartments(store):
 def test_older_session_cannot_restore_revoked_markers_or_player_positions(store):
     marker = {"id": "marker:1", "author": "eric", "label": "House", "x": 1, "y": 2, "public": True}
     store.ingest(
-        Batch.model_validate({**batch().model_dump(), "kind": "markers", "markers": [], "observed_at": 20000})
+        Batch.model_validate(
+            {**batch().model_dump(), "kind": "markers", "markers": [], "observed_at": 20000}
+        )
     )
     store.ingest(
         Batch.model_validate(

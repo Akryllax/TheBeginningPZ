@@ -40,9 +40,12 @@ class Drawings:
         if old and old["owner"] != owner:
             raise HTTPException(403, "Stroke belongs to another viewer")
         if not old and (
-            len(self.strokes) >= 256 or sum(s["owner"] == owner for s in self.strokes.values()) >= 32
+            len(self.strokes) >= 256
+            or sum(s["owner"] == owner for s in self.strokes.values()) >= 32
         ):
-            raise HTTPException(429, "Drawing limit reached; clear your drawings or wait for expiry")
+            raise HTTPException(
+                429, "Drawing limit reached; clear your drawings or wait for expiry"
+            )
         self.version += 1
         self.strokes[key] = {
             "id": key,

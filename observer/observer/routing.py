@@ -82,15 +82,23 @@ class Routing:
             coverage = self.state.coverage_revision
             terrain = self.state.terrain.revision
         if not known:
-            return {"status": "unknown", "message": "No map knowledge is available for this selection."}
+            return {
+                "status": "unknown",
+                "message": "No map knowledge is available for this selection.",
+            }
         if any(p.get("z", 0) != 0 for p in points):
             return {
                 "status": "floor",
                 "message": "Driving routes need ground-level endpoints. Pick road access on the map.",
             }
         mask = set(known)
-        if any((math.floor(p["x"] / 32) * 32, math.floor(p["y"] / 32) * 32) not in mask for p in points):
-            return {"status": "unknown", "message": "An endpoint is outside the selected map knowledge."}
+        if any(
+            (math.floor(p["x"] / 32) * 32, math.floor(p["y"] / 32) * 32) not in mask for p in points
+        ):
+            return {
+                "status": "unknown",
+                "message": "An endpoint is outside the selected map knowledge.",
+            }
         # Selection and mask are included; one observer cannot reuse another's route.
         key = hashlib.sha256(
             json.dumps([points, observer, known, terrain, turns], sort_keys=True).encode()
@@ -129,7 +137,12 @@ class Routing:
                 turns,
                 terrain,
             )
-            self.jobs[key] = {"future": future, "used": now, "observer": observer, "coverage": coverage}
+            self.jobs[key] = {
+                "future": future,
+                "used": now,
+                "observer": observer,
+                "coverage": coverage,
+            }
             return {"status": "preparing", "message": "Calculating known roads…", "request_id": key}
 
     def result(self, key):
@@ -138,7 +151,11 @@ class Routing:
             if job is None:
                 return None
             if not job["future"].done():
-                return {"status": "preparing", "message": "Calculating known roads…", "request_id": key}
+                return {
+                    "status": "preparing",
+                    "message": "Calculating known roads…",
+                    "request_id": key,
+                }
             try:
                 value = job["future"].result()
             except Exception:
@@ -147,7 +164,12 @@ class Routing:
                     "status": "unavailable",
                     "message": "The route worker could not finish this request.",
                 }
-            return {**value, "request_id": key, "observer": job["observer"], "_coverage": job["coverage"]}
+            return {
+                **value,
+                "request_id": key,
+                "observer": job["observer"],
+                "_coverage": job["coverage"],
+            }
 
     def saved_options(self, options, old, stops):
         if not options or len(stops) < 2:
@@ -214,7 +236,9 @@ class Routing:
                 row[0],
             ),
         )
-        self.state.db.execute("UPDATE metadata SET value=CAST(value AS INTEGER)+1 WHERE key='trip_revision'")
+        self.state.db.execute(
+            "UPDATE metadata SET value=CAST(value AS INTEGER)+1 WHERE key='trip_revision'"
+        )
 
     def recalculate(self, planning, id, version):
         with self.state.lock, self.state.db:
@@ -229,9 +253,13 @@ class Routing:
             tracking = json.loads(row[6])
             if len(tracking.get("reached_stop_ids", [])) >= len(json.loads(row[2])):
                 raise HTTPException(409, "Trip complete. Reset progress before recalculating.")
-            routing.update(status="pending", message="Recalculating remaining route…", _rebuild=True)
+            routing.update(
+                status="pending", message="Recalculating remaining route…", _rebuild=True
+            )
             self.write(planning, row, routing)
-            return planning.trip(self.state.db.execute("SELECT * FROM trips WHERE id=?", (id,)).fetchone())
+            return planning.trip(
+                self.state.db.execute("SELECT * FROM trips WHERE id=?", (id,)).fetchone()
+            )
 
     @staticmethod
     def live_sample(tracking, samples):
@@ -267,7 +295,8 @@ class Routing:
             next_stop
             and next_stop.get("kind") == "generated"
             and nearest_leg >= indices[next_stop["id"]]
-            and math.hypot(sample["x"] - next_stop["x"], sample["y"] - next_stop["y"]) > tracking["radius"]
+            and math.hypot(sample["x"] - next_stop["x"], sample["y"] - next_stop["y"])
+            > tracking["radius"]
         )
         nav["count"] = nav["count"] + 1 if closest > 30 or missed else 0
         if nav["count"] >= 3 and self.clock() - nav["attempt"] >= 5:
@@ -303,7 +332,8 @@ class Routing:
             moved_after_failure = bool(
                 sample
                 and failed_position
-                and math.hypot(sample["x"] - failed_position[0], sample["y"] - failed_position[1]) > 30
+                and math.hypot(sample["x"] - failed_position[0], sample["y"] - failed_position[1])
+                > 30
             )
             if (
                 (routing.get("status") == "ready" or moved_after_failure)
@@ -340,7 +370,11 @@ class Routing:
             prefix, origin, inputs = [], None, stops
             if rebuild:
                 prefix = [p for p in stops if p["id"] in reached and p.get("kind") != "origin"]
-                anchors = [p for p in stops if p["id"] not in reached and p.get("kind", "manual") == "manual"]
+                anchors = [
+                    p
+                    for p in stops
+                    if p["id"] not in reached and p.get("kind", "manual") == "manual"
+                ]
                 if tracking.get("active"):
                     if not sample:
                         continue
@@ -360,7 +394,9 @@ class Routing:
                     origin = prefix[-1] if prefix else stops[0]
                     anchors = [p for p in anchors if p["id"] != origin["id"]]
                 if not anchors:
-                    remaining = [p for p in stops if p["id"] not in reached and p["id"] != origin["id"]]
+                    remaining = [
+                        p for p in stops if p["id"] not in reached and p["id"] != origin["id"]
+                    ]
                     if remaining:
                         # Removing the original destination makes the final surviving
                         # checkpoint the new destination, even if it began as a bend.
@@ -389,16 +425,27 @@ class Routing:
                 continue
             self.running.pop(row[0], None)
             with self.state.lock, self.state.db:
-                current = self.state.db.execute("SELECT * FROM trips WHERE id=?", (row[0],)).fetchone()
+                current = self.state.db.execute(
+                    "SELECT * FROM trips WHERE id=?", (row[0],)
+                ).fetchone()
                 if not current or current[3] != row[3]:
                     continue
                 if rebuild and tracking.get("active"):
                     fresh = self.live_sample(tracking, self.state.positions.player_samples())
-                    if not fresh or math.hypot(fresh["x"] - origin["x"], fresh["y"] - origin["y"]) > 30:
+                    if (
+                        not fresh
+                        or math.hypot(fresh["x"] - origin["x"], fresh["y"] - origin["y"]) > 30
+                    ):
                         continue
-                if value["status"] == "ready" and not self.still_known(value, routing.get("observer")):
+                if value["status"] == "ready" and not self.still_known(
+                    value, routing.get("observer")
+                ):
                     continue
-                result = {**routing, **self.route_data(value), "_coverage": self.state.coverage_revision}
+                result = {
+                    **routing,
+                    **self.route_data(value),
+                    "_coverage": self.state.coverage_revision,
+                }
                 result.pop("_rebuild", None)
                 if value["status"] != "ready":
                     if rebuild and sample:
@@ -411,7 +458,8 @@ class Routing:
                     updated = prefix + [p for p in value["stops"] if p["id"] not in ids]
                     if len(updated) > MAX_STOPS:
                         result.update(
-                            status="limit", message="Too many completed checkpoints. Start a new trip."
+                            status="limit",
+                            message="Too many completed checkpoints. Start a new trip.",
                         )
                         self.write(planning, row, result)
                         continue
@@ -419,7 +467,11 @@ class Routing:
                         reached.add(origin["id"])
                     tracking["reached_stop_ids"] = list(reached)
                     planning.normalize_progress(updated, tracking)
-                    history = [g for g in routing.get("geometry", []) if g["from"] in ids and g["to"] in ids]
+                    history = [
+                        g
+                        for g in routing.get("geometry", [])
+                        if g["from"] in ids and g["to"] in ids
+                    ]
                     result["geometry"] = history + result["geometry"]
                     result["road_distance"] = round(
                         sum(

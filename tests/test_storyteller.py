@@ -1,4 +1,5 @@
 """Domain safety and operation-budget tests run in the actual Lua 5.1 dialect."""
+
 from pathlib import Path
 
 import pytest
@@ -277,7 +278,9 @@ def test_wandering_zombies_companion_skips_only_bandits(lua):
     """)
 
 
-SERVER_FIXTURE = INVENTORY_FIXTURE + """
+SERVER_FIXTURE = (
+    INVENTORY_FIXTURE
+    + """
 handlers={}
 Events=setmetatable({}, {__index=function(self,k)
     local event={Add=function(fn) handlers[k]=handlers[k] or {};table.insert(handlers[k],fn) end}
@@ -318,6 +321,7 @@ function advance(ticks)
     for i=1,ticks do nowMs=nowMs+100;worldHours=worldHours+1/3600;fire('OnTick') end
 end
 """
+)
 
 
 def test_server_first_join_reads_loaded_inventory_and_publishes(lua):

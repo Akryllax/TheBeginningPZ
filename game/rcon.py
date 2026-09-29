@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Minimal Source RCON client for sending a single command to the PZ server."""
+
 import os
 import socket
 import struct

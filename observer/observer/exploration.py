@@ -34,9 +34,13 @@ class LiveExploration:
             )
             self.masks = {
                 name: {"payload": json.loads(payload), "digest": digest, "captured_at": captured}
-                for name, payload, digest, captured in state.db.execute("SELECT * FROM exploration_masks")
+                for name, payload, digest, captured in state.db.execute(
+                    "SELECT * FROM exploration_masks"
+                )
             }
-            row = state.db.execute("SELECT value FROM metadata WHERE key='exploration_watermark'").fetchone()
+            row = state.db.execute(
+                "SELECT value FROM metadata WHERE key='exploration_watermark'"
+            ).fetchone()
             if row:
                 self.session, self.started, self.sequence, self.captured = json.loads(row[0])
 
@@ -137,7 +141,12 @@ class LiveExploration:
                 for name, cells, digest, _ in updates:
                     self.state.db.execute(
                         "INSERT OR REPLACE INTO exploration_masks VALUES(?,?,?,?)",
-                        (name, json.dumps(cells, separators=(",", ":")), digest, message.captured_at_ms),
+                        (
+                            name,
+                            json.dumps(cells, separators=(",", ":")),
+                            digest,
+                            message.captured_at_ms,
+                        ),
                     )
                 self.state.db.execute(
                     "INSERT OR REPLACE INTO metadata VALUES('exploration_watermark',?)",
@@ -153,10 +162,18 @@ class LiveExploration:
                     ),
                 )
             for name, cells, digest, before in updates:
-                self.masks[name] = {"payload": cells, "digest": digest, "captured_at": message.captured_at_ms}
+                self.masks[name] = {
+                    "payload": cells,
+                    "digest": digest,
+                    "captured_at": message.captured_at_ms,
+                }
                 changed |= before != self.state.known(name)
             self.session, self.started = message.server_session, message.session_started_at_ms
-            self.sequence, self.captured, self.received = message.sequence, message.captured_at_ms, now
+            self.sequence, self.captured, self.received = (
+                message.sequence,
+                message.captured_at_ms,
+                now,
+            )
             if changed:
                 self.state.revision += 1
                 self.state.coverage_revision += 1
@@ -177,7 +194,8 @@ def install_exploration(app, state, token):
         if exploration.token is None:
             raise HTTPException(404, "Exploration feed is disabled")
         if not hmac.compare_digest(
-            request.headers.get("authorization", "").encode(), ("Bearer " + exploration.token).encode()
+            request.headers.get("authorization", "").encode(),
+            ("Bearer " + exploration.token).encode(),
         ):
             raise HTTPException(401, "Invalid exploration exporter credentials")
         if request.headers.get("content-type", "").split(";", 1)[0] != "application/x-protobuf":

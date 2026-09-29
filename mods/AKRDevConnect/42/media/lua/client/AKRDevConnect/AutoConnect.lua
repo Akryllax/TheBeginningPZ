@@ -4,8 +4,10 @@
 -- and its popup cannot match the saved account (numeric saved port vs string argument).
 -- Instead, reuse the stock favorites connect (MultiplayerUI:connectToServer) with the account
 -- already saved in ServerListSteam.db. No credentials are stored in this mod.
-if isServer() or not BootstrapConnectPopup then return end
-local state = {armed = false}
+if isServer() or not BootstrapConnectPopup then
+    return
+end
+local state = { armed = false }
 AKRDevConnect = state
 
 local function savedAccount(host, port)
@@ -14,7 +16,9 @@ local function savedAccount(host, port)
             local chosen = nil
             for i = 0, server:getAccounts():size() - 1 do
                 local account = server:getAccounts():get(i)
-                if account:isSavePwd() and account:getUserName() ~= "" then chosen = account end
+                if account:isSavePwd() and account:getUserName() ~= "" then
+                    chosen = account
+                end
             end
             return server, chosen
         end
@@ -24,30 +28,60 @@ end
 
 -- Mirrors MultiplayerUI:connectToServer for a saved-password account.
 local function connect(previous, server, account)
-    print("[AKRDevConnect] auto-connecting " .. server:getIp() .. ":" .. tostring(server:getPort())
-        .. " as saved account " .. account:getUserName())
+    print(
+        "[AKRDevConnect] auto-connecting "
+            .. server:getIp()
+            .. ":"
+            .. tostring(server:getPort())
+            .. " as saved account "
+            .. account:getUserName()
+    )
     getCore():setAccountUsed(account)
     account:setLastLogonNow()
     updateAccountToAccountList(account)
-    if getSteamModeActive() then steamReleaseInternetServersRequest() end
+    if getSteamModeActive() then
+        steamReleaseInternetServersRequest()
+    end
     stopSendSecretKey()
     getCore():setNoSave(false)
     local localIP = getSteamModeActive() and server:getLocalIP() or ""
     local relay = getSteamModeActive() and account:getUseSteamRelay()
     ConnectToServer.instance.loadingBackground = server:getServerLoadingScreen()
-    ConnectToServer.instance:connect(previous, server:getName(), account:getUserName(), account:getPwd(), server:getIp(),
-        localIP, tostring(server:getPort()), server:getServerPassword(), relay, false, account:getAuthType())
+    ConnectToServer.instance:connect(
+        previous,
+        server:getName(),
+        account:getUserName(),
+        account:getPwd(),
+        server:getIp(),
+        localIP,
+        tostring(server:getPort()),
+        server:getServerPassword(),
+        relay,
+        false,
+        account:getAuthType()
+    )
 end
 
 local stockConnect = BootstrapConnectPopup.connect
 function BootstrapConnectPopup:connect(host, port, serverPassword)
-    if state.armed or isValidSteamID(host) or not ConnectToServer or not ConnectToServer.instance then
+    if
+        state.armed
+        or isValidSteamID(host)
+        or not ConnectToServer
+        or not ConnectToServer.instance
+    then
         return stockConnect(self, host, port, serverPassword)
     end
     state.armed = true
     local ok, server, account = pcall(savedAccount, tostring(host), tostring(port))
     if not ok or not account then
-        print("[AKRDevConnect] no saved account for " .. tostring(host) .. ":" .. tostring(port) .. "; stock prompt")
+        print(
+            "[AKRDevConnect] no saved account for "
+                .. tostring(host)
+                .. ":"
+                .. tostring(port)
+                .. "; stock prompt"
+        )
         return stockConnect(self, host, port, serverPassword)
     end
     local done, err = pcall(connect, self, server, account)

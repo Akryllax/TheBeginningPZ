@@ -28,11 +28,15 @@ class LivePositions:
         self.online = set()
         # Only anti-replay counters survive a web restart, never position history.
         with state.lock:
-            row = state.db.execute("SELECT value FROM metadata WHERE key='position_watermark'").fetchone()
+            row = state.db.execute(
+                "SELECT value FROM metadata WHERE key='position_watermark'"
+            ).fetchone()
             if row:
                 self.session, self.started, self.sequence, self.captured = json.loads(row[0])
         if token is not None and not re.fullmatch(r"[a-f0-9]{64}", token):
-            raise ValueError("Position ingest token must contain 64 lowercase hexadecimal characters")
+            raise ValueError(
+                "Position ingest token must contain 64 lowercase hexadecimal characters"
+            )
 
     @property
     def enabled(self):
@@ -52,7 +56,9 @@ class LivePositions:
     @staticmethod
     def text(value):
         return (
-            0 < len(value) <= 128 and value.strip() and not any(ord(c) < 32 or ord(c) == 127 for c in value)
+            0 < len(value) <= 128
+            and value.strip()
+            and not any(ord(c) < 32 or ord(c) == 127 for c in value)
         )
 
     def accept(self, payload):
@@ -124,7 +130,11 @@ class LivePositions:
                 ),
             )
             self.session, self.started = message.server_session, message.session_started_at_ms
-            self.sequence, self.captured, self.received = message.sequence, message.captured_at_ms, now
+            self.sequence, self.captured, self.received = (
+                message.sequence,
+                message.captured_at_ms,
+                now,
+            )
             self.online = set(samples)
             self.latest.update(samples)
             # Bound even a long-running server with many distinct visitors.
@@ -145,7 +155,12 @@ class LivePositions:
             fresh = self.fresh()
             saved = self.state.sources.get("players", {}).get("payload", [])
             players = {
-                p["name"]: {**p, "source": "saved", "online": False if fresh else None, "observed_at": None}
+                p["name"]: {
+                    **p,
+                    "source": "saved",
+                    "online": False if fresh else None,
+                    "observed_at": None,
+                }
                 for p in saved
             }
             for name, sample in self.latest.items():
@@ -197,7 +212,8 @@ def install_positions(app, state, token=None):
         if not positions.enabled:
             raise HTTPException(404, "Position feed is disabled")
         if not hmac.compare_digest(
-            request.headers.get("authorization", "").encode(), ("Bearer " + positions.token).encode()
+            request.headers.get("authorization", "").encode(),
+            ("Bearer " + positions.token).encode(),
         ):
             raise HTTPException(401, "Invalid position exporter credentials")
         if request.headers.get("content-type", "").split(";", 1)[0] != "application/x-protobuf":

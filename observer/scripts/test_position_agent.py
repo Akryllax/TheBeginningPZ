@@ -125,7 +125,8 @@ def test(jdk, game_jar):
                 assert "Exploration adapter failed" not in run.stdout
                 masks = [p for f in maps for p in f.players]
                 assert all(
-                    p.min_cell_x == -250 and p.max_cell_y == 250 and p.world_version == 249 for p in masks
+                    p.min_cell_x == -250 and p.max_cell_y == 250 and p.world_version == 249
+                    for p in masks
                 )
                 raw = [zlib.decompress(p.visited_zlib) for p in masks]
                 assert all(len(r) == 501 * 501 * 16 and r[0] == 3 and not any(r[2:]) for r in raw)
@@ -136,7 +137,9 @@ def test(jdk, game_jar):
                     assert not diagnostics
                     assert "Storyteller adapter failed" in run.stdout
                 else:
-                    assert diagnostics and all(d.mode == "observe" and d.npc_count == -1 for d in diagnostics)
+                    assert diagnostics and all(
+                        d.mode == "observe" and d.npc_count == -1 for d in diagnostics
+                    )
                     assert any(d.cells and d.cells[0].wealth == 99 for d in diagnostics)
                     assert "Storyteller adapter failed" not in run.stdout
             finally:

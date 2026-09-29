@@ -149,7 +149,9 @@ def test_auth_validation_decompression_limits_and_atomic_rejection(exploration):
     app, client, _, frame = exploration
     assert send(exploration, headers={}).status_code == 401
     assert send(exploration, headers={"Authorization": "Bearer " + TOKEN}).status_code == 415
-    assert client.post("/internal/v1/exploration", content=b"\x80", headers=HEADERS).status_code == 422
+    assert (
+        client.post("/internal/v1/exploration", content=b"\x80", headers=HEADERS).status_code == 422
+    )
     for field, value in [
         ("world", "wrong"),
         ("protocol_version", 2),
@@ -162,7 +164,12 @@ def test_auth_validation_decompression_limits_and_atomic_rejection(exploration):
         invalid.CopyFrom(frame)
         setattr(invalid, field, value)
         assert send(exploration, invalid).status_code == 422
-    for field, value in [("world_version", 248), ("min_cell_x", -1), ("max_cell_y", 1), ("username", "\n")]:
+    for field, value in [
+        ("world_version", 248),
+        ("min_cell_x", -1),
+        ("max_cell_y", 1),
+        ("username", "\n"),
+    ]:
         invalid = ExplorationSnapshot()
         invalid.CopyFrom(frame)
         setattr(invalid.players[0], field, value)

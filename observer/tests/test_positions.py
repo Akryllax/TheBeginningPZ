@@ -23,7 +23,9 @@ def live(tmp_path, monkeypatch):
     monkeypatch.delenv("OBSERVER_POSITION_TOKEN_FILE", raising=False)
     with sqlite3.connect(save / "players.db") as db:
         db.execute("CREATE TABLE networkPlayers(id,username,name,x,y,z,isDead,data)")
-        db.execute("INSERT INTO networkPlayers VALUES(1,'akryllax','Tommy',10,20,0,0,?)", (b"private",))
+        db.execute(
+            "INSERT INTO networkPlayers VALUES(1,'akryllax','Tommy',10,20,0,0,?)", (b"private",)
+        )
     app = create_saved_app(data=tmp_path / "data", save=save, polling=False, position_token=TOKEN)
     clock = [2000.0]
     app.state.positions.clock = app.state.planning.clock = lambda: clock[0]
@@ -42,7 +44,9 @@ def live(tmp_path, monkeypatch):
         captured_at_ms=2000000,
     )
     frame.players.append(
-        PlayerPosition(username="akryllax", character="Tommy", x=100, y=200, z=0, connection_id=str(uuid4()))
+        PlayerPosition(
+            username="akryllax", character="Tommy", x=100, y=200, z=0, connection_id=str(uuid4())
+        )
     )
     with TestClient(app) as client:
         yield app, client, clock, frame
@@ -51,7 +55,9 @@ def live(tmp_path, monkeypatch):
 def send(live, frame=None):
     _, client, _, default = live
     frame = frame or default
-    response = client.post("/internal/v1/positions", content=frame.SerializeToString(), headers=HEADERS)
+    response = client.post(
+        "/internal/v1/positions", content=frame.SerializeToString(), headers=HEADERS
+    )
     return response
 
 
@@ -91,12 +97,22 @@ def latest(client):
 
 def test_auth_size_schema_world_and_coordinates(live):
     _, client, _, frame = live
-    assert client.post("/internal/v1/positions", content=frame.SerializeToString()).status_code == 401
     assert (
-        client.post("/internal/v1/positions", headers={"Authorization": "Bearer " + TOKEN}).status_code == 415
+        client.post("/internal/v1/positions", content=frame.SerializeToString()).status_code == 401
     )
-    assert client.post("/internal/v1/positions", content=b"x" * 65537, headers=HEADERS).status_code == 413
-    assert client.post("/internal/v1/positions", content=b"\x80", headers=HEADERS).status_code == 422
+    assert (
+        client.post(
+            "/internal/v1/positions", headers={"Authorization": "Bearer " + TOKEN}
+        ).status_code
+        == 415
+    )
+    assert (
+        client.post("/internal/v1/positions", content=b"x" * 65537, headers=HEADERS).status_code
+        == 413
+    )
+    assert (
+        client.post("/internal/v1/positions", content=b"\x80", headers=HEADERS).status_code == 422
+    )
     for field, value in [
         ("world", "OtherWorld"),
         ("protocol_version", 2),
@@ -163,7 +179,9 @@ def test_live_offline_stale_fallback_and_private_fields(live):
     assert world["position_feed"]["status"] == "stale" and world["players"][0]["online"] is None
     assert world["players"][0]["x"] == 100
     # Position snapshots and connection identities are never persisted as history.
-    rows = app.state.saved_map.db.execute("SELECT payload FROM sources WHERE name='players'").fetchone()
+    rows = app.state.saved_map.db.execute(
+        "SELECT payload FROM sources WHERE name='players'"
+    ).fetchone()
     assert json.loads(rows[0])[0]["x"] == 10
 
 

@@ -53,7 +53,9 @@ def routed(tmp_path, monkeypatch):
         enabled=True, player_samples=lambda: {"akryllax": dict(sample)}, fresh=lambda: True
     )
     state.positions = positions
-    client = TestClient(app)  # Explicit tick() calls; no background lifespan in these deterministic tests.
+    client = TestClient(
+        app
+    )  # Explicit tick() calls; no background lifespan in these deterministic tests.
     yield app, client, sample, clock
     client.close()
     routing.close()
@@ -97,12 +99,16 @@ def test_preview_deduplicates_and_does_not_mutate_trip_or_expose_other_knowledge
     trip, value = make_trip(app, client)
     assert app.state.routing.executor.calls == 1
     assert "_coverage" not in client.get("/api/v1/trips").text
-    unknown = client.post("/api/v1/routes", json={"stops": value["stops"][:2], "observer": "eric"}).json()
+    unknown = client.post(
+        "/api/v1/routes", json={"stops": value["stops"][:2], "observer": "eric"}
+    ).json()
     assert unknown["status"] == "unknown"
     assert latest(client, trip["id"])["stops"] == trip["stops"]
     assert (
         client.post(
-            "/api/v1/routes", json={"stops": value["stops"][:2]}, headers={"Origin": "https://elsewhere.test"}
+            "/api/v1/routes",
+            json={"stops": value["stops"][:2]},
+            headers={"Origin": "https://elsewhere.test"},
         ).status_code
         == 403
     )
@@ -126,7 +132,9 @@ def test_reroute_keeps_completed_and_manual_stops_and_off_switch(routed):
         app.state.routing.tick(app.state.planning)
     assert latest(client, trip["id"])["stops"] == trip["stops"]
     value.update(
-        stops=trip["stops"], version=trip["version"], routing={"auto_reroute": True, "observer": None}
+        stops=trip["stops"],
+        version=trip["version"],
+        routing={"auto_reroute": True, "observer": None},
     )
     changed = client.put(f"/api/v1/trips/{trip['id']}", json=value)
     assert changed.status_code == 200, changed.text
@@ -155,9 +163,13 @@ def test_stale_or_changed_connection_never_reroutes_and_version_guard_rejects_ed
     app.state.saved_map.positions.player_samples = dict
     app.state.routing.tick(app.state.planning)
     assert app.state.routing.executor.calls == 1
-    assert client.post(f"/api/v1/trips/{trip['id']}/reroute", json={"version": 0}).status_code == 422
     assert (
-        client.post(f"/api/v1/trips/{trip['id']}/reroute", json={"version": trip["version"] - 1}).status_code
+        client.post(f"/api/v1/trips/{trip['id']}/reroute", json={"version": 0}).status_code == 422
+    )
+    assert (
+        client.post(
+            f"/api/v1/trips/{trip['id']}/reroute", json={"version": trip["version"] - 1}
+        ).status_code
         == 409
     )
 
@@ -181,7 +193,10 @@ def test_moved_bend_is_manual_clearing_disables_gps_and_old_format_remains_valid
     assert (
         client.post(
             "/api/v1/trips",
-            json={"name": "Old client", "stops": [point(str(uuid4()), 0, 0), point(str(uuid4()), 30, 0)]},
+            json={
+                "name": "Old client",
+                "stops": [point(str(uuid4()), 0, 0), point(str(uuid4()), 30, 0)],
+            },
         ).json()["routing"]
         is None
     )
@@ -197,7 +212,9 @@ def test_completed_job_cannot_overwrite_a_concurrent_manual_edit(routed):
         app.state.routing.tick(app.state.planning)
     assert trip["id"] in app.state.routing.running
     value.update(
-        version=trip["version"], stops=trip["stops"], routing={"observer": None, "auto_reroute": False}
+        version=trip["version"],
+        stops=trip["stops"],
+        routing={"observer": None, "auto_reroute": False},
     )
     value["stops"][-1]["x"] = 150.5
     response = client.put(f"/api/v1/trips/{trip['id']}", json=value)
@@ -241,10 +258,13 @@ def test_complete_trip_recalculate_is_a_clear_error(routed):
     trip, _ = make_trip(app, client)
     for _ in trip["stops"]:
         trip = client.post(
-            f"/api/v1/trips/{trip['id']}/progress", json={"version": trip["version"], "action": "next"}
+            f"/api/v1/trips/{trip['id']}/progress",
+            json={"version": trip["version"], "action": "next"},
         ).json()
     assert (
-        client.post(f"/api/v1/trips/{trip['id']}/reroute", json={"version": trip["version"]}).status_code
+        client.post(
+            f"/api/v1/trips/{trip['id']}/reroute", json={"version": trip["version"]}
+        ).status_code
         == 409
     )
     assert latest(client, trip["id"])["routing"]["status"] == "ready"

@@ -23,19 +23,25 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     healthcheck:
-      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      test:
+        [
+          CMD,
+          python,
+          -c,
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)",
+        ]
       interval: 20s
       timeout: 5s
       retries: 3
     logging:
-      options: {max-size: 10m, max-file: "3"}
+      options: { max-size: 10m, max-file: "3" }
   gateway:
     build:
       context: deploy
       dockerfile: Dockerfile.caddy
     restart: unless-stopped
     depends_on:
-      app: {condition: service_healthy}
+      app: { condition: service_healthy }
     environment:
       OBSERVER_HOST: "${OBSERVER_HOST:-map.lofers.net}"
     env_file: ./secrets/porkbun.env
@@ -50,7 +56,7 @@ services:
     mem_limit: 256m
     cpus: 0.5
     logging:
-      options: {max-size: 10m, max-file: "3"}
+      options: { max-size: 10m, max-file: "3" }
 volumes:
   game_files:
     external: true

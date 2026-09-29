@@ -39,7 +39,9 @@ def build(cache):
     for name, (url, digest) in TOOLS.items():
         target = cache / name
         if not target.exists():
-            subprocess.run(["curl", "-fLsS", "--max-time", "300", url, "-o", str(target)], check=True)
+            subprocess.run(
+                ["curl", "-fLsS", "--max-time", "300", url, "-o", str(target)], check=True
+            )
         if hashlib.file_digest(target.open("rb"), "sha256").hexdigest() != digest:
             raise ValueError(f"Checksum mismatch: {target}")
     jdk = cache / "jdk-25.0.4.1+1"

@@ -55,7 +55,9 @@ def test_generate_turns_and_simplify_without_crossing_blocked_ground():
     assert 2 < len(route["stops"]) < 10
     assert route["stops"][0]["id"] == "a" and route["stops"][-1]["id"] == "b"
     assert all(p["kind"] == "generated" for p in route["stops"][1:-1])
-    assert all(search.line(a, b) for g in route["geometry"] for a, b in zip(g["points"], g["points"][1:]))
+    assert all(
+        search.line(a, b) for g in route["geometry"] for a, b in zip(g["points"], g["points"][1:])
+    )
     assert route["road_distance"] > math.dist((5.5, 10.5), (48.5, 70.5))
     fixed = search.route([point("a", 5.5, 10.5), point("b", 48.5, 70.5)], turns=False)
     assert len(fixed["stops"]) == 2
@@ -89,7 +91,10 @@ def test_line_terminates_on_integer_endpoints_in_all_directions():
             for size in (1, 32):
                 cells = list(
                     islice(
-                        cells_on_line(tuple(v * size for v in start), tuple(v * size for v in end), size), 100
+                        cells_on_line(
+                            tuple(v * size for v in start), tuple(v * size for v in end), size
+                        ),
+                        100,
                     )
                 )
                 assert len(cells) < 100
@@ -119,7 +124,9 @@ def test_binary_version_coordinates_road_filter_and_truncation(tmp_path):
         read_roads(path)
 
 
-def test_surface_mask_blocks_water_structures_and_fields_but_allows_mapped_bridge(tmp_path, monkeypatch):
+def test_surface_mask_blocks_water_structures_and_fields_but_allows_mapped_bridge(
+    tmp_path, monkeypatch
+):
     from PIL import Image
 
     from observer import roads as module

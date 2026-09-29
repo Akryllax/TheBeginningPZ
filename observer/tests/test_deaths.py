@@ -140,7 +140,9 @@ def test_partial_append_and_read_failure_retain_history(sources):
 def test_death_api_contains_only_confirmed_markers(sources):
     data, save, _maps, logs = sources
     log = next(logs.glob("*_user.txt"))
-    log.write_text(death() + death("Bob") + "[14-09-26 01:00:01.123] private connection metadata.\n")
+    log.write_text(
+        death() + death("Bob") + "[14-09-26 01:00:01.123] private connection metadata.\n"
+    )
     app = create_saved_app(data=data, save=save, polling=False)
     app.state.saved_map.read_deaths()
     with TestClient(app) as client:

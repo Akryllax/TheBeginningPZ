@@ -1,28 +1,28 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Scenario agent: generate protocol sources",
-            "type": "process",
-            "command": "python3",
-            "args": ["scripts/build_scenario_agent.py", "--generate-only"],
-            "problemMatcher": []
-        },
-        {
-            "label": "Scenario agent: build",
-            "type": "process",
-            "command": "python3",
-            "args": ["scripts/build_scenario_agent.py"],
-            "problemMatcher": [],
-            "group": "build"
-        },
-        {
-            "label": "Scenario agent: build and run fixtures",
-            "type": "process",
-            "command": "python3",
-            "args": ["scripts/build_scenario_agent.py", "--test"],
-            "problemMatcher": [],
-            "group": { "kind": "build", "isDefault": true }
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Scenario agent: generate protocol sources",
+      "type": "process",
+      "command": "python3",
+      "args": ["scripts/build_scenario_agent.py", "--generate-only"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Scenario agent: build",
+      "type": "process",
+      "command": "python3",
+      "args": ["scripts/build_scenario_agent.py"],
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Scenario agent: build and run fixtures",
+      "type": "process",
+      "command": "python3",
+      "args": ["scripts/build_scenario_agent.py", "--test"],
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
 }

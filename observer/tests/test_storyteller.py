@@ -22,7 +22,11 @@ def diagnostic(tmp_path, monkeypatch):
     frontend.mkdir()
     (frontend / "index.html").write_text("<html>diagnostic frontend</html>")
     app = create_saved_app(
-        data=tmp_path / "data", save=tmp_path / "save", frontend=frontend, polling=False, position_token=TOKEN
+        data=tmp_path / "data",
+        save=tmp_path / "save",
+        frontend=frontend,
+        polling=False,
+        position_token=TOKEN,
     )
     clock = [2000.0]
     app.state.storyteller.clock = lambda: clock[0]
@@ -55,7 +59,9 @@ def diagnostic(tmp_path, monkeypatch):
 
 def send(diagnostic, message=None):
     return diagnostic[1].post(
-        "/internal/v1/storyteller", content=(message or diagnostic[3]).SerializeToString(), headers=HEADERS
+        "/internal/v1/storyteller",
+        content=(message or diagnostic[3]).SerializeToString(),
+        headers=HEADERS,
     )
 
 
@@ -102,11 +108,18 @@ def test_auth_validation_and_payload_limits(diagnostic):
     _, client, _, message = diagnostic
     assert client.post("/internal/v1/storyteller").status_code == 401
     assert (
-        client.post("/internal/v1/storyteller", headers={"Authorization": "Bearer " + TOKEN}).status_code
+        client.post(
+            "/internal/v1/storyteller", headers={"Authorization": "Bearer " + TOKEN}
+        ).status_code
         == 415
     )
-    assert client.post("/internal/v1/storyteller", content=b"x" * 65537, headers=HEADERS).status_code == 413
-    assert client.post("/internal/v1/storyteller", content=b"\x80", headers=HEADERS).status_code == 422
+    assert (
+        client.post("/internal/v1/storyteller", content=b"x" * 65537, headers=HEADERS).status_code
+        == 413
+    )
+    assert (
+        client.post("/internal/v1/storyteller", content=b"\x80", headers=HEADERS).status_code == 422
+    )
     for field, value in [
         ("world", "production"),
         ("protocol_version", 2),
@@ -149,7 +162,10 @@ def test_latest_only_restart_replay_staleness_and_public_separation(diagnostic):
     assert message.server_session not in json.dumps(latest) and TOKEN not in json.dumps(latest)
     assert "storyteller" not in json.dumps(client.get("/api/v1/world").json())
     assert client.get("/api/v1/storyteller").status_code == 404
-    assert client.post("/debug/storyteller/snapshot", json={"mode": "active"}).status_code in (404, 405)
+    assert client.post("/debug/storyteller/snapshot", json={"mode": "active"}).status_code in (
+        404,
+        405,
+    )
     assert send(diagnostic).status_code == 409
     restarted = Storyteller(app.state.saved_map, TOKEN, enabled=True, clock=lambda: clock[0])
     assert restarted.snapshot()["status"] == "stale"

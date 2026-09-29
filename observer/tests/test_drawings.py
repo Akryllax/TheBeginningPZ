@@ -49,7 +49,10 @@ def test_api_limits_and_origin():
             == 403
         )
         for points in ([], [[200001, 0]], [[0, 0]] * 1025, [["NaN", 0]]):
-            assert client.post("/api/v1/drawings", json={**payload, "points": points}).status_code == 422
+            assert (
+                client.post("/api/v1/drawings", json={**payload, "points": points}).status_code
+                == 422
+            )
         assert client.post("/api/v1/drawings", content=b" " * 65537).status_code == 413
         for _ in range(31):
             payload["id"] = str(uuid4())

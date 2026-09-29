@@ -1,4 +1,5 @@
 """AKRCore contract tests in the actual Lua 5.1 dialect. Mocks do not certify in-game loading."""
+
 from pathlib import Path
 
 import pytest
@@ -30,7 +31,9 @@ def lua():
 def test_sources_parse_and_mod_metadata(lua):
     for path in LUA.rglob("*.lua"):
         lua.execute("assert(loadstring(...))", path.read_text())
-    info = dict(line.split("=", 1) for line in (MOD / "42/mod.info").read_text().splitlines() if "=" in line)
+    info = dict(
+        line.split("=", 1) for line in (MOD / "42/mod.info").read_text().splitlines() if "=" in line
+    )
     assert info["id"] == "AKRCore" and "require" not in info
     version = (MOD / "VERSION").read_text().strip()
     assert version in info["description"]

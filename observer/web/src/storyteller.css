@@ -1,1 +1,156 @@
-:root{font-family:system-ui,sans-serif;color:#e1e9e4;background:#121d18;color-scheme:dark}*{box-sizing:border-box}body{margin:0}.storyteller-app{height:100dvh;display:flex;flex-direction:column}.storyteller-app header{padding:14px 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #3b5145;gap:20px}.storyteller-app h1{font-size:20px;margin:0}.storyteller-app header p{margin:4px 0 0;font-size:13px;color:#aabbaf}.storyteller-app a{color:#9bcdb2}.storyteller-app main{flex:1;min-height:0;display:grid;grid-template-columns:350px 1fr}.storyteller-app aside{overflow:auto;padding:18px;background:#192820;font-size:13px}.storyteller-app aside>p{line-height:1.55;margin-top:0;color:#c0d0c6}.storyteller-app dl{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px}.storyteller-app dt{color:#aabfb1}.storyteller-app dd{margin:0;font-variant-numeric:tabular-nums;text-align:right}.storyteller-app section{border-top:1px solid #3b5145;margin-top:20px;padding-top:8px}.storyteller-app h2{font-size:15px}.storyteller-app label{display:block;margin:10px 0 5px}.storyteller-app select,.storyteller-app button{width:100%;padding:9px;border:1px solid #4f6a59;background:#263e2f;color:inherit;border-radius:5px}.storyteller-app button{margin-top:12px;cursor:pointer}.storyteller-app section>p{font-size:12px;line-height:1.5;color:#acbfb2}.storyteller-app ol{list-style:none;padding:0}.storyteller-app li{padding:12px 0;border-bottom:1px solid #3b5145}.storyteller-app li p{margin:5px 0;line-height:1.4}.storyteller-app small{color:#a8b7ad}.storyteller-app #story-map{height:100%;background:#25342f}.storyteller-app #feed-status{color:#f3c975;font-size:13px}.storyteller-app #feed-status[data-status=live]{color:#92dbac}.storyteller-app .leaflet-popup-content-wrapper{color:#183220;background:#eef5ec}@media(max-width:760px){.storyteller-app main{grid-template-columns:260px 1fr}.storyteller-app header{padding:12px}.storyteller-app h1{font-size:16px}.storyteller-app aside{padding:12px}}@media(max-width:520px){.storyteller-app main{grid-template-columns:1fr;grid-template-rows:45% 55%}.storyteller-app header{gap:10px}.storyteller-app aside{order:2}.storyteller-app #story-map{order:1}}
+:root {
+  font-family: system-ui, sans-serif;
+  color: #e1e9e4;
+  background: #121d18;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+.storyteller-app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.storyteller-app header {
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #3b5145;
+  gap: 20px;
+}
+.storyteller-app h1 {
+  font-size: 20px;
+  margin: 0;
+}
+.storyteller-app header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #aabbaf;
+}
+.storyteller-app a {
+  color: #9bcdb2;
+}
+.storyteller-app main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+}
+.storyteller-app aside {
+  overflow: auto;
+  padding: 18px;
+  background: #192820;
+  font-size: 13px;
+}
+.storyteller-app aside > p {
+  line-height: 1.55;
+  margin-top: 0;
+  color: #c0d0c6;
+}
+.storyteller-app dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px 12px;
+}
+.storyteller-app dt {
+  color: #aabfb1;
+}
+.storyteller-app dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.storyteller-app section {
+  border-top: 1px solid #3b5145;
+  margin-top: 20px;
+  padding-top: 8px;
+}
+.storyteller-app h2 {
+  font-size: 15px;
+}
+.storyteller-app label {
+  display: block;
+  margin: 10px 0 5px;
+}
+.storyteller-app select,
+.storyteller-app button {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #4f6a59;
+  background: #263e2f;
+  color: inherit;
+  border-radius: 5px;
+}
+.storyteller-app button {
+  margin-top: 12px;
+  cursor: pointer;
+}
+.storyteller-app section > p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #acbfb2;
+}
+.storyteller-app ol {
+  list-style: none;
+  padding: 0;
+}
+.storyteller-app li {
+  padding: 12px 0;
+  border-bottom: 1px solid #3b5145;
+}
+.storyteller-app li p {
+  margin: 5px 0;
+  line-height: 1.4;
+}
+.storyteller-app small {
+  color: #a8b7ad;
+}
+.storyteller-app #story-map {
+  height: 100%;
+  background: #25342f;
+}
+.storyteller-app #feed-status {
+  color: #f3c975;
+  font-size: 13px;
+}
+.storyteller-app #feed-status[data-status="live"] {
+  color: #92dbac;
+}
+.storyteller-app .leaflet-popup-content-wrapper {
+  color: #183220;
+  background: #eef5ec;
+}
+@media (max-width: 760px) {
+  .storyteller-app main {
+    grid-template-columns: 260px 1fr;
+  }
+  .storyteller-app header {
+    padding: 12px;
+  }
+  .storyteller-app h1 {
+    font-size: 16px;
+  }
+  .storyteller-app aside {
+    padding: 12px;
+  }
+}
+@media (max-width: 520px) {
+  .storyteller-app main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 45% 55%;
+  }
+  .storyteller-app header {
+    gap: 10px;
+  }
+  .storyteller-app aside {
+    order: 2;
+  }
+  .storyteller-app #story-map {
+    order: 1;
+  }
+}

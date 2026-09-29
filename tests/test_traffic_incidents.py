@@ -1,16 +1,17 @@
 """Persistent intent/recovery contracts; no claim of native spawning or audio."""
+
 from pathlib import Path
 
 import pytest
 from lupa.lua51 import LuaRuntime
 
-ROOT=Path(__file__).parents[1]
+ROOT = Path(__file__).parents[1]
 
 
 @pytest.fixture
 def lua():
-    vm=LuaRuntime(unpack_returned_tuples=True)
-    vm.globals().package.path=str(ROOT/'mods/LofersStoryteller/42/media/lua/shared/?.lua')
+    vm = LuaRuntime(unpack_returned_tuples=True)
+    vm.globals().package.path = str(ROOT / "mods/LofersStoryteller/42/media/lua/shared/?.lua")
     vm.execute("""
         T=require 'LofersScenario/TrafficIncidents'
         s={world_id='world',status='running',phase='first_cases',elapsed_hours=2}
@@ -63,9 +64,9 @@ def test_stale_checkpoint_or_early_receipt_cannot_release_effect(lua):
     """)
 
 
-@pytest.mark.parametrize('release',[False,True])
-def test_interrupted_materialization_retains_reservation_and_never_retries(lua,release):
-    lua.globals().should_release=release
+@pytest.mark.parametrize("release", [False, True])
+def test_interrupted_materialization_retains_reservation_and_never_retries(lua, release):
+    lua.globals().should_release = release
     lua.execute("""
         e=assert(T.reserve(s,plan,c));local id=e.id
         local token,revision=T.prepare(s,id,'materialize',c)
@@ -88,14 +89,25 @@ def test_interrupted_sound_is_spent_without_replaying_or_losing_wreck(lua):
     """)
 
 
-@pytest.mark.parametrize('mutation',[
-    "s.status='calm'","s.status='paused'","c.online=0","c.online=33",
-    "c.moving_vehicles=3","c.age_seconds=1","c.scene_clear=false",
-    "c.player_exclusion=false","c.all_players_known=false","c.unseen=false",
-    "plan.site.x=0/0","plan.wrecks[1].loot[1].count=100",
-])
-def test_ineligible_incidents_do_not_claim_capacity(lua,mutation):
-    lua.execute(mutation+";assert(not T.reserve(s,plan,c));assert(T.reservations(s)==0)")
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "s.status='calm'",
+        "s.status='paused'",
+        "c.online=0",
+        "c.online=33",
+        "c.moving_vehicles=3",
+        "c.age_seconds=1",
+        "c.scene_clear=false",
+        "c.player_exclusion=false",
+        "c.all_players_known=false",
+        "c.unseen=false",
+        "plan.site.x=0/0",
+        "plan.wrecks[1].loot[1].count=100",
+    ],
+)
+def test_ineligible_incidents_do_not_claim_capacity(lua, mutation):
+    lua.execute(mutation + ";assert(not T.reserve(s,plan,c));assert(T.reservations(s)==0)")
 
 
 def test_cooldown_history_cap_and_ids_survive_restore(lua):

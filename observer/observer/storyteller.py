@@ -25,10 +25,14 @@ class Storyteller:
         self.started = self.sequence = self.captured = self.received = 0
         self.latest = None
         with state.lock:
-            row = state.db.execute("SELECT value FROM metadata WHERE key='storyteller_watermark'").fetchone()
+            row = state.db.execute(
+                "SELECT value FROM metadata WHERE key='storyteller_watermark'"
+            ).fetchone()
             if row:
                 self.session, self.started, self.sequence, self.captured = json.loads(row[0])
-            row = state.db.execute("SELECT value FROM metadata WHERE key='storyteller_latest'").fetchone()
+            row = state.db.execute(
+                "SELECT value FROM metadata WHERE key='storyteller_latest'"
+            ).fetchone()
             if row:
                 self.latest = json.loads(row[0])
 
@@ -132,17 +136,43 @@ class Storyteller:
                 or not self.text(s.phase, 32)
                 or not self.text(s.worker_health, 128, empty=True)
                 or not self.number(s.elapsed_hours)
-                or any(v > 1000000 for v in (s.residents, s.materialized, s.pedestrians, s.vehicles,
-                                             s.plan_rejections, s.lease_changes))
+                or any(
+                    v > 1000000
+                    for v in (
+                        s.residents,
+                        s.materialized,
+                        s.pedestrians,
+                        s.vehicles,
+                        s.plan_rejections,
+                        s.lease_changes,
+                    )
+                )
                 or not -1 <= s.worker_queue <= 1000000
-                or not all(self.number(v, high=60000) for v in (
-                    s.worker_compute_ms, s.last_step_ms, s.p95_step_ms, s.p99_step_ms))
+                or not all(
+                    self.number(v, high=60000)
+                    for v in (s.worker_compute_ms, s.last_step_ms, s.p95_step_ms, s.p99_step_ms)
+                )
             ):
                 raise HTTPException(422, "Invalid First Week diagnostics")
-            scenario = {k: getattr(s, k) for k in (
-                "status", "phase", "elapsed_hours", "residents", "materialized", "pedestrians",
-                "vehicles", "worker_health", "worker_compute_ms", "plan_rejections", "lease_changes",
-                "last_step_ms", "p95_step_ms", "p99_step_ms")}
+            scenario = {
+                k: getattr(s, k)
+                for k in (
+                    "status",
+                    "phase",
+                    "elapsed_hours",
+                    "residents",
+                    "materialized",
+                    "pedestrians",
+                    "vehicles",
+                    "worker_health",
+                    "worker_compute_ms",
+                    "plan_rejections",
+                    "lease_changes",
+                    "last_step_ms",
+                    "p95_step_ms",
+                    "p99_step_ms",
+                )
+            }
             scenario["worker_queue"] = None if s.worker_queue == -1 else s.worker_queue
         latest = {
             "world": m.world,
@@ -178,10 +208,15 @@ class Storyteller:
                 raise HTTPException(409, "Retired exporter session")
             self.state.db.execute(
                 "INSERT OR REPLACE INTO metadata VALUES('storyteller_watermark',?)",
-                (json.dumps([m.server_session, m.session_started_at_ms, m.sequence, m.captured_at_ms]),),
+                (
+                    json.dumps(
+                        [m.server_session, m.session_started_at_ms, m.sequence, m.captured_at_ms]
+                    ),
+                ),
             )
             self.state.db.execute(
-                "INSERT OR REPLACE INTO metadata VALUES('storyteller_latest',?)", (json.dumps(latest),)
+                "INSERT OR REPLACE INTO metadata VALUES('storyteller_latest',?)",
+                (json.dumps(latest),),
             )
             self.latest = latest
             self.session, self.started = m.server_session, m.session_started_at_ms
@@ -190,7 +225,9 @@ class Storyteller:
     def snapshot(self):
         with self.state.lock:
             now = int(self.clock() * 1000)
-            fresh = bool(self.received and max(now - self.received, now - self.captured) < self.stale_ms)
+            fresh = bool(
+                self.received and max(now - self.received, now - self.captured) < self.stale_ms
+            )
             return {
                 "status": "live" if fresh else "stale" if self.latest else "waiting",
                 "received_at": self.received or None,

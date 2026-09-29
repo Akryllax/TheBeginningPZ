@@ -25,21 +25,30 @@ DEFAULT_BOUNDS = Bounds(min_x=-250, min_y=-250, max_x=250, max_y=250)
 def read_positions(path, kind):
     # A short read transaction obtains a coherent table view, including WAL.
     # Never use immutable=1 or copy only the main file of a live SQLite DB.
-    with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=0.1)) as db:
+    with closing(
+        sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=0.1)
+    ) as db:
         db.execute("PRAGMA query_only=ON")
         if kind == "players":
-            rows = db.execute("SELECT id,username,name,x,y,z FROM networkPlayers WHERE isDead=0").fetchall()
+            rows = db.execute(
+                "SELECT id,username,name,x,y,z FROM networkPlayers WHERE isDead=0"
+            ).fetchall()
             return [
                 {"id": r[0], "name": r[1], "character": r[2], "x": r[3], "y": r[4], "z": r[5]}
                 for r in rows
-                if all(isinstance(v, (float, int)) and math.isfinite(v) and abs(v) < 200000 for v in r[3:6])
+                if all(
+                    isinstance(v, (float, int)) and math.isfinite(v) and abs(v) < 200000
+                    for v in r[3:6]
+                )
             ]
         rows = db.execute(
             "SELECT id,x,y,worldversion,CASE WHEN length(data)<=16777216 THEN data END FROM vehicles"
         ).fetchall()
     records = []
     for id, x, y, version, data in rows:
-        if not all(isinstance(v, (float, int)) and math.isfinite(v) and abs(v) < 200000 for v in (x, y)):
+        if not all(
+            isinstance(v, (float, int)) and math.isfinite(v) and abs(v) < 200000 for v in (x, y)
+        ):
             continue
         try:
             flags = decode_vehicle(data, version, x, y)
@@ -51,7 +60,13 @@ def read_positions(path, kind):
 
 class SavedMap:
     def __init__(
-        self, data: Path, save: Path, maps: Path, world="AKR_Exploratory", bounds=DEFAULT_BOUNDS, logs=None
+        self,
+        data: Path,
+        save: Path,
+        maps: Path,
+        world="AKR_Exploratory",
+        bounds=DEFAULT_BOUNDS,
+        logs=None,
     ):
         data.mkdir(parents=True, exist_ok=True)
         self.save, self.world, self.bounds = save, world, bounds
@@ -74,7 +89,12 @@ class SavedMap:
         self.db.commit()
         self.death_log = DeathLog(self.db, logs) if logs is not None else None
         self.sources = {
-            r[0]: {"payload": json.loads(r[1]), "modified_at": r[2], "checked_at": r[3], "error": r[4]}
+            r[0]: {
+                "payload": json.loads(r[1]),
+                "modified_at": r[2],
+                "checked_at": r[3],
+                "error": r[4],
+            }
             for r in self.db.execute("SELECT * FROM sources")
         }
         self.fingerprints = {}
@@ -130,7 +150,14 @@ class SavedMap:
             )
             self.publish(name, payload, modified, now)
             self.fingerprints[name] = fingerprint
-        except (OSError, ValueError, KeyError, sqlite3.Error, struct.error, zipfile.BadZipFile) as exc:
+        except (
+            OSError,
+            ValueError,
+            KeyError,
+            sqlite3.Error,
+            struct.error,
+            zipfile.BadZipFile,
+        ) as exc:
             with self.lock:
                 old = self.sources.get(name, {"payload": [], "modified_at": None})
             self.publish(
@@ -144,7 +171,9 @@ class SavedMap:
     def read_car_keys(self, path):
         types = item_types(self.save / "WorldDictionaryReadable.lua", self.scripts)
         keys = set()
-        with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=0.1)) as db:
+        with closing(
+            sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=0.1)
+        ) as db:
             db.execute("PRAGMA query_only=ON")
             for version, blob in db.execute(
                 "SELECT worldversion,CASE WHEN length(data)<=16777216 THEN data END FROM networkPlayers WHERE isDead=0"
@@ -165,14 +194,20 @@ class SavedMap:
             with self.lock:
                 old = self.sources.get("deaths", {"payload": [], "modified_at": None})
             self.publish(
-                "deaths", old["payload"], old["modified_at"], now, f"{type(exc).__name__}: {str(exc)[:160]}"
+                "deaths",
+                old["payload"],
+                old["modified_at"],
+                now,
+                f"{type(exc).__name__}: {str(exc)[:160]}",
             )
 
     def poll(self):
         with self.poll_lock:
             self.read_source("car_keys", self.save / "players.db", self.read_car_keys)
             for kind in ("players", "vehicles"):
-                self.read_source(kind, self.save / f"{kind}.db", lambda p, k=kind: read_positions(p, k))
+                self.read_source(
+                    kind, self.save / f"{kind}.db", lambda p, k=kind: read_positions(p, k)
+                )
             self.read_deaths()
             if self.on_player_snapshot:
                 self.on_player_snapshot()
@@ -204,7 +239,9 @@ class SavedMap:
                     continue
                 source = self.sources.get("coverage:" + name, {})
                 cells = (
-                    self.exploration.select(name, source) if self.exploration else source.get("payload", [])
+                    self.exploration.select(name, source)
+                    if self.exploration
+                    else source.get("payload", [])
                 )
                 for x, y, flags in cells:
                     if flags:
@@ -220,7 +257,8 @@ class SavedMap:
     def status(self):
         with self.lock:
             sources = {
-                k: {f: v for f, v in source.items() if f != "payload"} for k, source in self.sources.items()
+                k: {f: v for f, v in source.items() if f != "payload"}
+                for k, source in self.sources.items()
             }
             players = self.sources.get("players", {}).get("payload", [])
             return {

@@ -3,7 +3,7 @@ services:
   game:
     build:
       context: game
-      args: {PZ_UID: "1000", PZ_GID: "1000"}
+      args: { PZ_UID: "1000", PZ_GID: "1000" }
     restart: "on-failure:3"
     userns_mode: keep-id
     mem_limit: 9g
@@ -26,7 +26,7 @@ services:
     networks: [default, telemetry]
     logging:
       driver: k8s-file
-      options: {max-size: 10m}
+      options: { max-size: 10m }
   npc:
     profiles: [scenario]
     build:
@@ -39,7 +39,19 @@ services:
     cpus: 2
     read_only: true
     network_mode: none
-    command: ["--socket", "/run/lofers/npc.sock", "--world", "AKR_DayOne", "--rules", "/opt/lofers/rules", "--workers", "2", "--map-index", "/opt/lofers/map/map-index.pb"]
+    command:
+      [
+        "--socket",
+        "/run/lofers/npc.sock",
+        "--world",
+        "AKR_DayOne",
+        "--rules",
+        "/opt/lofers/rules",
+        "--workers",
+        "2",
+        "--map-index",
+        "/opt/lofers/map/map-index.pb",
+      ]
     volumes:
       - ./data/npc-ipc:/run/lofers:z
       - ./artifacts/scenario-map:/opt/lofers/map:ro,z
@@ -47,7 +59,7 @@ services:
     security_opt: [no-new-privileges:true]
     logging:
       driver: k8s-file
-      options: {max-size: 10m}
+      options: { max-size: 10m }
   observer:
     build: observer
     user: "1000:1000"
@@ -80,7 +92,7 @@ services:
     security_opt: [no-new-privileges:true]
     logging:
       driver: k8s-file
-      options: {max-size: 10m}
+      options: { max-size: 10m }
   gateway:
     build:
       context: gateway
@@ -96,7 +108,7 @@ services:
       - ./data/caddy:/data:Z
     logging:
       driver: k8s-file
-      options: {max-size: 10m}
+      options: { max-size: 10m }
 networks:
   default: {}
   telemetry:

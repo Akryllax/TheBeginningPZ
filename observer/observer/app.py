@@ -93,7 +93,9 @@ def create_app(
         z: int = Query(0, ge=-32, le=64),
         observer: str | None = Query(None, max_length=128),
     ):
-        objects, truncated = store.objects((x - radius, y - radius, x + radius, y + radius), z, observer)
+        objects, truncated = store.objects(
+            (x - radius, y - radius, x + radius, y + radius), z, observer
+        )
         return {"revision": store.revision(), "objects": objects, "truncated": truncated}
 
     @app.get("/api/v1/elements/{id:path}")

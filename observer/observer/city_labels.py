@@ -21,7 +21,9 @@ def read_city_labels(maps: Path):
         return []
     try:
         translations = json.loads(
-            (maps.parent.parent / "lua/shared/Translate/EN/MapLabel.json").read_text(encoding="utf-8-sig")
+            (maps.parent.parent / "lua/shared/Translate/EN/MapLabel.json").read_text(
+                encoding="utf-8-sig"
+            )
         )
         if not isinstance(translations, dict):
             translations = {}

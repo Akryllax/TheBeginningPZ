@@ -18,9 +18,12 @@ def setup(tmp_path, monkeypatch):
     with sqlite3.connect(save / "players.db") as db:
         db.execute("CREATE TABLE networkPlayers(id,username,name,x,y,z,isDead,data)")
         db.execute(
-            "INSERT INTO networkPlayers VALUES(1,'akryllax','Tommy',0,0,0,0,?)", (b"private-player-blob",)
+            "INSERT INTO networkPlayers VALUES(1,'akryllax','Tommy',0,0,0,0,?)",
+            (b"private-player-blob",),
         )
-        db.execute("INSERT INTO networkPlayers VALUES(2,'eric','Eric',0,0,0,0,?)", (b"other-private-blob",))
+        db.execute(
+            "INSERT INTO networkPlayers VALUES(2,'eric','Eric',0,0,0,0,?)", (b"other-private-blob",)
+        )
     return tmp_path / "data", save
 
 
@@ -77,9 +80,15 @@ def test_trip_distance_order_conflicts_and_undo(setup):
         assert updated["distance"] == 28.3
         assert [s["label"] for s in updated["stops"]] == ["Home", "Garage", "Surplus"]
         assert client.put(f"/api/v1/trips/{saved['id']}", json=value).status_code == 409
-        assert client.delete(f"/api/v1/trips/{saved['id']}?version={saved['version']}").status_code == 409
+        assert (
+            client.delete(f"/api/v1/trips/{saved['id']}?version={saved['version']}").status_code
+            == 409
+        )
         updated = action(client, updated, "next")
-        assert client.delete(f"/api/v1/trips/{saved['id']}?version={updated['version']}").status_code == 200
+        assert (
+            client.delete(f"/api/v1/trips/{saved['id']}?version={updated['version']}").status_code
+            == 200
+        )
         assert client.get("/api/v1/trips").json()["trips"] == []
         restored = client.post(f"/api/v1/trips/{saved['id']}/restore").json()
         assert restored["tracking"]["completed"] == 1
@@ -118,7 +127,8 @@ def test_api_bounds_same_origin_and_private_fields(setup):
         )
         assert (
             client.delete(
-                f"/api/v1/trips/{saved['id']}?version=2", headers={"Origin": "https://elsewhere.test"}
+                f"/api/v1/trips/{saved['id']}?version=2",
+                headers={"Origin": "https://elsewhere.test"},
             ).status_code
             == 403
         )
@@ -142,7 +152,9 @@ def test_pings_expire_replace_and_do_not_persist(setup):
         assert client.get("/api/v1/pings").json()["pings"][0]["x"] == 20
         assert client.post("/api/v1/pings", json={**ping, "x": 999999}).status_code == 422
         assert (
-            client.post("/api/v1/pings", json=ping, headers={"Origin": "https://elsewhere.test"}).status_code
+            client.post(
+                "/api/v1/pings", json=ping, headers={"Origin": "https://elsewhere.test"}
+            ).status_code
             == 403
         )
         clock[0] += 13
@@ -176,7 +188,10 @@ def test_auto_progress_uses_fresh_player_save_order_and_floor(setup):
         arrived = latest(client)
         assert arrived["tracking"]["completed"] == 2
         with sqlite3.connect(setup[1] / "players.db") as db:
-            db.execute("UPDATE networkPlayers SET data=? WHERE username='eric'", (b"another player's save",))
+            db.execute(
+                "UPDATE networkPlayers SET data=? WHERE username='eric'",
+                (b"another player's save",),
+            )
         app.state.planning.poll_progress()
         assert latest(client)["version"] == arrived["version"]
         move(setup, 200)
@@ -213,7 +228,9 @@ def test_progress_persists_pauses_on_death_and_preserves_on_route_edit(setup):
         value["version"] = renamed["version"]
         reset = client.put(f"/api/v1/trips/{manual['id']}", json=value).json()
         assert reset["tracking"]["completed"] == 1 and not reset["tracking"]["active"]
-        assert set(reset["tracking"]["reached_stop_ids"]) == set(renamed["tracking"]["reached_stop_ids"])
+        assert set(reset["tracking"]["reached_stop_ids"]) == set(
+            renamed["tracking"]["reached_stop_ids"]
+        )
 
 
 def test_read_failure_and_character_change_do_not_complete_trip(setup):
@@ -248,7 +265,9 @@ def test_start_during_collection_cannot_use_older_snapshot(setup, monkeypatch):
             move(setup, 500)
             monkeypatch.setattr(planning, "player_samples", original)
             current = latest(client)
-            planning.progress(current["id"], ProgressInput(version=current["version"], action="start"))
+            planning.progress(
+                current["id"], ProgressInput(version=current["version"], action="start")
+            )
             return stale
 
         monkeypatch.setattr(planning, "player_samples", racing_sample)

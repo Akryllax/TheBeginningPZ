@@ -94,7 +94,9 @@ class Planning:
                     continue
                 for point in stops:
                     point.setdefault("id", str(uuid4()))
-                tracking["reached_stop_ids"] = [p["id"] for p in stops[: tracking.get("completed", 0)]]
+                tracking["reached_stop_ids"] = [
+                    p["id"] for p in stops[: tracking.get("completed", 0)]
+                ]
                 state.db.execute(
                     "UPDATE trips SET stops=?,tracking=?,version=version+1 WHERE id=?",
                     (json.dumps(stops), json.dumps(tracking), row[0]),
@@ -128,7 +130,9 @@ class Planning:
         }
         stops = result["stops"] = json.loads(result["stops"])
         routing = json.loads(result["routing"]) if result.get("routing") else None
-        result["routing"] = {k: v for k, v in routing.items() if not k.startswith("_")} if routing else None
+        result["routing"] = (
+            {k: v for k, v in routing.items() if not k.startswith("_")} if routing else None
+        )
         result["distance"] = round(
             sum(math.hypot(a["x"] - b["x"], a["y"] - b["y"]) for a, b in pairwise(stops)), 1
         )
@@ -137,14 +141,18 @@ class Planning:
     def snapshot(self):
         with self.state.lock:
             version = int(
-                self.state.db.execute("SELECT value FROM metadata WHERE key='trip_revision'").fetchone()[0]
+                self.state.db.execute(
+                    "SELECT value FROM metadata WHERE key='trip_revision'"
+                ).fetchone()[0]
             )
             if version != self._snapshot_cache[0]:
                 self._snapshot_cache = (
                     version,
                     [
                         self.trip(r)
-                        for r in self.state.db.execute("SELECT * FROM trips ORDER BY updated_at DESC,id")
+                        for r in self.state.db.execute(
+                            "SELECT * FROM trips ORDER BY updated_at DESC,id"
+                        )
                     ],
                 )
             trips = self._snapshot_cache[1]
@@ -165,7 +173,9 @@ class Planning:
                     409, "Someone changed this trip. Reload it or save your draft as a new trip."
                 )
             if not id and db.execute("SELECT count(*) FROM trips").fetchone()[0] >= 100:
-                raise HTTPException(409, "The shared list is full (100 trips). Remove an unused trip first.")
+                raise HTTPException(
+                    409, "The shared list is full (100 trips). Remove an unused trip first."
+                )
             id = id or str(value.id or uuid4())
             now = int(self.clock() * 1000)
             previous = json.loads(old[2]) if old else []
@@ -179,7 +189,8 @@ class Planning:
                         (
                             p
                             for p in previous
-                            if p["id"] not in used and all(p[k] == point[k] for k in ("x", "y", "z"))
+                            if p["id"] not in used
+                            and all(p[k] == point[k] for k in ("x", "y", "z"))
                         ),
                         None,
                     )
@@ -215,9 +226,9 @@ class Planning:
                 tracking["reached_stop_ids"] = [
                     i for i in tracking.get("reached_stop_ids", []) if i in unchanged
                 ]
-                if tracking.get("note") == "Trip complete" and len(tracking["reached_stop_ids"]) < len(
-                    points
-                ):
+                if tracking.get("note") == "Trip complete" and len(
+                    tracking["reached_stop_ids"]
+                ) < len(points):
                     tracking["note"] = "Ready to resume"
             tracking["radius"] = value.arrival_radius
             self.normalize_progress(points, tracking)
@@ -241,7 +252,9 @@ class Planning:
                 else None,
             )
             db.execute("INSERT OR REPLACE INTO trips VALUES(?,?,?,?,?,?,?,?)", row)
-            db.execute("UPDATE metadata SET value=CAST(value AS INTEGER)+1 WHERE key='trip_revision'")
+            db.execute(
+                "UPDATE metadata SET value=CAST(value AS INTEGER)+1 WHERE key='trip_revision'"
+            )
             return self.trip(row)
 
     def player_samples(self):
@@ -253,7 +266,9 @@ class Planning:
         # inventory archive. Hash changes identify a fresh per-player save;
         # another player's DB write must not make stale coordinates count again.
         path = self.state.save / "players.db"
-        with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=0.1)) as db:
+        with closing(
+            sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=0.1)
+        ) as db:
             db.execute("PRAGMA query_only=ON")
             rows = db.execute(
                 "SELECT username,name,x,y,z,CASE WHEN length(data)<=16777216 THEN data END FROM networkPlayers WHERE isDead=0"
@@ -264,7 +279,8 @@ class Planning:
                 not isinstance(blob, bytes)
                 or not blob
                 or not all(
-                    isinstance(n, (float, int)) and math.isfinite(n) and abs(n) < 200000 for n in (x, y, z)
+                    isinstance(n, (float, int)) and math.isfinite(n) and abs(n) < 200000
+                    for n in (x, y, z)
                 )
             ):
                 continue
@@ -278,7 +294,9 @@ class Planning:
             if not row:
                 raise HTTPException(404, "Trip not found")
             if row[3] != value.version:
-                raise HTTPException(409, "Trip progress changed. Reload the saved trip and try again.")
+                raise HTTPException(
+                    409, "Trip progress changed. Reload the saved trip and try again."
+                )
             tracking = json.loads(row[6])
             stops = json.loads(row[2])
             count = len(stops)
@@ -289,7 +307,9 @@ class Planning:
                 if not tracking.get("player"):
                     raise HTTPException(422, "Choose a player to follow and save the trip first.")
                 if len(reached) >= count:
-                    raise HTTPException(409, "This trip is complete. Reset progress to run it again.")
+                    raise HTTPException(
+                        409, "This trip is complete. Reset progress to run it again."
+                    )
                 try:
                     sample = self.player_samples().get(tracking["player"])
                 except (OSError, sqlite3.Error) as exc:
@@ -328,7 +348,9 @@ class Planning:
             tracking["reached_stop_ids"] = list(reached)
             self.normalize_progress(stops, tracking)
             self.write_progress(row, tracking, visible=True)
-            return self.trip(self.state.db.execute("SELECT * FROM trips WHERE id=?", (id,)).fetchone())
+            return self.trip(
+                self.state.db.execute("SELECT * FROM trips WHERE id=?", (id,)).fetchone()
+            )
 
     def write_progress(self, row, tracking, visible):
         self.state.db.execute(
@@ -366,9 +388,14 @@ class Planning:
                     sample = samples.get(t["player"])
                     deaths = self.state.sources.get("deaths", {}).get("payload", [])
                     died = any(
-                        d["name"] == t["player"] and d["occurred_at"] >= t["started_at"] for d in deaths
+                        d["name"] == t["player"] and d["occurred_at"] >= t["started_at"]
+                        for d in deaths
                     )
-                    if died or sample and (sample.get("dead") or sample["character"] != t.get("_character")):
+                    if (
+                        died
+                        or sample
+                        and (sample.get("dead") or sample["character"] != t.get("_character"))
+                    ):
                         t.update(active=False, note="Character died or changed. Resume when ready.")
                         self.write_progress(row, t, True)
                         continue
@@ -389,7 +416,8 @@ class Planning:
                         continue
                     if sample.get("connection") != t.get("_connection"):
                         t.update(
-                            active=False, note="Player reconnected or character changed. Resume when ready."
+                            active=False,
+                            note="Player reconnected or character changed. Resume when ready.",
                         )
                         self.write_progress(row, t, True)
                         continue
@@ -403,7 +431,8 @@ class Planning:
                             continue
                         if (
                             math.floor(sample["z"]) != stop["z"]
-                            or math.hypot(sample["x"] - stop["x"], sample["y"] - stop["y"]) > t["radius"]
+                            or math.hypot(sample["x"] - stop["x"], sample["y"] - stop["y"])
+                            > t["radius"]
                         ):
                             break
                         reached.add(stop["id"])
@@ -418,7 +447,9 @@ class Planning:
                     self.write_progress(row, t, len(reached) != before)
             self.progress_error = (
                 "Live positions are unavailable; automatic checkpoints are waiting."
-                if self.state.positions and self.state.positions.enabled and not self.state.positions.fresh()
+                if self.state.positions
+                and self.state.positions.enabled
+                and not self.state.positions.fresh()
                 else None
             )
         except (OSError, sqlite3.Error, ValueError, KeyError):

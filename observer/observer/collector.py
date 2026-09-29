@@ -21,7 +21,9 @@ class Collector:
     def error(self, message):
         log.warning("%s", message)
         with self.store.lock, self.store.db:
-            self.store.set_meta("collector_error", {"message": message, "at": int(time.time() * 1000)})
+            self.store.set_meta(
+                "collector_error", {"message": message, "at": int(time.time() * 1000)}
+            )
 
     def poll(self):
         if self.spool and self.spool.exists():
@@ -56,8 +58,12 @@ class Collector:
                 raise ValueError("unsupported journal header")
             identity = hashlib.sha256(header_line).hexdigest()
             with self.store.lock:
-                cursor = self.store.db.execute("SELECT * FROM cursors WHERE path=?", (str(path),)).fetchone()
-            offset = cursor["offset"] if cursor and cursor["identity"] == identity else len(header_line)
+                cursor = self.store.db.execute(
+                    "SELECT * FROM cursors WHERE path=?", (str(path),)
+                ).fetchone()
+            offset = (
+                cursor["offset"] if cursor and cursor["identity"] == identity else len(header_line)
+            )
             if path.stat().st_size < offset:
                 offset = len(header_line)
             f.seek(offset)
@@ -75,7 +81,8 @@ class Collector:
                 # Committing the cursor after the observation permits safe replay after a crash.
                 with self.store.lock, self.store.db:
                     self.store.db.execute(
-                        "INSERT OR REPLACE INTO cursors VALUES(?,?,?)", (str(path), identity, f.tell())
+                        "INSERT OR REPLACE INTO cursors VALUES(?,?,?)",
+                        (str(path), identity, f.tell()),
                     )
 
     def read_saves(self):

@@ -1,4 +1,5 @@
 """Execute the actual civilian modules in Lua 5.1; no server or client is launched."""
+
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,9 @@ MODS = ("AKRCore", "AKRPopulation", "AKRResidents")
 @pytest.fixture
 def lua():
     vm = LuaRuntime(unpack_returned_tuples=True)
-    vm.globals().package.path = ";".join(str(ROOT / "mods" / name / "42/media/lua/shared/?.lua") for name in MODS)
+    vm.globals().package.path = ";".join(
+        str(ROOT / "mods" / name / "42/media/lua/shared/?.lua") for name in MODS
+    )
     vm.execute("""
         P=require 'AKRPopulation/Population';R=require 'AKRResidents/Residents';M=R.Model
         function resident(seed) return M.new('civilian',seed or 7,{x=5,y=5,z=0},{{x=10,y=5,z=0},{x=2,y=9,z=0}}) end
@@ -234,7 +237,7 @@ def test_stationary_threat_does_not_restart_a_good_escape(lua):
 
 
 def test_committed_escape_is_not_erased_by_a_following_threat(lua):
-    lua.execute('''
+    lua.execute("""
         local r=resident();local o=observation(true);M.tick(r,0,o)
         o.path={status='found',revision=r.revision,generation=r.generation,route={}}
         M.tick(r,.25,o);o.path=nil;local rev=r.revision
@@ -243,22 +246,22 @@ def test_committed_escape_is_not_erased_by_a_following_threat(lua):
         assert(r.revision==rev and r.moving and not find(out,'stop') and not find(out,'navigate'))
         o.routeSafe=false;out=M.tick(r,1.8,o)
         assert(find(out,'stop') and find(out,'navigate'))
-    ''')
+    """)
 
 
 def test_reaction_pauses_without_losing_route_or_action(lua):
-    lua.execute('''
+    lua.execute("""
         local r=resident();local o=observation(true);M.tick(r,0,o)
         o.path={status='found',revision=r.revision,generation=r.generation,route={}}
         M.tick(r,.25,o);o.path=nil;local rev=r.revision
         o.reacting=true;assert(#M.tick(r,.5,o)==0)
         assert(r.moving and r.revision==rev)
         o.reacting=false;o.routeSafe=true;assert(not find(M.tick(r,1.5,o),'stop'))
-    ''')
+    """)
 
 
 def test_persistent_routine_survives_danger_and_pool_rebinding(lua):
-    lua.execute('''
+    lua.execute("""
         local G=require 'AKRResidents/Plan';local saved={}
         local r=M.bind(saved,'person',7,{x=5,y=5,z=0},{{x=10,y=5,z=0}},1)
         G.fallback(r);local a=G.current(r);assert(a.kind=='WALK')
@@ -272,21 +275,21 @@ def test_persistent_routine_survives_danger_and_pool_rebinding(lua):
         assert(not G.accept(r,old));assert(G.current(r).kind=='WAIT')
         assert(G.complete(r,G.current(r).id));assert(G.current(r).target.x==5)
         assert(G.complete(r,G.current(r).id));assert(r.goalPlan.status=='complete')
-    ''')
+    """)
 
 
 def test_worker_routine_adoption_rejects_replacement_and_stale_generation(lua):
-    lua.execute('''
+    lua.execute("""
         local G=require 'AKRResidents/Plan';local r=M.bind({},'p',7,{x=5,y=5,z=0},{{x=10,y=5,z=0}},1)
         local p={resident_id='p',generation=1,based_on_revision=1,plan_revision=2,goal='civilian_routine',actions={
           {id='a',kind=2,target={x=10,y=5,z=0}}, {id='b',kind=1,target={x=10,y=5,z=0}}, {id='c',kind=2,target={x=5,y=5,z=0}}}}
         assert(G.accept(r,p));p.plan_revision=3;assert(not G.accept(r,p))
         assert(G.current(r).id=='a' and r.goalPlan.source=='worker')
-    ''')
+    """)
 
 
 def test_previous_route_completion_cannot_complete_new_candidate(lua):
-    lua.execute('''
+    lua.execute("""
         local r=resident();local o=observation(true);M.tick(r,0,o)
         local old=r.revision;o.path={status='found',revision=old,generation=r.generation,route={}}
         M.tick(r,.25,o);o.path=nil;o.routeSafe=true;o.routeRefresh=true
@@ -294,7 +297,7 @@ def test_previous_route_completion_cannot_complete_new_candidate(lua):
         o.routeRefresh=false;o.arrivedRevision=old
         o.path={status='found',revision=candidate,generation=r.generation,route={}}
         M.tick(r,1.8,o);assert(r.moving and r.followRevision==candidate)
-    ''')
+    """)
 
 
 def test_unknown_sweep_only_preserves_recent_committed_movement(lua):
@@ -320,7 +323,7 @@ def test_routine_wait_does_not_consume_offline_time(lua):
 
 
 def test_soft_cancel_policy_and_partial_route_does_not_complete_goal(lua):
-    lua.execute('''
+    lua.execute("""
         local G=require 'AKRResidents/Plan'
         local r=M.bind({},'buffered',12,{x=5,y=5,z=0},{{x=20,y=5,z=0}},1)
         G.fallback(r);local o=observation();M.tick(r,0,o)
@@ -331,11 +334,11 @@ def test_soft_cancel_policy_and_partial_route_does_not_complete_goal(lua):
         o.arrivedRevision=nil;o.threats=observation(true).threats;o.routeSafe=true
         out=M.tick(r,.75,o);assert(find(out,'stop').cancellation=='DEFER_TO_BOUNDARY')
         o.reacting=true;assert(#M.tick(r,1,o)==0)
-    ''')
+    """)
 
 
 def test_receipt_admission_holds_wait_and_completion_is_exactly_once(lua):
-    lua.execute('''
+    lua.execute("""
         local G=require 'AKRResidents/Plan'
         local r=M.bind({},'receipt',12,{x=5,y=5,z=0},{{x=5,y=5,z=0}},1)
         G.fallback(r);local first=G.current(r).id
@@ -347,7 +350,7 @@ def test_receipt_admission_holds_wait_and_completion_is_exactly_once(lua):
         M.tick(r,10.5,o);M.tick(r,13,o);assert(r.goalPlan.phase==2 and #r.goalPlan.outcomes==2)
         G.cancelCurrent(r,'cancelled','test');assert(#r.goalPlan.outcomes==3 and G.current(r)==nil)
         G.cancelCurrent(r,'cancelled','test');assert(#r.goalPlan.outcomes==3)
-    ''')
+    """)
 
 
 def test_terminal_population_provenance_and_reanimation_are_idempotent(lua):

@@ -56,7 +56,11 @@ def decode_coverage_bits(payload: bytes, bounds: Bounds):
         for unit in range(4):
             flags = (packed >> (unit * 2)) & 3
             if flags:
-                yield (bounds.min_x * 256 + (col * 4 + unit) * 32, bounds.min_y * 256 + row * 32, flags)
+                yield (
+                    bounds.min_x * 256 + (col * 4 + unit) * 32,
+                    bounds.min_y * 256 + row * 32,
+                    flags,
+                )
 
 
 class Reader:

@@ -41,7 +41,9 @@ class Store:
         with self.db:
             found = self.db.execute("SELECT value FROM meta WHERE key='world'").fetchone()
             if found and json.loads(found[0]) != world:
-                raise ValueError("Database belongs to a different world; use a separate data directory")
+                raise ValueError(
+                    "Database belongs to a different world; use a separate data directory"
+                )
             self.set_meta("world", world)
 
     def close(self):
@@ -67,7 +69,9 @@ class Store:
         if batch.observed_at > time.time() * 1000 + 60_000:
             raise ValueError("observation timestamp is in the future")
         with self.lock, self.db:
-            row = self.db.execute("SELECT seq FROM streams WHERE session=?", (batch.session,)).fetchone()
+            row = self.db.execute(
+                "SELECT seq FROM streams WHERE session=?", (batch.session,)
+            ).fetchone()
             previous = row[0] if row else 0
             if batch.sequence <= previous:
                 return False
@@ -81,7 +85,9 @@ class Store:
                         "at": batch.observed_at,
                     },
                 )
-            self.db.execute("INSERT OR REPLACE INTO streams VALUES(?,?)", (batch.session, batch.sequence))
+            self.db.execute(
+                "INSERT OR REPLACE INTO streams VALUES(?,?)", (batch.session, batch.sequence)
+            )
             who, at = batch.observer, batch.observed_at
             coverage_changed = False
             for tile in batch.tiles:
@@ -97,7 +103,8 @@ class Store:
                 if previous_tile and previous_tile[0] > at:
                     continue
                 self.db.execute(
-                    "INSERT OR REPLACE INTO tiles VALUES(?,?,?,?,?)", (who, tile.x, tile.y, tile.z, at)
+                    "INSERT OR REPLACE INTO tiles VALUES(?,?,?,?,?)",
+                    (who, tile.x, tile.y, tile.z, at),
                 )
                 present = {obj.id for obj in tile.objects}
                 # Seeing an empty tile is an observation too. Tombstones supersede earlier
@@ -109,7 +116,8 @@ class Store:
                 for old in known:
                     if old[0] not in present:
                         latest = self.db.execute(
-                            "SELECT x,y,z,at FROM objects WHERE id=? ORDER BY at DESC LIMIT 1", (old[0],)
+                            "SELECT x,y,z,at FROM objects WHERE id=? ORDER BY at DESC LIMIT 1",
+                            (old[0],),
                         ).fetchone()
                         if (
                             latest
@@ -120,7 +128,14 @@ class Store:
                             self._object(who, old[0], tile.x, tile.y, tile.z, at, 1, "{}")
                 for obj in tile.objects:
                     self._object(
-                        who, obj.id, obj.x, obj.y, obj.z, at, 0, encode(obj.model_dump(exclude_none=True))
+                        who,
+                        obj.id,
+                        obj.x,
+                        obj.y,
+                        obj.z,
+                        at,
+                        0,
+                        encode(obj.model_dump(exclude_none=True)),
                     )
                 coverage_changed |= self._coverage(who, tile.x // 32 * 32, tile.y // 32 * 32, 3)
             for cell in batch.coverage:
@@ -157,17 +172,21 @@ class Store:
                 self.db.execute("DELETE FROM players")
                 for player in batch.players:
                     self.db.execute(
-                        "INSERT INTO players VALUES(?,?,?)", (player.name, encode(player.model_dump()), at)
+                        "INSERT INTO players VALUES(?,?,?)",
+                        (player.name, encode(player.model_dump()), at),
                     )
                 self.set_meta("heartbeat_at", at)
             if batch.kind == "markers" and at >= self.meta("marker_at:" + who, 0):
                 self.set_meta("marker_at:" + who, at)
                 if any(m.author != who for m in batch.markers):
                     raise ValueError("marker author does not match observer")
-                self.db.execute("DELETE FROM markers WHERE json_extract(payload,'$.author')=?", (who,))
+                self.db.execute(
+                    "DELETE FROM markers WHERE json_extract(payload,'$.author')=?", (who,)
+                )
                 for marker in batch.markers:
                     self.db.execute(
-                        "INSERT OR REPLACE INTO markers VALUES(?,?)", (marker.id, encode(marker.model_dump()))
+                        "INSERT OR REPLACE INTO markers VALUES(?,?)",
+                        (marker.id, encode(marker.model_dump())),
                     )
                 authors = self.meta("live_marker_authors", [])
                 self.set_meta("live_marker_authors", sorted(set(authors + [who])))
@@ -194,7 +213,11 @@ class Store:
                 ).fetchone()
                 if old and old["at"] <= at and not old["deleted"]:
                     previous = json.loads(old["payload"])
-                    reset = (previous.get("kind"), previous.get("sprite"), previous.get("label")) != (
+                    reset = (
+                        previous.get("kind"),
+                        previous.get("sprite"),
+                        previous.get("label"),
+                    ) != (
                         current.get("kind"),
                         current.get("sprite"),
                         current.get("label"),
@@ -294,7 +317,8 @@ class Store:
             ).fetchall()
             reset = (
                 self.db.execute(
-                    "SELECT MAX(at) FROM object_resets WHERE id=?" + (" AND observer=?" if observer else ""),
+                    "SELECT MAX(at) FROM object_resets WHERE id=?"
+                    + (" AND observer=?" if observer else ""),
                     [id] + ([observer] if observer else []),
                 ).fetchone()[0]
                 or 0
@@ -326,7 +350,11 @@ class Store:
         with self.lock:
             now = int(time.time() * 1000)
             players = [
-                {**json.loads(r["payload"]), "observed_at": r["at"], "online": now - r["at"] < 15_000}
+                {
+                    **json.loads(r["payload"]),
+                    "observed_at": r["at"],
+                    "online": now - r["at"] < 15_000,
+                }
                 for r in self.db.execute("SELECT * FROM players")
             ]
             observers = [
@@ -352,5 +380,7 @@ class Store:
                 "observed_tiles": self.db.execute(
                     "SELECT COUNT(*) FROM (SELECT DISTINCT x,y,z FROM tiles)"
                 ).fetchone()[0],
-                "markers": [json.loads(r[0]) for r in self.db.execute("SELECT payload FROM markers")],
+                "markers": [
+                    json.loads(r[0]) for r in self.db.execute("SELECT payload FROM markers")
+                ],
             }
