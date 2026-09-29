@@ -10,11 +10,16 @@ import time
 import uuid
 import runtime_control as runtime
 import scenario_ops as scenario
+import watched_policy
 
 TERMINAL = {"COMPLETED", "FAILED", "CANCELLED"}
 
 
 def planned_cases(selection="batch", actors=1):
+    if selection == "regression":
+        if actors != 1:
+            raise ValueError("Regression defines its own counts")
+        return planned_cases("compare") + planned_cases("routine") + planned_cases("batch")
     if selection == "compare":
         if actors not in (1, 2):
             raise ValueError("Comparison requires two actors")
@@ -35,6 +40,7 @@ def planned_cases(selection="batch", actors=1):
         "defense": "DEFENSE_ESCAPE",
         "gait": "LOCOMOTION",
         "lifecycle": "LIFECYCLE",
+        "routine": "ROUTINE",
     }
     if selection == "batch":
         if actors != 1:
@@ -50,7 +56,9 @@ def planned_cases(selection="batch", actors=1):
             raise ValueError("Open and injury gates require one civilian")
         choices = [(names[selection], actors)]
     else:
-        raise ValueError("Expected batch, gait, compare, open, injury or defense")
+        raise ValueError(
+            "Expected regression, batch, routine, gait, compare, open, injury, defense or lifecycle"
+        )
     return [
         {
             "scenario": name,
@@ -135,7 +143,13 @@ def log_slice(path, boundary):
 def source_manifest(root):
     paths = set()
     for folder in (
-        "scenario-agent/src",
+        *(
+            str(p.relative_to(root))
+            for p in sorted((root / "scenario-agent").glob("src*"))
+            if p.is_dir()
+        ),
+        "npc-service/src",
+        "npc-service/rules",
         "mods/AKRCore",
         "mods/AKRDevTools",
         "mods/AKRResidents",
@@ -175,6 +189,7 @@ def run(m, selection="batch", actors=1):
                 "interrupted",
                 "cleanup_blocked",
                 "unreconciled",
+                "critical",
             }:
                 raise RuntimeError(
                     "Previous batch needs status/cancel reconciliation before another run"
@@ -196,7 +211,10 @@ def run(m, selection="batch", actors=1):
             "status": "running",
             "selection": selection,
             "cases": [],
-            "scope": "ordinary-client moving encounters; two-client and fatal lifecycle pending",
+            "scope": "ordinary-client "
+            + ("fatal lifecycle" if selection == "lifecycle" else "encounter regression")
+            + "; human acceptance and two-client qualification separate",
+            "failure_policy": "continue only after verified cleanup and stable runtime",
             "client_log_boundary": boundary,
             "started_at": since,
         }
@@ -218,7 +236,13 @@ def run(m, selection="batch", actors=1):
                 f"BATCH START: {len(cases)} cases, {sum(c['actors'] for c in cases)} civilian assignments. Automatic placement; feedback after the batch.",
             )
             for index, definition in enumerate(cases, 1):
-                hunters = 0 if definition["scenario"] == "STRIDE_COMPARE" else definition["actors"]
+                _, _, fresh = handshake(m, target)
+                watched_policy.verify_runtime(hello, fresh)
+                hunters = (
+                    0
+                    if definition["scenario"] in {"STRIDE_COMPARE", "ROUTINE"}
+                    else definition["actors"]
+                )
                 announce(
                     m,
                     f"CASE {index}/{len(cases)}: {definition['scenario']}; {definition['actors']} civilians, {hunters} fast shamblers.",
@@ -228,6 +252,7 @@ def run(m, selection="batch", actors=1):
                 )
                 event = accepted.event_id
                 entry = {"event": event, "definition": definition, "status": "running"}
+                case_boundary = log_boundary(console)
                 report["cases"].append(entry)
                 save()
                 deadline = time.monotonic() + 450
@@ -241,10 +266,12 @@ def run(m, selection="batch", actors=1):
                         samples.flush()
                         save()
                         if state.phase in TERMINAL:
-                            entry["status"] = state.phase.lower()
+                            entry["phase"] = state.phase
                             entry["scenario_outcome"] = state.encounter.scenario_outcome
-                            if state.phase != "COMPLETED" or not state.encounter.cleanup_verified:
-                                raise RuntimeError(f"Case {index}: {state.phase}: {state.reason}")
+                            entry["status"], entry["issue"] = watched_policy.classify(state)
+                            if entry["status"] == "critical":
+                                report["status"] = "critical"
+                                raise RuntimeError(f"Case {index}: critical: {entry['issue']}")
                             break
                         if state.phase == "CLEANUP_BLOCKED":
                             # The engine can require a few ticks for removal; retain a bounded window.
@@ -258,19 +285,46 @@ def run(m, selection="batch", actors=1):
                         else:
                             entry.pop("cleanup_blocked_since", None)
                         if time.monotonic() > deadline:
-                            raise RuntimeError(f"Case {index}: operator timeout")
+                            if entry.get("timeout_cancelled"):
+                                report["status"] = "critical"
+                                raise RuntimeError(f"Case {index}: timed-out cleanup not verified")
+                            entry["timeout_cancelled"] = True
+                            entry["cancel_reply"] = as_dict(
+                                request(pb, socket, hello, "CANCEL", event)
+                            )
+                            deadline = time.monotonic() + 24
                         time.sleep(1)
+                if entry.get("timeout_cancelled"):
+                    entry["status"], entry["issue"] = "failed", "operator_timeout"
+                excerpt = log_slice(console, case_boundary)
+                entry["client_log_available"] = excerpt is not None
+                if excerpt is not None:
+                    (folder / f"case-{index}-client-console.txt").write_bytes(excerpt)
+                    errors = [
+                        line
+                        for line in excerpt.decode(errors="replace").splitlines()
+                        if "ERROR" in line or "Exception" in line
+                    ]
+                    entry["client_error_lines"] = len(errors)
+                    if errors:
+                        entry["status"] = "failed"
+                        entry["client_issue"] = "new_client_error_lines; inspect scoped log"
+                else:
+                    entry["status"] = "failed"
+                    entry["client_issue"] = "client_log_unavailable"
+                save()
+                announce(
+                    m,
+                    f"CASE {index}/{len(cases)}: {entry['status']}; cleanup VERIFIED. "
+                    + ("Continuing to next case." if index < len(cases) else "Last case finished."),
+                )
                 event = None
-            report["status"] = (
-                "not_exercised"
-                if any(c.get("scenario_outcome") == "NOT_EXERCISED" for c in report["cases"])
-                else "passed_visual_pending"
-            )
+            report["status"] = watched_policy.batch_status(report["cases"])
             announce(
                 m,
-                "BATCH COMPLETE: encounter not exercised; cleanup verified."
-                if report["status"] == "not_exercised"
-                else "BATCH COMPLETE: native case checks and cleanup passed. Please report visual movement, reactions, sound and any errors.",
+                "BATCH COMPLETE: "
+                + report["status"]
+                + ". All case results retained; visual/audio feedback remains separate.",
             )
         except (Exception, KeyboardInterrupt) as error:
             report["error"] = str(error) or type(error).__name__
@@ -281,6 +335,14 @@ def run(m, selection="batch", actors=1):
             if event:
                 try:
                     report["cancel_reply"] = as_dict(request(pb, socket, hello, "CANCEL", event))
+                    cleanup_deadline = time.monotonic() + 24
+                    while True:
+                        cleanup = request(pb, socket, hello, "STATUS", event)
+                        report["cleanup_after_stop"] = as_dict(cleanup)
+                        save()
+                        if cleanup.phase in TERMINAL or time.monotonic() >= cleanup_deadline:
+                            break
+                        time.sleep(1)
                 except Exception as cancel_error:
                     report["cancel_error"] = str(cancel_error)
             try:
@@ -309,6 +371,10 @@ def run(m, selection="batch", actors=1):
             scenario.write_private(folder / "server-console.txt", result.stdout + result.stderr)
             save()
             print(f"Evidence: {folder / 'machine-report.json'}")
+        if report["status"] == "completed_with_failures":
+            raise RuntimeError(
+                "Batch finished with recorded failures; all remaining safe cases ran"
+            )
 
 
 def dispatch(m, args):
@@ -382,7 +448,9 @@ def dispatch(m, args):
     receipt, target = context(m)
     if action == "run":
         if len(args) > 3:
-            raise ValueError("run [batch|gait|compare|open|injury|defense] [1|2|4]")
+            raise ValueError(
+                "run [regression|batch|routine|gait|compare|open|injury|defense|lifecycle] [1|2|4]"
+            )
         return run(m, args[1] if len(args) > 1 else "batch", int(args[2]) if len(args) > 2 else 1)
     current = target / "current-encounter-batch.json"
     if action == "record-feedback":
@@ -458,7 +526,7 @@ def dispatch(m, args):
         if (
             state.phase in TERMINAL
             and state.encounter.cleanup_verified
-            and report["status"] in {"interrupted", "cleanup_blocked", "unreconciled"}
+            and report["status"] in {"interrupted", "cleanup_blocked", "unreconciled", "critical"}
         ):
             atomic_json(Path(report["path"]) / "reconciliation.json", as_dict(state))
             report["status"] = "reconciled_failed"

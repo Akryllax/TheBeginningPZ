@@ -34,8 +34,11 @@ never reuse a prior connection’s acknowledgment.
 Announce preparation, exact population/scenario, countdown, each wave, the viewing hold,
 cleanup and final outcome. The moving encounter batch uses an 8-second viewing hold, 2-second off-screen quiet period and 2-second countdown (60% shorter fixed idle waits). Readiness, collision and verified cleanup remain condition-based; active-case timeouts are unchanged. Unrecoverable death stops the operator immediately; transient cleanup gets at most 24 seconds.
 
-Run the agreed batch continuously and collect feedback afterward. Stop on failure,
-disconnect or uncertain cleanup; do not replace a failed case with an easier demonstration.
+Run the agreed batch continuously and collect feedback afterward. Under the user's
+2026-09-29 regression policy, record a noncritical failure and continue only after verified
+cleanup, an empty resource ledger and stable runtime identity. Disconnect, stale readiness,
+critical runtime failure or uncertain cleanup stops the whole batch. See [[Visual Regression Batch]].
+Do not replace a failed case with an easier demonstration.
 A user may shoot; damage to participants invalidates the affected case rather than proving
 an NPC result. Retire only exact tracked resources out of view of all observers.
 

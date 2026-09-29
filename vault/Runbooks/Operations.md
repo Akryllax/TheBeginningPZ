@@ -435,3 +435,11 @@ Combat audio presentation uses ordinary Lua `OnWeaponSwing` and
 configured Actor/target in the current watched epoch is handled, once per probe.
 It uses stock weapon sound names, local emitters and the Body hit surface; it
 does not send another network sound, alter damage, or affect normal player attacks.
+
+## Prepared visual regression
+
+`./dayone visual-test prepare` freezes the cross-harness NPC/combat/routine/pooling/vehicle
+checklist without launching services. See [[Visual Regression Batch]] for the coverage,
+remaining vehicle fixture gates and critical-failure policy. The encounter runtime supports
+`./dayone civilian-combat run regression` (nine cases) and `run routine` (one civilian,
+no zombies); ordinary failures continue only after verified cleanup.

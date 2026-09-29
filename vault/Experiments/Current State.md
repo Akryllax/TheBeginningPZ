@@ -6,6 +6,39 @@ updated: 2026-09-29
 
 # Current state
 
+## Cross-feature visual regression prepared (2026-09-29)
+
+The user requested preparation of a watched batch covering implemented vehicles, NPCs,
+minimal combat and routines, continuing after ordinary failures once cleanup is verified.
+The maintained procedure is [[../Runbooks/Visual Regression Batch]].
+`./dayone visual-test prepare` freezes 17 cases and candidate vehicle routes without
+launching anything. The nine-case NPC group uses `civilian-combat run regression`;
+separate existing harnesses cover four-Actor reuse, off-screen chase and fatal lifecycle.
+Five vehicle cases remain operator-managed probe sessions with explicit fixture/setup gates;
+the old untracked Lofers reloadlua scripts are not a qualified AKR automation adapter.
+No vehicle case or missing adapter is marked passed by preparation.
+
+Added private ROUTINE scenario 6 to exercise the existing controller's short
+walk/activity-wait/home plan with one Actor and no hunter. It uses ordinary visibility,
+replica drift, loadout and pool cleanup checks. Scheduled real homes and controlled restart
+remain in the next neighborhood task. No new behavior planner or movement executor.
+
+Encounter case failures now preserve their reason and continue only after terminal cleanup
+is verified, no resources remain, and the runtime remains READY in the same world/epoch.
+Unknown ownership, blocked cleanup, connection/readiness loss and transport/epoch failure
+stop the batch. Timeouts request bounded cancellation. Missing client-log evidence fails the
+case; new scoped client errors remain visible. Batch failures return nonzero after safe
+remaining cases run. Source capture now includes every split Java source root and worker rules.
+
+Offline qualification passed at `artifacts/runtime-tests/20260929-124422-955b8955/`:
+280 Python components, Java unit/integration/build guards and worker/protocol tests. Dedicated
+operator tests prove continuation after a clean failed case and refusal after uncertain
+cleanup. This preparation has not been deployed, run natively or accepted visually.
+Normal services and clients were not started/restarted for this task.
+Prepared manifest/checklist: `artifacts/visual-regression/20260929-124816-c4d95427/`
+(17 cases, all five route candidates captured). Formatting/lint and the updated watched
+skill validation also passed.
+
 ## Source normalization and AKR identity (2026-09-29)
 
 The source now builds the gameplay agent as `net.akr.scenario` and the separate Observer

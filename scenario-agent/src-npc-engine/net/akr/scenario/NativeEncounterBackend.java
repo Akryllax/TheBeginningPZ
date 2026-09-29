@@ -60,6 +60,11 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
     return definition != null && definition.scenario() == STRIDE_COMPARE;
   }
 
+  /** Actor-only cases share visibility and exact-resource cleanup without spawning hunters. */
+  private boolean actorOnly() {
+    return comparison() || definition != null && definition.scenario() == ROUTINE;
+  }
+
   private static final class Pair {
     final ReplicaDriftGate drift = new ReplicaDriftGate();
     CivilianPool.Token token;
@@ -237,7 +242,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
                 + ": "
                 + definition.actors()
                 + " civilians, "
-                + (comparison() ? 0 : definition.actors())
+                + (actorOnly() ? 0 : definition.actors())
                 + " shamblers"
                 + (definition.scenario() == LOCOMOTION
                     ? " (held for the WALK/RUN demonstration)"
@@ -288,7 +293,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
                   X + c.slot * 5 + .5f,
                   Y + 4.5f,
                   0));
-          if (comparison()) c.hunterId = -1;
+          if (actorOnly()) c.hunterId = -1;
           c.token = pool.reserve(resident, 1, true, null);
           require(c.token != null, "pool_reservation");
           return false;
@@ -339,7 +344,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
           return false;
         }
         if (!lifecycle()
-            && !comparison()
+            && !actorOnly()
             && definition.scenario() != OPEN_ESCAPE
             && definition.scenario() != LOCOMOTION
             && fixtureCursor < 20 * definition.actors()) {
@@ -349,7 +354,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
           fixtureCursor++;
           return false;
         }
-        if (!comparison())
+        if (!actorOnly())
           for (Pair c : pairs)
             if (c.hunter == null) {
               spawn(c);
@@ -365,7 +370,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
       if (preparation == 4) {
         if (!teleport(p, X + definition.actors() * 5 + 3.5f, Y + 5.5f, now)) return false;
         if (!clientReady(false) || !loadoutReady(p)) return false;
-        if (!comparison())
+        if (!actorOnly())
           for (Pair c : pairs)
             if (c.hunter.getOwner() == null || !c.hunter.getOwner().isFullyConnected())
               return false;
@@ -417,14 +422,17 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
                 ? "Stationary defense fixture: one full-health civilian and one strong shambler;"
                     + " escape movement is held for this contact test only. Native defense,"
                     + " injury and death remain active."
-                : comparison()
-                    ? "50-tile parallel comparison: western lane WALKS, eastern lane RUNS. Same"
-                        + " start, distance and healthy profile; no zombies."
-                    : "RUNNING: "
-                        + definition.actors()
-                        + " civilians and "
-                        + definition.actors()
-                        + " hunters. Decisions and damage are native/server validated.");
+                : definition.scenario() == ROUTINE
+                    ? "Calm routine: one civilian walks to a nearby activity, waits, and returns"
+                        + " home; no zombies."
+                    : comparison()
+                        ? "50-tile parallel comparison: western lane WALKS, eastern lane RUNS. Same"
+                            + " start, distance and healthy profile; no zombies."
+                        : "RUNNING: "
+                            + definition.actors()
+                            + " civilians and "
+                            + definition.actors()
+                            + " hunters. Decisions and damage are native/server validated.");
         return true;
       }
       return false;
@@ -530,6 +538,33 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
       }
     }
     for (Pair c : pairs) checkReplica(c, now);
+    if (definition.scenario() == ROUTINE) {
+      Pair c = pairs.getFirst();
+      require(c.actor.isAlive(), "routine_actor_dead");
+      if (c.actor.getAttackedBy() instanceof IsoPlayer other && !NativeCivilianActors.owns(other))
+        throw new IllegalStateException("observer_interference");
+      long begin = System.nanoTime();
+      c.controller.tick(now, true);
+      controllerWork.add(System.nanoTime() - begin);
+      require(!c.controller.unresolved(), "routine_controller_unresolved");
+      if (c.controller.logical().rawget("goalPlan") instanceof KahluaTable goal
+          && "complete".equals(goal.rawget("status"))) {
+        require(c.controller.travelled > 6, "routine_missing_round_trip");
+        require(
+            Math.hypot(c.actor.getX() - (X + .5), c.actor.getY() - (Y + 4.5)) < .5,
+            "routine_home_not_reached");
+        scenarioOutcome = "PASSED";
+        holdAt = now;
+        stage("HOLD");
+        announce(
+            "Routine complete: activity reached, wait completed, home reached. Planner source: "
+                + c.controller.planSource()
+                + ". Holding for visual feedback.");
+      }
+      heartbeat();
+      publishConfig();
+      return false;
+    }
     if (comparison()) {
       for (Pair c : pairs) {
         require(c.actor.isAlive(), "stride_actor_dead");
@@ -1017,7 +1052,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
             && (!Boolean.FALSE.equals(row.rawget("corpse_present"))
                 || !Boolean.FALSE.equals(row.rawget("reanimated_present")))) return false;
       } else if (!Boolean.TRUE.equals(row.rawget("actor_visible"))
-          || !comparison() && !Boolean.TRUE.equals(row.rawget("hunter_visible"))) return false;
+          || !actorOnly() && !Boolean.TRUE.equals(row.rawget("hunter_visible"))) return false;
     }
     return true;
   }
@@ -1029,11 +1064,11 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
     config.rawset("event", event.id());
     config.rawset("stage", stage);
     config.rawset("count", (double) definition.actors());
-    config.rawset("actor_only", comparison());
+    config.rawset("actor_only", actorOnly());
     var list = LuaManager.platform.newTable();
     for (int i = 0; i < pairs.size(); i++) {
       Pair c = pairs.get(i);
-      if (c.token == null || !comparison() && c.hunter == null) continue;
+      if (c.token == null || !actorOnly() && c.hunter == null) continue;
       var row = LuaManager.platform.newTable();
       row.rawset("actor", (double) c.token.slot());
       row.rawset("generation", (double) c.token.generation());
@@ -1052,7 +1087,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
       }
       row.rawset(
           "active",
-          !comparison()
+          !actorOnly()
               && stage.equals("RUNNING")
               && !c.escaped
               && definition.scenario() != LOCOMOTION);

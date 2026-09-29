@@ -25,8 +25,9 @@ clear weather. Supply the established loaded 9mm pistol, two loaded spare magazi
 ammo through the idempotent loadout helper. Never ask the user to find coordinates.
 
 Announce the exact scenario/counts, countdown, wave, viewing hold and completion/failure.
-Run the agreed batch continuously, then ask for one visual/audio verdict. Failures,
-disconnects, stale readiness or uncertain cleanup stop advancement. A player shooting a
+Run the agreed batch continuously, then ask for one visual/audio verdict per group.
+For the fail-isolated regression policy in [Visual Regression Batch](../../../vault/Runbooks/Visual%20Regression%20Batch.md), record a failed case, verify cleanup and empty ownership, then continue.
+Disconnects, stale readiness, epoch changes or uncertain cleanup stop advancement. A player shooting a
 participant makes that case interfered, not an NPC success. Do not substitute a different
 case, population or approach direction silently.
 

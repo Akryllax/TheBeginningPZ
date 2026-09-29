@@ -78,6 +78,17 @@ final class EncounterRuntimeFixture {
       throw new AssertionError("single comparison accepted");
     } catch (IllegalArgumentException expected) {
     }
+    var routine =
+        comparison.toBuilder()
+            .setActors(1)
+            .setScenario(CivilianEncounterCase.Scenario.ROUTINE)
+            .build();
+    assert EncounterDefinition.from(routine).actors() == 1;
+    try {
+      EncounterDefinition.from(routine.toBuilder().setActors(4).build());
+      throw new AssertionError("routine crowd accepted");
+    } catch (IllegalArgumentException expected) {
+    }
     var backend = new Backend();
     var runtime = new RuntimeSession("world", "epoch", backend);
     var definition =

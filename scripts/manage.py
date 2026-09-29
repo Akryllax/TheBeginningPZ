@@ -446,6 +446,7 @@ def main():
             "civilian-watch",
             "civilian-chase",
             "civilian-combat",
+            "visual-test",
             "format",
             "lint",
             "docs",
@@ -486,6 +487,10 @@ def main():
                         ROOT / "observer",
                     ]
                 )
+    elif args.command == "visual-test":
+        import visual_regression
+
+        visual_regression.dispatch(sys.modules[__name__], args.args)
     elif args.command == "civilian-combat":
         # The typed encounter protocol needs the project's pinned protobuf runtime.
         if Path(sys.prefix).resolve() != (ROOT / ".tooling/venv").resolve():

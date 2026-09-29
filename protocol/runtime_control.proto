@@ -106,6 +106,8 @@ message CivilianEncounterCase {
     LOCOMOTION = 3;
     STRIDE_COMPARE = 4;
     LIFECYCLE = 5;
+    // Calm existing WALK -> WAIT -> WALK-home logical routine, one Actor, no hunter.
+    ROUTINE = 6;
   }
   Scenario scenario = 1;
   uint32 actors = 2;
