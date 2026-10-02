@@ -154,3 +154,32 @@ All deployment remains in disposable `.132` worlds. Normal `.132`, production `.
 vehicle development, the 42.21 migration and crowd expansion are outside this milestone.
 Prepare independent code/tests before requesting watched feedback; use fresh readiness
 and stop on failures. Preserve prior evidence and unrelated working-tree work.
+
+## 2026-10-02 — Richer watched routine acceptance
+
+The user found the simple out/wait/back test insufficient after the 42.21 regression.
+Prepare one civilian in a real ground-floor house before expanding to four:
+
+1. Begin visibly inside its assigned home, with an unlocked exterior door closed.
+2. Choose an outdoor destination from the current goal, request an actual route and
+   execute it through the existing native adapter. Open/cross the door and respect walls
+   and furniture; do not substitute a coordinate tween or hand-authored teleport route.
+3. Perform one genuine world interaction at the destination, with measurable effects.
+   Proposed first interaction: retrieve one tagged test item from a known container;
+   validate engine support/animation before promising it. Merely waiting or displaying an
+   animation does not satisfy this requirement. Preserve original contents and item ownership.
+4. Return through the doorway and finish at an interior home position. Confirm actual
+   position, inventory/effect, plan progress, animation/audio and clean action completion.
+5. Repeat with a blocked preferred route and a valid alternative. Observe replanning
+   and collision-respecting execution. A locked sole exit must yield a bounded blocked
+   result, not clip through or unlock without a key. Resume correctly after obstruction clears.
+6. Repeat with four independently progressing residents, including one delayed/blocked
+   resident; others must continue. Keep this separate from the initial one-resident gate.
+
+Use existing GOAP-lite goals, per-resident progress and bounded execution windows. Do
+not create a second planner or run unsafe engine mutations on worker threads. Include
+one continuous traversal observation or automatic spectator repositioning with explicit
+announcements so the user can see the interior, doorway and destination stages.
+The real interaction extends the earlier idle-presence-only activity scope. Controlled
+restart, long schedules and stress remain later gates. First reconcile retained resources
+from the interrupted watched run; do not restart into a fresh world to hide that failure.

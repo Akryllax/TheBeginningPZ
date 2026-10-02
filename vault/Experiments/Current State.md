@@ -18,6 +18,13 @@ Actor and hunter alive; **which participant died is not established**. Last Acto
 91.44, four injuries, one contact, ~5.95 tiles travelled. Do not call this proven Actor
 death or a planner regression. Asked for user observation/interference information.
 
+User subsequently reported: "It looked good. I killed the zombie during one of the runs."
+Record positive group-level visual feedback and reported observer interference; no clean
+NPC failure conclusion follows from this interrupted run. Exact killed participant/case is
+not independently identified, and the original machine report remains unchanged. The
+feedback is archived beside it. User requests richer house/door/interaction/return routine
+coverage; added acceptance scope to TASK_Four_Resident_Neighborhood.md.
+
 All advancement stopped, including four-Actor cases and later groups. Terrain, Actor,
 aftermath and hunter resources remain owned; do not force-clear or use another world to
 conceal unresolved cleanup. Current server remains available for inspection. No auto retry.
