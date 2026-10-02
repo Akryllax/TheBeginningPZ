@@ -47,17 +47,20 @@ function G.accept(r, p)
     then
         return false, "unsupported_plan"
     end
+    local activityKind = g.collectItem and "COLLECT" or "WAIT"
     local expected = ({
-        [0] = { "WALK", "WAIT", "WALK" },
-        [1] = { "WAIT", "WALK" },
+        [0] = { "WALK", activityKind, "WALK" },
+        [1] = { activityKind, "WALK" },
         [2] = { "WALK" },
     })[g.phase]
     if #p.actions ~= #expected then
         return false, "routine_shape"
     end
     for i, a in ipairs(p.actions) do
-        local kind = type(a.kind) == "number" and ({ [1] = "WAIT", [2] = "WALK" })[a.kind] or a.kind
-        local target = expected[i] == "WAIT" and g.activity
+        local kind = type(a.kind) == "number"
+                and ({ [1] = "WAIT", [2] = "WALK", [19] = "COLLECT" })[a.kind]
+            or a.kind
+        local target = (expected[i] == "WAIT" or expected[i] == "COLLECT") and g.activity
             or (i == #expected and g.home or g.activity)
         if
             kind ~= expected[i]
@@ -74,7 +77,7 @@ function G.accept(r, p)
     g.actions = P.copy(p.actions)
     for _, a in ipairs(g.actions) do
         if type(a.kind) == "number" then
-            a.kind = ({ [1] = "WAIT", [2] = "WALK" })[a.kind]
+            a.kind = ({ [1] = "WAIT", [2] = "WALK", [19] = "COLLECT" })[a.kind]
         end
     end
     g.cursor = 1
@@ -106,7 +109,7 @@ function G.fallback(r)
         add("WALK", g.activity)
     end
     if g.phase <= 1 then
-        add("WAIT", g.activity)
+        add(g.collectItem and "COLLECT" or "WAIT", g.activity)
     end
     add("WALK", g.home)
     g.status = "active"
@@ -121,7 +124,12 @@ function G.complete(r, id)
     if not a or a.id ~= id then
         return false
     end
-    G.outcome(r, a, "completed", "destination_or_wait_complete")
+    G.outcome(
+        r,
+        a,
+        "completed",
+        a.kind == "COLLECT" and "interaction_complete" or "destination_or_wait_complete"
+    )
     g.phase = g.phase + 1
     g.cursor = g.cursor + 1
     g.facts = g.facts + 1

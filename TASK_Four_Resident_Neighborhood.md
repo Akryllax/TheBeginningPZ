@@ -183,3 +183,9 @@ announcements so the user can see the interior, doorway and destination stages.
 The real interaction extends the earlier idle-presence-only activity scope. Controlled
 restart, long schedules and stress remain later gates. First reconcile retained resources
 from the interrupted watched run; do not restart into a fresh world to hide that failure.
+
+## Native traversal follow-up (2026-10-02)
+
+See [Actor Native Traversal](TASK_Actor_Native_Traversal.md) for the explicitly deferred
+executors suggested by engine routes. Unsupported paths remain rejected; walk/door
+alternatives do not qualify fence, window, wall or stair traversal.

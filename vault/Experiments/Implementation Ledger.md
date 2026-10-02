@@ -2498,3 +2498,57 @@ protection now uses 42.21 targeted commands. First five NPC regression cases com
 and cleaned; visual acceptance pending. Defense/escape case stopped on the shared
 Actor/hunter alive guard with retained death resources. Remaining groups not run.
 Participant death attribution and cleanup unresolved; see Current State and batch evidence.
+
+
+## 2026-10-02 — Real ground-floor house routine on 42.21 candidate
+
+Implemented only in `.tooling/worktrees/pz42.21`; frozen 42.20 and `.160` unchanged.
+The worker/Lua durable routine can request COLLECT instead of WAIT. The server verifies
+range, LOS, capacity and exact item ownership, resets interrupted collection timing,
+transfers the original object once and acknowledges the matching action. Ordinary
+routine behavior remains the default; native whole-route planning is opt-in.
+
+The new native path adapter shares a four-slot/two-running request budget and one new
+submission per tick. Every engine route is classified before execution; only WALK/DOOR
+are admitted. A bounded 16-tile-radius graph search can find a supported alternative.
+Active bounded work refreshes the five-second idle deadline, with a 20-second absolute
+limit. Generation/map revisions and existing physical execution windows remain in force.
+
+Early fixture runs exposed three issues, now corrected: PZArrayList does not implement
+iterator(); vanilla locks can open from inside; and the nearest log-container approach
+required a low-fence crossing. The fixture now uses indexed square objects, exact native
+barricades for the blocked test, and a reachable access square at an existing outdoor bin.
+The fence route was rejected, not executed. Pending executors are tracked explicitly in
+[TASK_Actor_Native_Traversal](../../TASK_Actor_Native_Traversal.md), per user instruction.
+
+Native evidence:
+
+- `artifacts/civilian-headless/20261002-114453-015cca/ipc/native-report.json`: passed
+  normal round trip, blocked-exit recovery and four independent routines; six assignments,
+  four constructors, four parked, zero occupied. Work p95 1.9 ms/p99 3.9 ms.
+- Final `artifacts/civilian-headless/20261002-114828-dedeff/ipc/native-report.json`:
+  same three rounds passed again. Agent `42898208387b3283eb94ca343fc9c315a6928dee50738040077e710c1a10c936`,
+  epoch `5cd63324-c84b-44b4-bc59-a244b945044b`. Four independently ticked controllers;
+  another completed while one spent an extra 30 seconds collecting. Six exact transfers
+  and home returns; four parked, zero occupied after fixture restoration.
+- Final total p95 **2.3 ms**, p99 **6.1 ms**, house max **381.5 ms** including setup;
+  cold p95 356.2 ms, warm p95/max about 7.9 ms. Performance targets (2/5 ms) are **not met**
+  in the repeat. Queue p95 about 104/200/301/404 ms for the four residents. Investigate
+  phase-specific cost before capacity claims; do not discard cold/setup samples.
+- C++ core plus 16 wire scenarios passed (`artifacts/compat/house-worker-tests.log`);
+  42 targeted Python/Lua tests passed. Fresh full compatibility report
+  `artifacts/compat/runs/20261002T114737.557324Z/report.md`: both component and Java/hook
+  groups passed; overall exit 2 intentionally retains migration review and runtime gates.
+  Final native build also ran the detached Java fixtures. Formatting/lint passed.
+
+Prepared runtime cases HOUSE_ROUTINE (one/four) and HOUSE_BLOCKED, available through
+`./dayone civilian-combat run house-batch`. They reuse spectator protection/loadout,
+announcements, same-pool ownership, automatic placement and verified cleanup. No watched
+house test has been launched. Collection animation/presentation and camera coverage,
+alternate-route denial, four distinct homes, controlled restart and two-client behavior
+remain unqualified. The extra-delay case proves execution independence, not a new
+parallel planner dispatcher. Distribution artifacts have not been refreshed or released.
+
+The earlier watched defense batch remains CLEANUP_BLOCKED after reported player
+interference. Its server was gracefully stopped and its world/reports preserved; the
+headless house tests do not reconcile that ownership problem. No client was launched.

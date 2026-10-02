@@ -47,6 +47,8 @@ final class HeadlessCivilianHarness {
   private IsoZombie combatZombie;
   private final boolean combatProbe, plannerEnabled;
   private NativeRoutineBatch routine;
+  private final boolean houseEnabled;
+  private NativeHouseRoutineBatch house;
   private final boolean survivalEnabled;
   private NativeSurvivalBatch survival;
   private CivilianPool.Token deathToken;
@@ -84,6 +86,7 @@ final class HeadlessCivilianHarness {
       throw new IllegalArgumentException("headless_report_path");
     this.world = world;
     this.epoch = epoch;
+    houseEnabled = Boolean.parseBoolean(p.getProperty("headless.house", "false"));
     plannerEnabled = Boolean.parseBoolean(p.getProperty("headless.planner", "false"));
     combatProbe = Boolean.parseBoolean(p.getProperty("headless.combat_probe", "false"));
     survivalEnabled = Boolean.parseBoolean(p.getProperty("headless.survival", "false"));
@@ -125,6 +128,14 @@ final class HeadlessCivilianHarness {
       // Native ServerMap loading interest without a fake network player or account.
       // The integer overload accepts B42 chunk coordinates (8 tiles), not world tiles.
       ServerMap.instance.characterIn(Math.floorDiv(10756, 8), Math.floorDiv(9856, 8), 5);
+      if (houseEnabled) {
+        if (house == null) house = new NativeHouseRoutineBatch(epoch);
+        if (house.tick(begin)) {
+          pass("house_routine", house.summary());
+          finish();
+        }
+        return;
+      }
       if (plannerEnabled) {
         if (ServerMap.instance.getGridSquare(10756, 9856, 0) == null) return;
         if (routine == null) {
@@ -915,6 +926,7 @@ final class HeadlessCivilianHarness {
     if (finished) return;
     finished = true;
     try {
+      var measuredActors = house == null ? actors : house.metricActors();
       String json =
           "{\"world\":"
               + quote(world)
@@ -938,15 +950,27 @@ final class HeadlessCivilianHarness {
               + ",\"walking_p99_ms\":"
               + walkingTiming.percentile(.99)
               + ",\"materialize_p95_ms\":"
-              + (actors == null ? 0 : actors.materializeTiming.percentile(.95))
+              + (measuredActors == null ? 0 : measuredActors.materializeTiming.percentile(.95))
               + ",\"cold_p95_ms\":"
-              + (actors == null ? 0 : actors.coldTiming.percentile(.95))
+              + (measuredActors == null ? 0 : measuredActors.coldTiming.percentile(.95))
               + ",\"warm_p95_ms\":"
-              + (actors == null ? 0 : actors.warmTiming.percentile(.95))
+              + (measuredActors == null ? 0 : measuredActors.warmTiming.percentile(.95))
               + ",\"warm_max_ms\":"
-              + (actors == null ? 0 : actors.warmTiming.max / 1e6)
+              + (measuredActors == null ? 0 : measuredActors.warmTiming.max / 1e6)
               + ",\"constructed\":"
-              + (routine != null ? routine.constructed() : actors == null ? 0 : actors.constructed)
+              + (house != null
+                  ? house.constructed()
+                  : routine != null
+                      ? routine.constructed()
+                      : actors == null ? 0 : actors.constructed)
+              + ",\"house_summary\":"
+              + quote(house == null ? "not_run" : house.summary())
+              + ",\"house_work_p95_ms\":"
+              + (house == null ? 0 : house.work.percentile(.95))
+              + ",\"house_work_p99_ms\":"
+              + (house == null ? 0 : house.work.percentile(.99))
+              + ",\"house_work_max_ms\":"
+              + (house == null ? 0 : house.work.max / 1e6)
               + ",\"capacity_prewarmed\":"
               + (capacityActors == null ? 0 : capacityActors.constructed)
               + ",\"combat_probe\":"
@@ -962,12 +986,18 @@ final class HeadlessCivilianHarness {
               + ",\"survival_work_p99_ms\":"
               + (survival == null ? 0 : survival.work.percentile(.99))
               + ",\"reused\":"
-              + (routine != null ? routine.reused() : actors == null ? 0 : actors.reused)
+              + (house != null
+                  ? house.reused()
+                  : routine != null ? routine.reused() : actors == null ? 0 : actors.reused)
               + ",\"parked\":"
-              + (routine != null ? routine.parked() : actors == null ? 0 : actors.parkedCount())
+              + (house != null
+                  ? house.parked()
+                  : routine != null ? routine.parked() : actors == null ? 0 : actors.parkedCount())
               + ",\"performance_gate\":\"short functional batch; release-cap qualification"
               + " pending\",\"occupied\":"
-              + (routine != null ? routine.occupied() : pool == null ? 0 : pool.occupied())
+              + (house != null
+                  ? house.occupied()
+                  : routine != null ? routine.occupied() : pool == null ? 0 : pool.occupied())
               + ",\"pending_gates\":["
               + (survivalEnabled && failure.isEmpty() ? "" : "\"timed_attack_executor\",")
               + "\"timed_attack_visual_alignment\",\"incoming_zombie_contact\",\"combat_to_death_integration\",\"corpse_save_reload\",\"thirty_two_active_combat\",\"moving_obstacles\",\"stairs_climbing\",\"visual\",\"two_client_replication\",\"client_owned_hunters\"]}\n";

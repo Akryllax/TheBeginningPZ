@@ -76,6 +76,7 @@ message ExecutionContext {
   uint64 route_revision = 8;
   uint64 completed_edges = 9;
   uint32 buffered_edges = 10;
+  bool collect_item = 11; // Routine activity requires confirmed inventory transfer, not WAIT.
 }
 enum Locomotion {
   LOCOMOTION_UNSPECIFIED = 0;
@@ -135,6 +136,7 @@ enum ActionKind {
   SCAVENGE = 16;
   SHELTER = 17;
   DEFEND = 18;
+  COLLECT = 19;
 }
 message Action {
   string id = 1;

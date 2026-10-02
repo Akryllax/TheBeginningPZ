@@ -13,7 +13,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import civilian_headless as headless  # noqa: E402 - project-local scripts path added above
 
 
-def test_prepare_keeps_existing_world_receipt_and_pins_isolated_config(tmp_path, monkeypatch):
+@pytest.mark.parametrize("house", [False, True])
+def test_prepare_keeps_existing_world_receipt_and_pins_isolated_config(
+    tmp_path, monkeypatch, house
+):
     root = tmp_path
     source = root / "data/Zomboid/Server"
     source.mkdir(parents=True)
@@ -69,12 +72,13 @@ def test_prepare_keeps_existing_world_receipt_and_pins_isolated_config(tmp_path,
     m = SimpleNamespace(
         ROOT=root, WORLD="normal", PODMAN="podman", run=lambda *a, **k: SimpleNamespace(stdout="")
     )
-    data, target = headless.prepare(m)
+    data, target = headless.prepare(m, planner=house, house=house)
     assert old.read_text() == "existing-test-session"
     assert (source / "normal.ini").read_text().startswith("DefaultPort=16271")
     ini = (target / "Zomboid/Server" / (data["world"] + ".ini")).read_text()
     assert "PauseEmpty=false" in ini and "DefaultPort=16311" in ini and "Open=false" in ini
     assert data["container"] == "akr-civilian-headless-pz42-21" and data["clients"] == 0
+    assert f"headless.house={str(house).lower()}" in (target / "scenario.properties").read_text()
     assert "headless.enabled=true" in (target / "scenario.properties").read_text()
     assert json.loads((target / "ProjectZomboid64.json").read_text())["vmArgs"] == [
         "-Xms512m",

@@ -17,11 +17,16 @@ record EncounterDefinition(
     } else if (actors != 1 && actors != 4) throw new IllegalArgumentException("encounter_actors");
     if (seed < 0
         || timeoutSeconds < 10
-        || timeoutSeconds > 120
+        || timeoutSeconds
+            > (scenario == CivilianEncounterCase.Scenario.HOUSE_ROUTINE
+                    || scenario == CivilianEncounterCase.Scenario.HOUSE_BLOCKED
+                ? 300
+                : 120)
         || holdSeconds < 0
         || holdSeconds > 30) throw new IllegalArgumentException("encounter_limits");
     if (scenario != CivilianEncounterCase.Scenario.DEFENSE_ESCAPE
         && scenario != CivilianEncounterCase.Scenario.STRIDE_COMPARE
+        && scenario != CivilianEncounterCase.Scenario.HOUSE_ROUTINE
         && actors != 1) throw new IllegalArgumentException("single_actor_gate");
   }
 

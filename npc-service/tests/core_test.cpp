@@ -104,6 +104,18 @@ int main(int argc, char **argv) {
                     require(result.actions(1 - phase).kind() == npc::pb::WAIT,
                             "routine wait milestone");
             }
+            e->set_collect_item(true);
+            for (unsigned phase = 0; phase < 3; ++phase) {
+                e->set_routine_phase(phase);
+                auto result = planner.plan(routine, *r);
+                require(result.actions_size() == 3 - static_cast<int>(phase),
+                        "collection continuation shape");
+                if (phase <= 1)
+                    require(result.actions(1 - phase).kind() == npc::pb::COLLECT,
+                            "collection requires a real effect, not WAIT");
+                require(result.actions(result.actions_size() - 1).kind() == npc::pb::WALK,
+                        "collection returns home");
+            }
             for (const auto *status : {"executing", "waiting_path", "paused", "blocked",
                                        "completed", "cancelled", "failed"}) {
                 e->set_status(status);

@@ -6,6 +6,41 @@ updated: 2026-10-02
 
 # Current state
 
+## Ground-floor house routine implemented; watched acceptance pending (2026-10-02)
+
+The 42.21 candidate now has opt-in native routine routes, bounded walk/door fallback,
+and a COLLECT action with an exact native container-to-Actor transfer. The Lua fallback
+and C++ worker both preserve WALK → COLLECT → WALK-home milestones. Collection requires
+a matching effect acknowledgment; a timer or stale action ID cannot complete it.
+
+Headless world `20261002-114453-015cca` passed three same-session rounds: one round trip,
+real barricaded-exit recovery, and four independent routines. Six assignments, four
+constructed bodies, four parked, zero occupied; another civilian finished while the
+first was still busy. Total added work p95 1.9 ms/p99 3.9 ms, max house work 147.8 ms
+including setup. Functional evidence only, not release-cap or visual qualification.
+Final repeat `20261002-114828-dedeff` also passed all six assignments and cleanup.
+Its total p95/p99 were **2.3/6.1 ms**, above the current 2/5 ms targets; max 381.5 ms
+including cold setup, cold initialization p95 356.2 ms, warm p95 7.9 ms. Native queue
+p95 across the four residents was approximately 104/200/301/404 ms. Do not claim the
+performance gate passed. Final agent SHA256:
+`42898208387b3283eb94ca343fc9c315a6928dee50738040077e710c1a10c936`.
+
+`./dayone civilian-combat run house-batch` runs the matching watched coverage on a
+clean, compatible encounter runtime. It has not been launched or accepted. Collection
+presentation, four distinct homes, controlled restart, alternate-route blockage tests
+and two-client checks remain pending. The current fixture uses four residents in the
+same house and a real outdoor bin, with temporary tagged items only.
+
+The preceding watched server was gracefully stopped with its failed world and reports
+preserved before rebuilding. This does not reconcile its retained resources or qualify
+cleanup; do not overwrite the old batch. No client was launched during this work.
+
+Unsupported native actions remain rejected. The concrete first candidate used a low
+fence to a log container; the fixture instead chooses a supported access point.
+[Actor Native Traversal](../../TASK_Actor_Native_Traversal.md) tracks LOW_FENCE, WINDOW,
+HIGH_WALL and STAIRS executors and their native/visual/replication gates. Core-file and
+client-Java-injection restrictions remain unchanged.
+
 ## 42.21 watched batch halted on retained death resources (2026-10-02)
 
 After fresh readiness, ran the requested one-seat NPC regression on

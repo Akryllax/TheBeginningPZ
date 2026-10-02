@@ -34,7 +34,7 @@ def running(m):
     ).stdout.strip()
 
 
-def prepare(m, combat_probe=False, survival=False, planner=False):
+def prepare(m, combat_probe=False, survival=False, planner=False, house=False):
     if running(m):
         raise RuntimeError("Headless test is already running; use civilian-headless status/stop")
     with socket.socket() as test:
@@ -95,6 +95,7 @@ def prepare(m, combat_probe=False, survival=False, planner=False):
         f"headless.combat_probe={str(combat_probe).lower()}\n"
         f"headless.survival={str(survival).lower()}\n"
         f"headless.planner={str(planner).lower()}\n"
+        f"headless.house={str(house).lower()}\n"
         "bandits_update_file=/opt/upstream/BanditUpdate.lua\n",
     )
     data = {
@@ -134,9 +135,9 @@ def stop(m):
     scenario.write_private(target / "container.log", m.redact(logs.stdout + logs.stderr))
 
 
-def run(m, combat_probe=False, survival=False, planner=False):
+def run(m, combat_probe=False, survival=False, planner=False, house=False):
     m.run([m.PYTHON, m.ROOT / "scripts/build_scenario_agent.py", "--test", "--test-layer", "unit"])
-    data, target = prepare(m, combat_probe, survival, planner)
+    data, target = prepare(m, combat_probe, survival, planner, house)
     m.run([m.PODMAN, "rm", CONTAINER], capture=True, check=False)
     m.run(
         [
@@ -209,14 +210,21 @@ def dispatch(m, arguments):
         "combat-probe",
         "survival",
         "planner",
+        "house",
         "status",
         "stop",
     }:
         raise RuntimeError(
-            "Usage: ./dayone civilian-headless [run|combat-probe|survival|planner|status|stop]"
+            "Usage: ./dayone civilian-headless [run|combat-probe|survival|planner|house|status|stop]"
         )
-    if action in {"run", "combat-probe", "survival", "planner"}:
-        run(m, action in {"combat-probe", "survival"}, action == "survival", action == "planner")
+    if action in {"run", "combat-probe", "survival", "planner", "house"}:
+        run(
+            m,
+            action in {"combat-probe", "survival"},
+            action == "survival",
+            action in {"planner", "house"},
+            action == "house",
+        )
     elif action == "stop":
         stop(m)
     else:

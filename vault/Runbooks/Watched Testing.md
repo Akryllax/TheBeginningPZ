@@ -76,3 +76,24 @@ When a visibility gate fails, inspect its own stage samples before interpreting 
 cleanup absence. Distinguish replica presence, screen position, loaded geometry and LOS;
 `client_visibility` records these independently. A present-but-hidden Actor is not evidence
 of a failed identity reset or native replication.
+
+
+## House routine batch (candidate preparation)
+
+Once the deployed candidate runtime contains HOUSE_ROUTINE/HOUSE_BLOCKED and a clean
+encounter session is ready, `./dayone civilian-combat run house-batch` submits:
+
+1. One civilian: real house → door → outdoor container collection → return home.
+2. One civilian: barricaded exits, removal of our exact barricades, same goal resumes.
+3. Four civilians executing independent routines from the same house.
+
+Single-case forms are `run house`, `run house-blocked`, and `run house 4`. The existing
+nine-case `regression` remains unchanged. House cases have a 300-second active ceiling,
+not an idle sleep. They reuse the ordinary runtime submit/status/cancel path, spectator
+protection/loadout, announcements and exact-resource cleanup. Spectator placement starts
+inside and follows the first civilian between rooms and outside; four distinct homes,
+full multi-view coverage and collection animation remain separate acceptance gates.
+
+**Not yet watched-qualified.** Warn before launching the client. Do not bypass a prior
+CLEANUP_BLOCKED session or overwrite its evidence to run this batch. The interrupted
+42.21 defense case from 20261002-110238-81acc69b still retains its death resources.

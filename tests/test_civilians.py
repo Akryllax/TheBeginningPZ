@@ -373,3 +373,45 @@ def test_terminal_population_provenance_and_reanimation_are_idempotent(lua):
         assert(#M.tick(r,20,observation())==0)
         assert(not pcall(M.bind,{residents={[r.id]=r}},r.id,7,{x=1,y=1,z=0},{},r.generation))
     """)
+
+
+def test_collect_requires_matching_effect_receipt_not_elapsed_time(lua):
+    lua.execute("""
+        local G=require 'AKRResidents/Plan'
+        local r=M.bind({},'collector',7,{x=5,y=5,z=0},{{x=5,y=5,z=0}},1)
+        r.goalPlan.collectItem=true;G.fallback(r)
+        G.complete(r,G.current(r).id)
+        local action=G.current(r);assert(action.kind=='COLLECT')
+        local o=observation();M.tick(r,0,o);M.tick(r,100,o)
+        assert(r.goalPlan.phase==1)
+        o.interactionComplete='stale';M.tick(r,101,o);assert(r.goalPlan.phase==1)
+        o.interactionComplete=action.id;M.tick(r,102,o);assert(r.goalPlan.phase==2)
+        assert(not G.complete(r,action.id))
+        assert(G.current(r).kind=='WALK')
+    """)
+
+
+def test_collect_worker_plan_rejects_wait_substitution(lua):
+    lua.execute("""
+        local G=require 'AKRResidents/Plan'
+        local r=M.bind({},'collector',7,{x=5,y=5,z=0},{{x=10,y=5,z=0}},1)
+        r.goalPlan.collectItem=true
+        local p={resident_id=r.id,generation=1,based_on_revision=1,plan_revision=2,goal='civilian_routine',actions={
+          {id='a',kind=2,target={x=10,y=5,z=0}}, {id='b',kind=1,target={x=10,y=5,z=0}}, {id='c',kind=2,target={x=5,y=5,z=0}}}}
+        assert(not G.accept(r,p));p.actions[2].kind=19
+        assert(G.accept(r,p));assert(r.goalPlan.actions[2].kind=='COLLECT')
+    """)
+
+
+def test_path_watchdog_requires_real_progress_and_has_absolute_limit(lua):
+    lua.execute("""
+        local r=resident();local o=observation();M.tick(r,0,o)
+        for now=1,7 do o.pathProgress=now;M.tick(r,now,o) end
+        assert(r.requestPending and r.state=='WALK')
+        M.tick(r,12,o);assert(r.state=='BLOCKED' and r.reason=='path_timeout')
+        r=resident();o=observation();M.tick(r,0,o)
+        for now=1,19 do o.pathProgress=now;M.tick(r,now,o) end
+        assert(r.requestPending)
+        o.pathProgress=20;M.tick(r,20,o)
+        assert(r.state=='BLOCKED' and r.reason=='path_timeout')
+    """)

@@ -16,6 +16,10 @@ TERMINAL = {"COMPLETED", "FAILED", "CANCELLED"}
 
 
 def planned_cases(selection="batch", actors=1):
+    if selection == "house-batch":
+        if actors != 1:
+            raise ValueError("House batch defines its own counts")
+        return planned_cases("house") + planned_cases("house-blocked") + planned_cases("house", 4)
     if selection == "regression":
         if actors != 1:
             raise ValueError("Regression defines its own counts")
@@ -41,6 +45,8 @@ def planned_cases(selection="batch", actors=1):
         "gait": "LOCOMOTION",
         "lifecycle": "LIFECYCLE",
         "routine": "ROUTINE",
+        "house": "HOUSE_ROUTINE",
+        "house-blocked": "HOUSE_BLOCKED",
     }
     if selection == "batch":
         if actors != 1:
@@ -52,7 +58,7 @@ def planned_cases(selection="batch", actors=1):
             ("DEFENSE_ESCAPE", 1),
         ] + [("DEFENSE_ESCAPE", 4)] * 3
     elif selection in names:
-        if selection != "defense" and actors != 1:
+        if selection not in {"defense", "house"} and actors != 1:
             raise ValueError("Open and injury gates require one civilian")
         choices = [(names[selection], actors)]
     else:
@@ -64,7 +70,7 @@ def planned_cases(selection="batch", actors=1):
             "scenario": name,
             "actors": count,
             "seed": i + 1,
-            "timeout_seconds": 120,
+            "timeout_seconds": 300 if name.startswith("HOUSE_") else 120,
             "hold_seconds": 8,
         }
         for i, (name, count) in enumerate(choices)
@@ -241,7 +247,8 @@ def run(m, selection="batch", actors=1):
                 watched_policy.verify_runtime(hello, fresh)
                 hunters = (
                     0
-                    if definition["scenario"] in {"STRIDE_COMPARE", "ROUTINE"}
+                    if definition["scenario"]
+                    in {"STRIDE_COMPARE", "ROUTINE", "HOUSE_ROUTINE", "HOUSE_BLOCKED"}
                     else definition["actors"]
                 )
                 announce(
@@ -450,7 +457,7 @@ def dispatch(m, args):
     if action == "run":
         if len(args) > 3:
             raise ValueError(
-                "run [regression|batch|routine|gait|compare|open|injury|defense|lifecycle] [1|2|4]"
+                "run [regression|batch|routine|house-batch|house|house-blocked|gait|compare|open|injury|defense|lifecycle] [1|2|4]"
             )
         return run(m, args[1] if len(args) > 1 else "batch", int(args[2]) if len(args) > 2 else 1)
     current = target / "current-encounter-batch.json"

@@ -84,6 +84,7 @@ final class ResidentPlannerBridge {
       row.put("infection", "healthy");
       var execution = new LinkedHashMap<Object, Object>();
       execution.put("routine_enabled", true);
+      execution.put("collect_item", Boolean.TRUE.equals(g.rawget("collectItem")));
       execution.put("routine_phase", number(g, "phase"));
       execution.put("activity", point((KahluaTable) g.rawget("activity")));
       execution.put("goal", c.goal());

@@ -97,6 +97,19 @@ final class EncounterRuntimeFixture {
       throw new AssertionError("routine crowd accepted");
     } catch (IllegalArgumentException expected) {
     }
+    var house =
+        routine.toBuilder()
+            .setScenario(CivilianEncounterCase.Scenario.HOUSE_ROUTINE)
+            .setActors(4)
+            .setTimeoutSeconds(300)
+            .build();
+    assert EncounterDefinition.from(house).actors() == 4;
+    try {
+      EncounterDefinition.from(
+          house.toBuilder().setScenario(CivilianEncounterCase.Scenario.HOUSE_BLOCKED).build());
+      throw new AssertionError("blocked house crowd accepted");
+    } catch (IllegalArgumentException expected) {
+    }
     var backend = new Backend();
     var runtime = new RuntimeSession("world", "epoch", backend);
     var definition =

@@ -66,6 +66,8 @@ local function navigate(r, out, now, escape)
     r.revision = r.revision + 1
     r.requestPending = true
     r.requestAt = now
+    r.pathProgressAt = now
+    r.pathProgress = 0
     r.nextRepath = now + 1
     if escape then
         -- Geometry and danger-aware reachability are the NavigationPort's responsibility.
@@ -120,6 +122,7 @@ function M.tick(r, now, observation)
             "nextRepath",
             "lastThreat",
             "requestAt",
+            "pathProgressAt",
             "combatDeadline",
             "nextDefense",
             "planWaitAt",
@@ -226,7 +229,18 @@ function M.tick(r, now, observation)
             r.nextRepath = now + 1
         end
     end
-    if r.requestPending and now - r.requestAt >= 5 then
+    if
+        r.requestPending
+        and type(o.pathProgress) == "number"
+        and o.pathProgress > (r.pathProgress or 0)
+    then
+        r.pathProgress = o.pathProgress
+        r.pathProgressAt = now
+    end
+    if
+        r.requestPending
+        and (now - (r.pathProgressAt or r.requestAt) >= 5 or now - r.requestAt >= 20)
+    then
         r.resumeState = r.state
         interrupt(r, out, "BLOCKED")
         r.reason = "path_timeout"
@@ -341,6 +355,13 @@ function M.tick(r, now, observation)
         if
             o.routineAdmission == false or (o.admittedAction ~= nil and o.admittedAction ~= a.id)
         then
+            return out
+        end
+        if a.kind == "COLLECT" then
+            r.planWaitAt = nil
+            if o.interactionComplete == a.id then
+                G.complete(r, a.id)
+            end
             return out
         end
         if a.kind == "WAIT" then

@@ -51,6 +51,41 @@ public final class NativeResidentController {
       injuryWork = new ProbeTiming(),
       decisionWork = new ProbeTiming();
   private long pathRequestedAt;
+  private boolean nativeRoutineRouting, nativeRoutePending;
+  private long pathProgress;
+  private int nativeRoutes, rejectedNativeRoutes, groundAlternatives;
+  private final Set<Action> pendingTraversal = EnumSet.noneOf(Action.class);
+  private final ProbeTiming nativeQueue = new ProbeTiming();
+
+  String routineNavigationSummary() {
+    return "native="
+        + nativeRoutes
+        + " rejected="
+        + rejectedNativeRoutes
+        + " ground_alternatives="
+        + groundAlternatives
+        + " pending_actions="
+        + pendingTraversal
+        + " queue_p95_ms="
+        + nativeQueue.percentile(.95);
+  }
+
+  private NativeItemCollection collection;
+
+  /** Bind one exact native inventory operation before the resident receives its first plan. */
+  void collectAtActivity(NativeItemCollection operation) {
+    var goal = goalPlan();
+    if (goal == null || currentAction() != null)
+      throw new IllegalStateException("collection_plan_already_started");
+    collection = Objects.requireNonNull(operation);
+    goal.rawset("collectItem", true);
+  }
+
+  /** Opt in to whole-route native planning while retaining bounded local execution windows. */
+  void nativeRoutineRouting() {
+    nativeRoutineRouting = true;
+  }
+
   private int captureRadius;
   private final CivilianGeometryCache geometry;
   private final ArrayDeque<String> transitions = new ArrayDeque<>();
@@ -373,6 +408,8 @@ public final class NativeResidentController {
 
   /** Invalidate captured geometry after a door, wall or traversal state changes. */
   public void geometryChanged() {
+    NativeRoutinePaths.cancel(token);
+    nativeRoutePending = false;
     mapRevision++;
     assessed = reachable = false;
     capture = null;
@@ -384,6 +421,8 @@ public final class NativeResidentController {
   }
 
   private void clearCandidate() {
+    NativeRoutinePaths.cancel(token);
+    nativeRoutePending = false;
     capture = null;
     escape = null;
     roam = null;
@@ -486,7 +525,7 @@ public final class NativeResidentController {
         throw new IllegalStateException(combat.action.reason(), combat.action.failure());
       combatWork.add(System.nanoTime() - component);
       component = System.nanoTime();
-      advancePath();
+      advancePath(now);
       if (fixtureMovementHold && traversal != null) traversal.pause();
       if (traversal != null && !combat.action.busy() && !reacting && !fixtureMovementHold) {
         if (traversal.view().phase() == CivilianTraversal.Phase.RUNNING && !routeSafe(now)) {
@@ -517,6 +556,8 @@ public final class NativeResidentController {
       decisions++;
       component = System.nanoTime();
       var o = table();
+      if (nativeRoutineRouting && (capture != null || roam != null))
+        o.rawset("pathProgress", (double) pathProgress);
       o.rawset("online", true);
       o.rawset("known", observed.known());
       o.rawset("position", position());
@@ -568,7 +609,8 @@ public final class NativeResidentController {
       c.rawset("escapeReachable", !stationaryDefenseFixture && reachable);
       c.rawset(
           "pathPending",
-          !stationaryDefenseFixture && (capture != null || escape != null || roam != null));
+          !stationaryDefenseFixture
+              && (nativeRoutePending || capture != null || escape != null || roam != null));
       c.rawset("attacking", combat.action.busy());
       c.rawset("knockedDown", body.isKnockedDown() || body.isOnFloor());
       c.rawset(
@@ -578,6 +620,19 @@ public final class NativeResidentController {
               && w.getCondition() > 0);
       c.rawset("endurance", (double) body.getStats().get(CharacterStat.ENDURANCE));
       o.rawset("combat", c);
+      if (collection != null) {
+        boolean permitted =
+            !reacting
+                && Boolean.TRUE.equals(o.rawget("routineAdmission"))
+                && observed.known()
+                && observed.threats().isEmpty()
+                && Set.of("IDLE", "WALK").contains(state())
+                && !combat.action.busy()
+                && currentAction() != null
+                && "COLLECT".equals(currentAction().rawget("kind"));
+        if (collection.tick(body, actionId(), now, permitted))
+          o.rawset("interactionComplete", actionId());
+      }
       if (reply != null
           && reply.status() == Status.FOUND
           && (traversal != null && traversal.view().phase() == CivilianTraversal.Phase.RUNNING
@@ -669,6 +724,18 @@ public final class NativeResidentController {
                   : traversal.route().route().getLast().at();
       }
       searchKey = new Key(token, revision, mapRevision);
+      pathProgress = 0;
+      if (nativeRoutineRouting && planningGoal != null) {
+        capture = null;
+        escape = null;
+        roam = null;
+        reply = null;
+        nativeRoutePending =
+            NativeRoutinePaths.submit(searchKey, body, planningOrigin, planningGoal, now);
+        if (!nativeRoutePending)
+          reply = path = new Result(searchKey, Status.BUDGET_EXHAUSTED, List.of(), 0, 0);
+        return;
+      }
       captureRadius =
           planningGoal == null
               ? 3
@@ -755,9 +822,48 @@ public final class NativeResidentController {
     return traversal != null && reply != null && traversal.canReplace(reply);
   }
 
-  private void advancePath() {
+  private void advancePath(long now) {
+    if (nativeRoutePending) {
+      var nativeReply = NativeRoutinePaths.poll(token, now);
+      if (nativeReply == null) return;
+      nativeRoutePending = false;
+      nativeQueue.add(nativeReply.queueNanos());
+      if (!nativeReply.key().equals(searchKey) || searchKey.mapRevision() != mapRevision) return;
+      if (nativeReply.status() != Status.FOUND) {
+        lastInterrupt = "native_route:" + nativeReply.reason();
+        reply = path = new Result(searchKey, nativeReply.status(), List.of(), 0, 0);
+        return;
+      }
+      var inspected = NativeCivilianGeometry.inspect(body, nativeReply.points());
+      lastInterrupt = "native_inspection:" + inspected.reason();
+      boolean allowed =
+          inspected.reason().isEmpty()
+              && inspected.steps().stream()
+                  .allMatch(s -> NativeCivilianGeometry.executableActions().contains(s.action()));
+      if (!allowed) {
+        rejectedNativeRoutes++;
+        for (var step : inspected.steps())
+          if (!NativeCivilianGeometry.executableActions().contains(step.action()))
+            pendingTraversal.add(step.action());
+        lastInterrupt =
+            "native_route_unsupported:"
+                + inspected.reason()
+                + ":"
+                + inspected.steps().stream().map(s -> s.action()).distinct().toList();
+        // Native routes may use windows or fences. Search the bounded loaded neighborhood
+        // for a walk/door alternative rather than executing unsupported traversal.
+        captureRadius = 16;
+        capture = new CivilianGraphCapture(geometry, planningOrigin, captureRadius);
+        reply = path = null;
+      } else {
+        nativeRoutes++;
+        reply = path = new Result(searchKey, Status.FOUND, inspected.steps(), 0, 0);
+      }
+      return;
+    }
+
     if (capture != null) {
-      capture.advance(8);
+      pathProgress += capture.advance(nativeRoutineRouting && planningGoal != null ? 32 : 8);
       if (!capture.complete()) return;
       var graph = capture.result();
       boolean limited = capture.limited();
@@ -798,6 +904,7 @@ public final class NativeResidentController {
       result = escape.result();
     } else if (roam != null) {
       roam.advance(32, mapRevision);
+      pathProgress++;
       result = roam.result();
     }
     if (result == null || result.status() == Status.PENDING) return;
@@ -815,6 +922,9 @@ public final class NativeResidentController {
       reachable = result.status() == Status.FOUND;
       if (reachable) fleeRoutes++;
     }
+    if (nativeRoutineRouting && result.status() == Status.FOUND) groundAlternatives++;
+    if (nativeRoutineRouting)
+      lastInterrupt = "local_route:" + result.status() + ":expansions=" + result.expansions();
     reply = path = result;
     escape = null;
     roam = null;

@@ -74,8 +74,8 @@ return function(c)
         d.reason = "committed_routine"
         add("visit_activity", "WALK", c.activity, VISITED, 0, VISITED, 0, 1, 0, "", "Walk")
         add(
-            "wait_activity",
-            "WAIT",
+            c.collect_item and "collect_activity" or "wait_activity",
+            c.collect_item and "COLLECT" or "WAIT",
             c.activity,
             VISITED | WAITED,
             VISITED,

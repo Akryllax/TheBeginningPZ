@@ -207,3 +207,16 @@ def test_each_viewer_has_independent_freshness_and_connection_identity():
     """)
     assert lua.eval("AKREncounterReports.eric.player == p")
     assert lua.eval("AKREncounterReports.eric.player ~= guest")
+
+
+def test_house_batch_is_incremental_and_keeps_existing_regression():
+    import civilian_encounter as encounters
+
+    cases = encounters.planned_cases("house-batch")
+    assert [(c["scenario"], c["actors"]) for c in cases] == [
+        ("HOUSE_ROUTINE", 1),
+        ("HOUSE_BLOCKED", 1),
+        ("HOUSE_ROUTINE", 4),
+    ]
+    assert all(c["timeout_seconds"] == 300 for c in cases)
+    assert len(encounters.planned_cases("regression")) == 9

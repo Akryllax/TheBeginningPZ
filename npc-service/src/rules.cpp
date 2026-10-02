@@ -226,6 +226,7 @@ struct Rules::Impl {
         if (r.has_execution() && r.execution().routine_enabled()) {
             boolean(L, "routine_enabled", true);
             number(L, "routine_phase", r.execution().routine_phase());
+            boolean(L, "collect_item", r.execution().collect_item());
             point(L, "activity", r.execution().activity());
         }
         point(L, "position", r.position());

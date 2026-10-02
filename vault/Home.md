@@ -20,6 +20,8 @@ pedestrian feasibility milestone. Use [[Experiments/Implementation Ledger]] for 
 
 ## Design
 
+- [Native traversal action executors](../TASK_Actor_Native_Traversal.md) — pending fence/window/wall/stair integration; unsupported paths stay rejected.
+
 - [[Design/Civilian Pool and Navigation]] — pool, civilian FSM, bounded A*, partial headless evidence and traversal stop gate.
 - [[Design/Civilian Defense and Death]] — flee/defend policy, native corpse reuse evidence, and the open attack/contact gate.
 

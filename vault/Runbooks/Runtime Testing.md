@@ -109,3 +109,25 @@ Both runtime agents now take identity from the reviewed test-only profile. The g
 rejects normal worlds and client-JVM mode, checks the full JAR, and checks exact hook counts
 before world load. Observer must load first. Existing normal/watched launchers and dist
 instructions have not yet been migrated; do not use them for a 42.21 client test.
+
+
+## Ground-floor house routines (42.21 candidate, 2026-10-02)
+
+`./dayone civilian-headless house` starts the separate zero-client fixture and worker.
+It incrementally surveys the existing living-room house near (10753,9839), selects a
+real container access point reachable using WALK/DOOR, and performs three rounds on
+one four-body pool: one round trip, a physically barricaded exit followed by recovery,
+and four independent round trips. One civilian's collection deliberately takes longer
+in the final round; another must finish first. This is independence of execution,
+not qualification of a redesigned parallel planner dispatcher.
+
+Success requires leaving the house, observing a door open, transferring the exact
+fixture item once, returning to the home building, restoring fixture items and door
+state, and parking all four bodies. Unknown ownership fails closed. Reports include
+constructor/reuse/occupied counts and total game-thread timing. Do not interpret a
+headless pass as smooth animation, action presentation or multiplayer qualification.
+
+Native solver paths containing unsupported traversal remain rejected. The fallback
+captures at most 32 local tiles per tick, radius 16, then advances bounded A*. Search
+progress extends only the idle watchdog; a 20-second absolute request deadline remains.
+See [pending native traversal](../../TASK_Actor_Native_Traversal.md).

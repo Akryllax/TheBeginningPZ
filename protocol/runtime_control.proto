@@ -108,6 +108,9 @@ message CivilianEncounterCase {
     LIFECYCLE = 5;
     // Calm existing WALK -> WAIT -> WALK-home logical routine, one Actor, no hunter.
     ROUTINE = 6;
+    // Real house exit, exact container item collection, and return through native doors.
+    HOUSE_ROUTINE = 7;
+    HOUSE_BLOCKED = 8;
   }
   Scenario scenario = 1;
   uint32 actors = 2;

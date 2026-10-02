@@ -58,6 +58,13 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
   private boolean cleanupStarted, cleanupVerified;
   private ProbeTiming controllerWork = new ProbeTiming();
   private NativeStrideComparison stride;
+  private NativeHouseScene house;
+  private boolean houseRestored, houseUnblocked;
+
+  private boolean houseCase() {
+    return definition != null
+        && (definition.scenario() == HOUSE_ROUTINE || definition.scenario() == HOUSE_BLOCKED);
+  }
 
   private boolean comparison() {
     return definition != null && definition.scenario() == STRIDE_COMPARE;
@@ -65,7 +72,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
 
   /** Actor-only cases share visibility and exact-resource cleanup without spawning hunters. */
   private boolean actorOnly() {
-    return comparison() || definition != null && definition.scenario() == ROUTINE;
+    return comparison() || houseCase() || definition != null && definition.scenario() == ROUTINE;
   }
 
   private static final class Pair {
@@ -77,6 +84,8 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
     short hunterId;
     IsoGridSquare hunterSquare;
     NativeResidentController controller, replacementController;
+    NativeItemCollection collection;
+    boolean visitedOutside;
     UdpConnection owner;
     long lastControl, safeAt, motionResumeAt, exitSyncAt;
     float hx, hy;
@@ -258,6 +267,11 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
   }
 
   private void interest() {
+    if (houseCase())
+      ServerMap.instance.characterIn(
+          Math.floorDiv(NativeHouseScene.ORIGIN.x(), 8),
+          Math.floorDiv(NativeHouseScene.ORIGIN.y(), 8),
+          7);
     for (int y = Y - 16; y <= 10224; y += 32)
       ServerMap.instance.characterIn(Math.floorDiv(X + 8, 8), Math.floorDiv(y, 8), 5);
   }
@@ -284,6 +298,8 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
     activeAt = holdAt = clearAt = aftermathVisibleAt = 0;
     cleanupStarted = cleanupVerified = false;
     stride = null;
+    house = null;
+    houseRestored = houseUnblocked = false;
     controllerWork = new ProbeTiming();
     stage("WAIT_OBSERVER");
     announce(
@@ -336,6 +352,10 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
       }
       if (preparation == 1) {
         if (!teleport(p, PARK_X, PARK_Y, now)) return false;
+        if (houseCase()) {
+          if (house == null) house = new NativeHouseScene();
+          if (!house.survey()) return false;
+        }
         if (ServerMap.instance.getGridSquare(X, Y, 0) == null) return false;
         if (actors == null) {
           transparentDoor(false);
@@ -373,8 +393,8 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
                   resident,
                   comparison() ? "Generic01" : c.slot % 2 == 0 ? "Generic01" : "Tourist",
                   !comparison() && (definition.seed() + c.slot) % 2 != 0,
-                  X + c.slot * 5 + .5f,
-                  Y + 4.5f,
+                  houseCase() ? house.homes.get(c.slot).x() + .5f : X + c.slot * 5 + .5f,
+                  houseCase() ? house.homes.get(c.slot).y() + .5f : Y + 4.5f,
                   0));
           if (actorOnly()) c.hunterId = -1;
           c.token = pool.reserve(resident, 1, true, null);
@@ -413,6 +433,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
         preparation = 3;
       }
       if (preparation == 3) {
+        if (houseCase() && !house.selectActivity(pairs.getFirst().actor)) return false;
         if (comparison() && fixtureCursor < 100) {
           for (int budget = 0; budget < 8 && fixtureCursor < 100; budget++, fixtureCursor++) {
             Pair c = pairs.get(fixtureCursor / 50);
@@ -443,6 +464,10 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
               spawn(c);
               return false;
             }
+        if (houseCase()) {
+          house.prepareDoors(pairs.getFirst().actor);
+          if (definition.scenario() == HOUSE_BLOCKED) house.blockExits(true);
+        }
         stage("POSITIONING");
         preparation = 4;
         announce(
@@ -451,7 +476,10 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
       }
       heartbeat();
       if (preparation == 4) {
-        if (!teleport(p, X + definition.actors() * 5 + 3.5f, Y + 5.5f, now)) return false;
+        if (houseCase()) {
+          var spot = house.viewing(pairs.getFirst().actor, viewingSpots);
+          if (!teleport(p, spot.x() + .5f, spot.y() + .5f, now)) return false;
+        } else if (!teleport(p, X + definition.actors() * 5 + 3.5f, Y + 5.5f, now)) return false;
         if (!clientReady(false) || !loadoutReady(p)) return false;
         if (!actorOnly())
           for (Pair c : pairs)
@@ -474,8 +502,15 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
                   pool,
                   actors,
                   c.token,
-                  new CivilianNavigation.Tile(X + c.slot * 5, Y + 8, 0),
+                  houseCase()
+                      ? house.activity
+                      : new CivilianNavigation.Tile(X + c.slot * 5, Y + 8, 0),
                   definition.seed() + c.slot);
+          if (houseCase()) {
+            c.controller.nativeRoutineRouting();
+            c.collection = house.collection(c.actor, c.token.resident());
+            c.controller.collectAtActivity(c.collection);
+          }
           if (lifecycle()) c.controller.stationaryDefenseFixture();
           c.original = c.actor;
           c.deadToken = c.token;
@@ -501,21 +536,24 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
         activeAt = now;
         stage("RUNNING");
         announce(
-            lifecycle()
-                ? "Stationary defense fixture: one full-health civilian and one strong shambler;"
-                    + " escape movement is held for this contact test only. Native defense,"
-                    + " injury and death remain active."
-                : definition.scenario() == ROUTINE
-                    ? "Calm routine: one civilian walks to a nearby activity, waits, and returns"
-                        + " home; no zombies."
-                    : comparison()
-                        ? "50-tile parallel comparison: western lane WALKS, eastern lane RUNS. Same"
-                            + " start, distance and healthy profile; no zombies."
-                        : "RUNNING: "
-                            + definition.actors()
-                            + " civilians and "
-                            + definition.actors()
-                            + " hunters. Decisions and damage are native/server validated.");
+            houseCase()
+                ? "House routine: leave through a door, collect one fixture item from a real"
+                    + " container, then return home. No zombies."
+                : lifecycle()
+                    ? "Stationary defense fixture: one full-health civilian and one strong"
+                        + " shambler; escape movement is held for this contact test only. Native"
+                        + " defense, injury and death remain active."
+                    : definition.scenario() == ROUTINE
+                        ? "Calm routine: one civilian walks to a nearby activity, waits, and"
+                            + " returns home; no zombies."
+                        : comparison()
+                            ? "50-tile parallel comparison: western lane WALKS, eastern lane RUNS."
+                                + " Same start, distance and healthy profile; no zombies."
+                            : "RUNNING: "
+                                + definition.actors()
+                                + " civilians and "
+                                + definition.actors()
+                                + " hunters. Decisions and damage are native/server validated.");
         return true;
       }
       return false;
@@ -621,6 +659,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
       }
     }
     for (Pair c : pairs) checkReplica(c, now);
+    if (houseCase()) return updateHouse(now);
     if (definition.scenario() == ROUTINE) {
       Pair c = pairs.getFirst();
       require(c.actor.isAlive(), "routine_actor_dead");
@@ -987,6 +1026,66 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
     return false;
   }
 
+  /** Real-world routine effects, independent controllers and exact home-return assertions. */
+  private boolean updateHouse(long now) {
+    var focus = pairs.getFirst().actor;
+    var viewer = protect();
+    if (viewer.getSquare().getRoom() != focus.getSquare().getRoom()
+        || Math.hypot(viewer.getX() - focus.getX(), viewer.getY() - focus.getY()) > 8) {
+      var spot = house.viewing(focus, viewingSpots);
+      for (Pair c : pairs) c.controller.holdFixtureMovement(true);
+      if (!teleport(viewer, spot.x() + .5f, spot.y() + .5f, now)) {
+        heartbeat();
+        publishConfig();
+        return false;
+      }
+    }
+    for (Pair c : pairs) c.controller.holdFixtureMovement(false);
+    if (definition.scenario() == HOUSE_BLOCKED && !houseUnblocked) {
+      require(!house.outside(pairs.getFirst().actor), "barricaded_house_exit_crossed");
+      if (now - activeAt >= 7_000_000_000L) {
+        house.blockExits(false);
+        pairs.forEach(c -> c.controller.geometryChanged());
+        houseUnblocked = true;
+        announce(
+            "Blocked-exit check complete; removing the fixture barricades so the same goal can"
+                + " resume.");
+      }
+    }
+    boolean complete = true;
+    for (Pair c : pairs) {
+      require(c.actor.isAlive(), "house_actor_dead");
+      long begin = System.nanoTime();
+      c.controller.tick(now, true);
+      controllerWork.add(System.nanoTime() - begin);
+      require(!c.controller.unresolved(), "house_controller_unresolved");
+      c.visitedOutside |= house.outside(c.actor);
+      var goal = (KahluaTable) c.controller.logical().rawget("goalPlan");
+      boolean done = "complete".equals(goal.rawget("status"));
+      complete &= done;
+      if (done)
+        require(
+            c.visitedOutside
+                && c.collection.transfers == 1
+                && c.actor.getSquare().getBuilding()
+                    == NativeHouseScene.square(house.homes.get(c.slot)).getBuilding(),
+            "house_round_trip_unconfirmed");
+    }
+    house.observe();
+    if (complete) {
+      require(house.observedOpenings > 0, "house_door_not_used");
+      scenarioOutcome = "PASSED";
+      holdAt = now;
+      stage("HOLD");
+      announce(
+          "House routine complete: doors used, one item collected per civilian, everyone home."
+              + " Holding before cleanup.");
+    }
+    heartbeat();
+    publishConfig();
+    return false;
+  }
+
   private boolean clientActorAbsent(Pair c) {
     return clientActorFlag(c, "actor_present", false);
   }
@@ -1335,6 +1434,11 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
             return false;
           release(c.hunterResource);
         }
+      if (house != null && !houseRestored) {
+        require(!pairs.isEmpty() && pairs.getFirst().actor != null, "house_cleanup_actor_missing");
+        house.cleanup(pairs.getFirst().actor);
+        houseRestored = true;
+      }
       for (int i = 0; i < doors.size(); i++)
         if (doorSquares.get(i).getObjects().contains(doors.get(i))
             || doorSquares.get(i).getSpecialObjects().contains(doors.get(i))) {
