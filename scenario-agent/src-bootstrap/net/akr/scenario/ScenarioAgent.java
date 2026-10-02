@@ -8,6 +8,7 @@ import net.akr.scenario.bridge.PrimitiveCopy;
 import net.akr.scenario.bridge.PrimitiveWrite;
 import net.akr.scenario.bridge.ProtocolCodec;
 import net.akr.scenario.compat.BuildGuard;
+import net.akr.scenario.compat.BuildProfile;
 import net.akr.scenario.compat.LaunchGuard;
 import se.krka.kahlua.vm.KahluaTable;
 import zombie.Lua.LuaManager;
@@ -70,8 +71,13 @@ public final class ScenarioAgent {
     if (!Set.of("server", "client").contains(side))
       throw new IllegalArgumentException("side server/client required");
     server = side.equals("server");
+    String requestedWorld = p.getProperty("world", "");
+    if (!server
+        || !(requestedWorld.startsWith("AKR_DayOne_Test_")
+            || requestedWorld.startsWith("AKRVehicleProbe_")))
+      throw new IllegalArgumentException(
+          "42.21 candidate is restricted to disposable server test worlds");
     BuildGuard.verify(ScenarioAgent.class.getClassLoader());
-    verified = true;
     if (server && Boolean.parseBoolean(p.getProperty("vehicle_probe.enabled", "false"))) {
       BuildGuard.verifyServerPhysics(instrumentation);
       System.out.println(
@@ -79,9 +85,8 @@ public final class ScenarioAgent {
     }
     Path bandit = Path.of(p.getProperty("bandits_update_file", ""));
     if (!Files.isRegularFile(bandit)
-        || !BuildGuard.hash(Files.readAllBytes(bandit))
-            .equals("fb9bd559da4e0faabd2c35c41cd7d2cd74d85510ef642a7ba6e3776cb8a02192"))
-      throw new IllegalStateException("Pinned Bandits 42.20 callback source required");
+        || !BuildGuard.hash(Files.readAllBytes(bandit)).equals(BuildProfile.BANDITS_SHA256))
+      throw new IllegalStateException("Reviewed Bandits callback source required");
     instrumentation.addTransformer(new ScenarioTransformer());
     // A transformer exception is otherwise swallowed by Instrumentation. Force
     // every guarded class to load (without initializing it) before opening a save.
@@ -89,6 +94,7 @@ public final class ScenarioAgent {
       Class.forName(name.replace('/', '.'), false, ScenarioAgent.class.getClassLoader());
     if (hookFailure != null || !hooks.containsAll(ScenarioTransformer.TARGETS))
       throw new IllegalStateException("Incomplete scenario hooks: " + hookFailure);
+    verified = true;
     world = p.getProperty("world", "");
     epoch = p.getProperty("server_epoch", UUID.randomUUID().toString());
     if (server) {
@@ -141,7 +147,12 @@ public final class ScenarioAgent {
         survival = new WatchedSurvivalHarness(p, world, epoch, server, runtime != null);
       else combat = new WatchedCombatHarness(p, world, epoch, server, runtime != null);
     }
-    System.out.println("[AKRScenario] Verified B42.20.4 gameplay agent (" + side + ")");
+    System.out.println(
+        "[AKRScenario] Verified "
+            + BuildProfile.BUILD
+            + " test-only gameplay agent ("
+            + side
+            + ")");
   }
 
   private static void startTransport() {

@@ -40,6 +40,7 @@ final class ScenarioTransformer implements ClassFileTransformer {
     if (!TARGETS.contains(name) || redefining != null) return null;
     try {
       byte[] result = instrument(name, bytes, loader);
+      net.akr.scenario.compat.HookContract.verify(name, result);
       ScenarioAgent.hooks.add(name);
       return result;
     } catch (Throwable ex) {

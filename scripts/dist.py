@@ -13,6 +13,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 MODS = ("AKRCore", "AKRPopulation", "AKRResidents", "AKRStoryteller", "AKRDevTools")
 SOURCE_DIRS = (
+    "compatibility",
     "scripts",
     "scenario-agent",
     "npc-service",

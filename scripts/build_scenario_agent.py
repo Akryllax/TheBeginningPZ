@@ -1,4 +1,4 @@
-"""Build the separate pinned B42.20.4 gameplay agent entirely inside this project."""
+"""Build the separate reviewed test-only gameplay agent entirely inside this project."""
 
 import argparse
 import hashlib
@@ -8,6 +8,14 @@ import shutil
 import subprocess
 import zipfile
 from pathlib import Path
+
+from compat import read_profile
+from compat_resources import (
+    write_hook_contract,
+    generate_build_profile,
+    generate_protocol_schema,
+    validate_client_profile,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,6 +41,14 @@ def build(
     if generated.exists():
         shutil.rmtree(generated)
     generated.mkdir(parents=True, exist_ok=True)
+    profile = read_profile(ROOT, "pz42.21")
+    validate_client_profile(profile, ROOT, upstream=not generate_only)
+    if (
+        not generate_only
+        and hashlib.file_digest(game_jar.open("rb"), "sha256").hexdigest() != profile["jar_sha256"]
+    ):
+        raise ValueError("Game archive does not match the reviewed profile")
+    generate_build_profile(profile, generated, "net.akr.scenario.compat")
     proto = ROOT / "protocol/npc_control.proto"
     subprocess.run(
         [str(protoc), "-I", str(proto.parent), f"--java_out=lite:{generated}", str(proto)],
@@ -50,23 +66,7 @@ def build(
         ],
         check=True,
     )
-    # Generate a tiny allowlisted field schema, avoiding a second protobuf runtime.
-    schema = []
-    for name, body in re.findall(r"message\s+(\w+)\s*\{([^{}]*)\}", proto.read_text()):
-        fields = []
-        for repeat, kind, field in re.findall(r"\b(repeated\s+)?(\w+)\s+(\w+)\s*=\s*\d+\s*;", body):
-            fields.append(
-                f'new ProtocolCodec.Field("{field}","{kind}",{str(bool(repeat)).lower()})'
-            )
-        schema.append(f'Map.entry("{name}",new ProtocolCodec.Field[]{{{",".join(fields)}}})')
-    schema_path = generated / "net/akr/scenario/bridge/ProtocolSchema.java"
-    schema_path.parent.mkdir(parents=True, exist_ok=True)
-    schema_path.write_text(
-        "package net.akr.scenario.bridge;\nimport java.util.*;\nfinal class ProtocolSchema {\n"
-        "static final Map<String,ProtocolCodec.Field[]> FIELDS=Map.ofEntries(\n"
-        + ",\n".join(schema)
-        + ");\n}\n"
-    )
+    generate_protocol_schema(proto, generated)
     if generate_only:
         # IDE source path only; leaves the deployable JAR untouched.
         print(generated)
@@ -119,13 +119,14 @@ def build(
         for name, expected_hash in guards.items():
             if hashlib.sha256(game.read(name + ".class")).hexdigest() != expected_hash:
                 raise ValueError(f"Unsupported game build: {name}")
+    write_hook_contract(read_profile(ROOT, "pz42.21"), classes)
     jar = out / "akr-scenario-agent.jar"
     with zipfile.ZipFile(jar, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(
             "META-INF/MANIFEST.MF",
             "Manifest-Version: 1.0\r\nPremain-Class: net.akr.scenario.ScenarioAgent\r\n\r\n",
         )
-        for path in sorted(classes.rglob("*.class")):
+        for path in sorted(p for p in classes.rglob("*") if p.is_file()):
             archive.write(path, path.relative_to(classes).as_posix())
         with zipfile.ZipFile(runtime) as upstream:
             for name in upstream.namelist():
@@ -134,13 +135,16 @@ def build(
     (out / "manifest.json").write_text(
         json.dumps(
             {
-                "game_build": "42.20.4/b0bbce05d5",
+                "game_build": profile["build"],
+                "compatibility_profile": profile["id"],
+                "game_jar_sha256": profile["jar_sha256"],
+                "guard_scope": profile["guard_scope"],
                 "java": 25,
                 "class_hashes": guards,
                 "jar_sha256": hashlib.file_digest(jar.open("rb"), "sha256").hexdigest(),
                 "server_physics_library": native_library,
                 "server_physics_sha256": native_hash,
-                "bandits_update_sha256": "fb9bd559da4e0faabd2c35c41cd7d2cd74d85510ef642a7ba6e3776cb8a02192",
+                "bandits_update_sha256": profile["dependency_pins"]["BanditUpdate.lua"],
             },
             indent=2,
         )
@@ -201,10 +205,7 @@ def build(
                 check=True,
             )
             settings = out / "premain-fixture.properties"
-            bandit = (
-                ROOT
-                / "data/game-files/steamapps/workshop/content/108600/3268487204/mods/Bandits/42.20/media/lua/client/BanditUpdate.lua"
-            )
+            bandit = ROOT / profile["dependencies"]["BanditUpdate.lua"]
             settings.write_text(
                 f"side=server\nscenario.enabled=true\nworld=AKRVehicleProbe_fixture\nsocket={out}/fixture-unused.sock\nbandits_update_file={bandit}\n"
             )

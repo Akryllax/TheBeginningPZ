@@ -1,5 +1,5 @@
 name=AKR Pedestrian Experiment
 id=AKRDevTools
 require=AKRCore,Bandits2
-versionMin=42.20
+versionMin=42.21
 description=Disposable-world pedestrian feasibility tools 0.1.0. Experimental server-owned movement; not campaign-ready.

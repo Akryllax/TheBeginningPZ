@@ -176,3 +176,76 @@ def test_cache_invalidates_on_unmapped_edit_and_lost_evidence(tmp_path, monkeypa
     assert run_tests(tmp_path, profile, snapshot, False)[0]["status"] == "passed"
     assert run_tests(tmp_path, profile, {"content": "new game"}, False)[0]["status"] == "passed"
     assert run_tests(tmp_path, profile, snapshot, True)[0]["status"] == "passed"
+
+
+def test_unreviewed_profile_cannot_generate_runtime_guard(tmp_path):
+    from compat_resources import generate_build_profile, write_hook_contract
+
+    with pytest.raises(ValueError, match="review"):
+        generate_build_profile({"class_pins": {}}, tmp_path, "net.akr.fixture")
+    with pytest.raises(ValueError):
+        write_hook_contract({"hooks": {"site": 0}}, tmp_path)
+    assert not list(tmp_path.rglob("*.java"))
+
+
+def test_inventory_resolves_inherited_game_method(tmp_path):
+    from compat_inventory import inventory
+    import zipfile
+
+    if not JAVAC:
+        pytest.skip("Synthetic linkage fixture needs javac")
+    files = {
+        "game/Base.java": "package game; public class Base { public int value() { return 1; } }",
+        "game/Child.java": "package game; public class Child extends Base {}",
+        "net/akr/Caller.java": "package net.akr; public class Caller { public int call(game.Child c) { return c.value(); } }",
+    }
+    for name, content in files.items():
+        file = tmp_path / name
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(content)
+    classes = tmp_path / "classes"
+    subprocess.run(
+        [str(JAVAC), "-d", str(classes), *[str(tmp_path / name) for name in files]], check=True
+    )
+    archive = tmp_path / "game.jar"
+    with zipfile.ZipFile(archive, "w") as jar:
+        for file in (classes / "game").glob("*.class"):
+            jar.write(file, file.relative_to(classes))
+    result = inventory(archive, classes)
+    assert not result["unresolved"]
+    assert any(c["class"] == "game/Base" and c["member"] == "value()I" for c in result["contracts"])
+
+
+def test_snapshot_rejects_mismatched_reviewed_pin_without_approving_profile(tmp_path):
+    from compat import ContractBreak, digest, snapshot
+    import zipfile
+
+    cls = compile_fixture(tmp_path, "public int value() { return 1; }")
+    jar_path = tmp_path / "game.jar"
+    with zipfile.ZipFile(jar_path, "w") as jar:
+        jar.write(tmp_path / "Example.class", "Example.class")
+    profile = {
+        "id": "fixture",
+        "game_jar": "game.jar",
+        "jar_sha256": digest(jar_path),
+        "classes": ["Example"],
+        "class_pins": {"Example": "0" * 64},
+    }
+    with pytest.raises(ContractBreak, match="class_pins"):
+        snapshot(tmp_path, profile)
+    profile["class_pins"]["Example"] = cls["sha256"]
+    captured, output = snapshot(tmp_path, profile)
+    assert output.exists() and captured["profile"] == "fixture"
+    assert "guard_scope" not in profile
+
+
+def test_candidate_client_guards_match_profile():
+    from compat import read_profile
+    from compat_resources import validate_client_profile
+
+    root = Path(__file__).resolve().parents[1]
+    profile = read_profile(root, "pz42.21")
+    validate_client_profile(profile, root, upstream=False)
+    profile["bandits_callbacks"]["OnHitZombie"] += 1
+    with pytest.raises(ValueError, match="callback differs"):
+        validate_client_profile(profile, root, upstream=False)

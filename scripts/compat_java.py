@@ -8,6 +8,12 @@ import shutil
 import subprocess
 
 from compat import ROOT, read_profile
+from compat_resources import (
+    write_hook_contract,
+    generate_build_profile,
+    generate_protocol_schema,
+    validate_client_profile,
+)
 
 
 def verify_hooks(expected, observed):
@@ -24,6 +30,7 @@ def main():
     parser.add_argument("--profile", required=True)
     args = parser.parse_args()
     profile = read_profile(ROOT, args.profile)
+    validate_client_profile(profile, ROOT)
     game = (ROOT / profile["game_jar"]).resolve()
     tools = ROOT / ".tooling/agent"
     jdk = tools / "jdk-25.0.4.1+1/bin"
@@ -39,17 +46,8 @@ def main():
             [str(protoc), "-I", str(proto.parent), f"--java_out=lite:{generated}", str(proto)],
             check=True,
         )
-    # ProtocolSchema is authored builder output; generate-only never builds a runtime JAR.
-    subprocess.run(
-        [
-            str(ROOT / ".tooling/venv/bin/python"),
-            "scripts/build_scenario_agent.py",
-            "--generate-only",
-        ],
-        cwd=ROOT,
-        check=True,
-    )
-    schema = ROOT / "artifacts/scenario-agent/generated/net/akr/scenario/bridge/ProtocolSchema.java"
+    generate_build_profile(profile, generated, "net.akr.scenario.compat")
+    generate_protocol_schema(ROOT / "protocol/npc_control.proto", generated)
     cp = ":".join(
         [
             str(game),
@@ -62,12 +60,12 @@ def main():
         *ROOT.glob("scenario-agent/test/**/*.java"),
         *ROOT.glob("compatibility/java/**/*.java"),
         *generated.rglob("*.java"),
-        schema,
     ]
     subprocess.run(
         [str(jdk / "javac"), "--release", "25", "-cp", cp, "-d", str(classes), *map(str, sources)],
         check=True,
     )
+    write_hook_contract(profile, classes)
     command = [str(jdk / "java"), "-ea", "-cp", f"{classes}:{cp}"]
     result = subprocess.run(
         [*command, "net.akr.scenario.HookProbe", str(game)],
@@ -93,7 +91,7 @@ def main():
         raise ValueError(f"Hook contract mismatch: {differences}")
     subprocess.run([*command, "net.akr.scenario.RuntimeUnitFixture"], cwd=ROOT, check=True)
     print(
-        f"Code-only Java checks passed: {len(observed)} exact hook sites; runtime guards unchanged"
+        f"Code-only Java checks passed: {len(observed)} exact hook sites; generated test-only guards; no world initialized"
     )
 
 

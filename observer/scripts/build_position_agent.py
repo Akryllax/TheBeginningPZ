@@ -4,6 +4,7 @@ Uses an isolated cache; never modifies the game's bundled Java installation.
 """
 
 import argparse
+import sys
 import hashlib
 import shutil
 import subprocess
@@ -12,6 +13,8 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT.parent / "scripts"))
+
 TOOLS = {
     "jdk25.tar.gz": (
         (
@@ -35,6 +38,9 @@ TOOLS = {
 
 
 def build(cache):
+    from compat import read_profile
+    from compat_resources import generate_build_profile
+
     cache.mkdir(parents=True, exist_ok=True)
     for name, (url, digest) in TOOLS.items():
         target = cache / name
@@ -67,11 +73,12 @@ def build(cache):
             "-I",
             str(ROOT / "protocol"),
             f"--java_out=lite:{generated}",
-            f"--python_out={ROOT / 'observer/proto'}",
+            f"--python_out={generated}",
             str(ROOT / "protocol/positions.proto"),
         ],
         check=True,
     )
+    generate_build_profile(read_profile(ROOT.parent, "pz42.21"), generated, "net.akr.observer")
     runtime = cache / "protobuf-javalite-4.36.1.jar"
     sources = [*ROOT.glob("server-agent/src/**/*.java"), *generated.rglob("*.java")]
     subprocess.run(

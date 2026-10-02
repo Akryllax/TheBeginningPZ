@@ -6,6 +6,63 @@ updated: 2026-10-02
 
 # Current state
 
+## 42.21 guarded native qualification (2026-10-02)
+
+The isolated candidate now builds with a shared generated identity for gameplay and
+Observer: 780 API contracts, 168 class pins, exact JAR identity, native/dependency pins
+and 46 hook sites. Snapshotting cannot approve these pins. The reviewed candidate permits
+**disposable server test worlds only**; client JVM mode and normal-world startup are rejected.
+Runtime hook-count enforcement now fails before premain accepts missing/duplicate injections.
+The expanded upstream comparison detects seven removed contracts, including the changed
+`getSpecialObjects` return descriptor and Lua door overload missed by the initial five-contract
+inventory. Explicit reflection/Lua bindings and inherited Java declarations are inventoried.
+
+Three fresh headless worlds passed:
+- `20261002-093256-18f0ac`: all 23 base cases, including doors, repeated reuse, native corpse/
+  reanimation and 32-body prewarm; complete cleanup.
+- `20261002-093536-019bff`: all 26 cases including native combat and 13 autonomous survival
+  encounters/contacts; zero occupied resources after cleanup.
+- `20261002-094346-5af95e`: eight native worker plans/assignments and four initialized bodies,
+  including WALK/RUN/reaction routines; zero occupied resources. WALK 23.10 s, RUN 12.10 s.
+
+Java integration/premain and native search-path guards passed. Observer's five-mode
+export/failure-isolation fixture passed. Real dual-agent premain passed with Observer first;
+reverse order does not install Observer's hook and remains unsupported. The unchanged,
+independently copied worker bundle passed 16 wire scenarios (32 residents, 30 batches;
+round-trip p95 16.75 ms). This is not a fresh C++ rebuild or game-thread latency.
+
+**Performance remains unqualified:** base walking p95/p99 1.4/3.1 ms, warm materialization
+p95 4.9 ms; survival work p95/p99 6.2/21.9 ms. Planner routine p95 1.5 ms. These short
+functional batches do not qualify the release cap or establish a like-for-like regression.
+Watched and two-client behavior, full traversal, transformer subsystem split, finer test
+selection, candidate client/watched launchers and updated dist remain pending.
+
+All game processes from these runs stopped gracefully. No client launched and the frozen
+42.20 installation/.160 deployment were not changed. Candidate artifacts/receipts are under
+`artifacts/compat/` and `artifacts/civilian-headless/` in the 42.21 worktree. See the root
+`TASK_42_21_Compatibility_Migration.md` there for the remaining implementation checklist.
+
+### Final identity and client-guard checks
+
+The first three runs above used the 42.21 engine but retained old text labels in Actor
+snapshots and the worker handshake. Those labels now come from BuildProfile. A fresh
+planner run `20261002-095605-886be9` passed eight plans/assignments on four initialized
+bodies (WALK 23.10 s, RUN 12.10 s, p95/p99 1.7/3.4 ms, zero occupied resources).
+Base rerun `20261002-100241-70c975` passed all 23 cases with the corrected snapshot
+identity, including roundtrip restoration, fatal lifecycle and 32-body prewarm. Walking
+p95/p99 was 1.5/3.0 ms; warm materialization p95 5.2 ms remains above the release target.
+
+The reviewed Bandits callback declarations moved to 2067/2289/2400/2590. Both Lua gates
+and the server manifest now match Workshop manifest 319258424172526049. The builder and
+code-only suite verify these declarations against the pinned upstream input and reject
+profile/client drift; a synthetic negative check catches a stale callback line. Candidate
+mods require 42.21. No ordinary client has been launched, so this is not client acceptance.
+
+Final code-only report `artifacts/compat/runs/20261002T100429.294186Z/report.md` passes
+both Python components and fresh Java/hook checks. Overall exit 2 intentionally retains
+incomplete review/selection and runtime qualification gates; it is not a release approval.
+All native test processes are stopped. Frozen 42.20 and production .160 remain untouched.
+
 ## 42.21 migration foundation (2026-10-02)
 
 Work is isolated in `.tooling/worktrees/pz42.21` on `pz/42.21.x`.

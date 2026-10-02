@@ -2,4 +2,4 @@ name=AKR Residents
 id=AKRResidents
 require=AKRCore,AKRPopulation
 description=Server-owned civilian idle, roam and flee model. Experimental 0.1.0; native traversal qualification pending. No automatic spawning.
-versionMin=42.20
+versionMin=42.21

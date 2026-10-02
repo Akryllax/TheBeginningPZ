@@ -63,7 +63,7 @@ def test_prepare_keeps_existing_world_receipt_and_pins_isolated_config(tmp_path,
             pass
 
         def bind(self, address):
-            assert address == ("127.0.0.1", 27045)
+            assert address == ("127.0.0.1", 27065)
 
     monkeypatch.setattr(headless.socket, "socket", Socket)
     m = SimpleNamespace(
@@ -73,8 +73,8 @@ def test_prepare_keeps_existing_world_receipt_and_pins_isolated_config(tmp_path,
     assert old.read_text() == "existing-test-session"
     assert (source / "normal.ini").read_text().startswith("DefaultPort=16271")
     ini = (target / "Zomboid/Server" / (data["world"] + ".ini")).read_text()
-    assert "PauseEmpty=false" in ini and "DefaultPort=16291" in ini and "Open=false" in ini
-    assert data["container"] == "akr-civilian-headless" and data["clients"] == 0
+    assert "PauseEmpty=false" in ini and "DefaultPort=16311" in ini and "Open=false" in ini
+    assert data["container"] == "akr-civilian-headless-pz42-21" and data["clients"] == 0
     assert "headless.enabled=true" in (target / "scenario.properties").read_text()
     assert json.loads((target / "ProjectZomboid64.json").read_text())["vmArgs"] == [
         "-Xms512m",

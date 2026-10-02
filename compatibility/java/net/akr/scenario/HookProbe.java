@@ -17,6 +17,24 @@ public final class HookProbe {
         byte[] original = jar.getInputStream(jar.getEntry(name + ".class")).readAllBytes();
         byte[] transformed =
             ScenarioTransformer.instrument(name, original, HookProbe.class.getClassLoader());
+        net.akr.scenario.compat.HookContract.verify(name, transformed);
+        if (name.equals("zombie/network/RCONServer")) {
+          boolean rejectedMissing = false, rejectedDuplicate = false;
+          try {
+            net.akr.scenario.compat.HookContract.verify(name, original);
+          } catch (IllegalStateException expected) {
+            rejectedMissing = true;
+          }
+          byte[] twice =
+              ScenarioTransformer.instrument(name, transformed, HookProbe.class.getClassLoader());
+          try {
+            net.akr.scenario.compat.HookContract.verify(name, twice);
+          } catch (IllegalStateException expected) {
+            rejectedDuplicate = true;
+          }
+          if (!rejectedMissing || !rejectedDuplicate)
+            throw new AssertionError("Runtime hook guard accepted missing/duplicate tick");
+        }
         var errors = ClassFile.of().verify(transformed);
         if (!errors.isEmpty()) throw new IllegalStateException(name + ": " + errors);
         for (var method : ClassFile.of().parse(transformed).methods()) {

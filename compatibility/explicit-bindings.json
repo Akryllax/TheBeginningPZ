@@ -1,0 +1,57 @@
+{
+  "description": "Reviewed reflection and Lua dependencies. Bindings are checked against both exact game builds; this file grants no runtime approval.",
+  "classes": {
+    "zombie/characters/IsoPlayer": {
+      "fields": [
+        "RecentlyRemoved",
+        "isPlayerMoving",
+        "mechanicsItem",
+        "alreadyReadBook",
+        "lastSpotted"
+      ],
+      "methods": [
+        "updateEndurance",
+        "getUsername",
+        "getDescriptor",
+        "getX",
+        "getY",
+        "getZ",
+        "isDead"
+      ]
+    },
+    "zombie/characters/IsoGameCharacter": {
+      "fields": ["diedBody", "readBooks", "knownRecipes", "readLiterature", "knownMediaLines"],
+      "methods": ["registerVariableCallbacks", "registerAnimEventCallbacks"]
+    },
+    "zombie/characters/IsoZombie": { "methods": ["registerVariableCallbacks"] },
+    "zombie/iso/objects/IsoDeadBody": { "fields": ["player"] },
+    "zombie/characters/BodyDamage/Fitness": {
+      "fields": [
+        "stiffnessIncMap",
+        "stiffnessTimerMap",
+        "regularityMap",
+        "bodypartToIncStiffness",
+        "exeTimer"
+      ]
+    },
+    "zombie/MovingObjectUpdateScheduler": { "fields": ["simulationLevels"] },
+    "zombie/pathfind/PathNode": { "fields": ["flags"] },
+    "zombie/network/fields/character/PlayerVariables": { "fields": ["count", "variables"] },
+    "zombie/network/fields/character/PlayerVariables$NetworkPlayerVariable": { "methods": ["set"] },
+    "zombie/network/fields/character/PlayerVariables$NetworkPlayerVariableIDs": {
+      "fields": ["WalkInjury", "WalkSpeed"]
+    },
+    "zombie/core/Core": { "methods": ["getInstance", "getVersion"] },
+    "zombie/network/GameServer": { "fields": ["server", "serverName"], "methods": ["getPlayers"] },
+    "zombie/characters/SurvivorDesc": { "methods": ["getFullname"] },
+    "zombie/worldMap/WorldMapVisitedServer": { "fields": ["instance", "dictionary"] },
+    "zombie/iso/IsoWorld": {
+      "fields": ["instance"],
+      "methods": ["getMetaGrid", "getWorldVersion"]
+    },
+    "zombie/iso/IsoMetaGrid": { "fields": ["minX", "minY", "maxX", "maxY"] },
+    "zombie/world/moddata/GlobalModData": { "fields": ["instance"], "methods": ["get"] },
+    "se/krka/kahlua/vm/KahluaTable": { "methods": ["rawget"] },
+    "zombie/iso/IsoGridSquare": { "methods": ["getDoor"] }
+  }
+}

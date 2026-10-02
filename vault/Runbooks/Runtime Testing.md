@@ -94,3 +94,18 @@ Two-client replication remains a separate gate. Neither normal `.132` nor `.160`
 First unified offline execution: `artifacts/runtime-tests/20260927-125049-bb1ba0ea/` —
 204 Python tests, Java unit/integration fixtures, native core and 13 worker wire scenarios
 passed. No live server changes or native-world event tests occurred during that run.
+
+## Isolated 42.21 migration
+
+Run the commands from `.tooling/worktrees/pz42.21`, not the frozen root checkout.
+`./dayone compat test --profile pz42.21 --full` runs fresh code-only checks. Exit 2 can
+mean the selected checks passed but remaining migration review is explicit; read the report.
+`./dayone civilian-headless run`, `survival`, and `planner` use separate disposable worlds,
+container `akr-civilian-headless-pz42-21`, unpublished game UDP ports and loopback RCON
+27065. Only that container is stopped by the candidate runner. Images share the existing
+project Podman store; saves, agent copies, receipts and worker runtime files are separate.
+
+Both runtime agents now take identity from the reviewed test-only profile. The game agent
+rejects normal worlds and client-JVM mode, checks the full JAR, and checks exact hook counts
+before world load. Observer must load first. Existing normal/watched launchers and dist
+instructions have not yet been migrated; do not use them for a 42.21 client test.

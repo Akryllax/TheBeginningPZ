@@ -6,10 +6,10 @@ public final class Core {
   }
 
   public String getVersionNumber() {
-    return "42.20";
+    return "42.21";
   }
 
   public String getVersion() {
-    return "42.20.4 b0bbce05d5";
+    return net.akr.observer.BuildProfile.FULL_VERSION;
   }
 }

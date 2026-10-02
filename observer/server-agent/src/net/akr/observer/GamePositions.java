@@ -13,9 +13,8 @@ final class GamePositions {
   GamePositions(ClassLoader loader, String expectedWorld) throws ReflectiveOperationException {
     Class<?> core = Class.forName("zombie.core.Core", false, loader);
     Object instance = core.getMethod("getInstance").invoke(null);
-    // getVersionNumber() on this build returns only 42.20. The full version
-    // includes the .4 hotfix and commit, matching the dedicated startup log.
-    if (!"42.20.4 b0bbce05d5".equals(core.getMethod("getVersion").invoke(instance))) {
+    // Require the exact reviewed full version, including its game commit.
+    if (!BuildProfile.FULL_VERSION.equals(core.getMethod("getVersion").invoke(instance))) {
       throw new IllegalStateException("Unsupported game version");
     }
     server = Class.forName("zombie.network.GameServer", false, loader);

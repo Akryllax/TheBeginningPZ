@@ -13,8 +13,8 @@ import uuid
 
 import scenario_ops as scenario
 
-CONTAINER = "akr-civilian-headless"
-PORTS = (16291, 16292, 27045)
+CONTAINER = "akr-civilian-headless-pz42-21"
+PORTS = (16311, 16312, 27065)
 
 
 def receipt(m):
@@ -95,7 +95,7 @@ def prepare(m, combat_probe=False, survival=False, planner=False):
         f"headless.combat_probe={str(combat_probe).lower()}\n"
         f"headless.survival={str(survival).lower()}\n"
         f"headless.planner={str(planner).lower()}\n"
-        f"bandits_update_file={scenario.BANDITS_SOURCE}\n",
+        "bandits_update_file=/opt/upstream/BanditUpdate.lua\n",
     )
     data = {
         "world": world,
@@ -174,6 +174,8 @@ def run(m, combat_probe=False, survival=False, planner=False):
             f"{m.ROOT}/secrets/admin-password:/run/secrets/admin-password:ro,z",
             "-v",
             f"{m.ROOT}/game/entrypoint.sh:/home/pzuser/entrypoint.sh:ro,z",
+            "-v",
+            f"{m.ROOT}/.tooling/game-builds/42.21-workshop/3268487204/mods/Bandits/42.20/media/lua/client/BanditUpdate.lua:/opt/upstream/BanditUpdate.lua:ro,z",
             "localhost/zomboid-dayone_game:latest",
         ]
     )

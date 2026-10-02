@@ -2460,3 +2460,23 @@ Java components pass. Python/Lua component suite passes after updating the door 
 The deep-checkout socket failure was reproduced and fixed with private runtime directories.
 No guard refresh, game launch, native qualification or watched acceptance occurred.
 See [[Current State]] and the root compatibility migration task for remaining gates.
+
+## 2026-10-02 — 42.21 native qualification checkpoint
+
+Generated a reviewed test-only profile shared by both agents; whole-JAR and class guards,
+Bandits pin, and runtime per-method hook checks now apply before loading a world. Added
+explicit reflection/Lua bindings and inherited linkage inventory. Java integration and
+Observer five-mode/dual-premain tests passed. Three disposable native runs passed base
+lifecycle/reuse/doors, 13-contact survival, and eight worker-backed WALK/RUN/routine plans.
+The unchanged copied worker passed all 16 wire scenarios. No client or normal world started.
+Warm materialization and survival p95/p99 exceed release budgets; capacity remains open.
+See [[Current State]] for exact receipts, timings and qualification limits.
+
+### 2026-10-02 — Corrected candidate identities and Lua closure guards
+
+Actor snapshot, Lua API and worker handshake identities now derive from BuildProfile.
+The native base (23 cases) and planner (8 assignments, 4 bodies) reruns passed after the
+identity correction; receipts and timings are in Current State. Updated Bandits callback
+guards and added build/offline validation against the reviewed profile and upstream file.
+Offline groups pass while report exit 2 retains incomplete migration gates. No client
+launched; warm materialization and survival remain outside release performance targets.

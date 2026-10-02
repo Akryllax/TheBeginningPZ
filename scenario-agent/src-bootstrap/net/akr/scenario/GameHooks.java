@@ -131,7 +131,7 @@ public final class GameHooks {
         "versionReady",
         (JavaFunction) (f, n) -> f.push(ScenarioAgent.enabled && ScenarioAgent.verified));
     api.rawset("side", ScenarioAgent.server ? "server" : "client");
-    api.rawset("build", "42.20.4/b0bbce05d5");
+    api.rawset("build", net.akr.scenario.compat.BuildProfile.BUILD);
     api.rawset(
         "populationMode",
         (JavaFunction)

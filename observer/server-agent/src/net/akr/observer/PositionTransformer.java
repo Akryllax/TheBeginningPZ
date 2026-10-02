@@ -12,8 +12,8 @@ import java.util.HexFormat;
 /** An in-memory hook; never rewrites the installed game jar or any Lua file. */
 public final class PositionTransformer implements ClassFileTransformer {
   static final String TARGET = "zombie/network/RCONServer";
-  // Dedicated Build 42.20.4. Unknown versions fail open for the game, closed for export.
-  static final String SHA256 = "c31a83c6868d6c88da96db66db10a3d3414ae39947b13e3d800afbb2c034c645";
+  // Reviewed dedicated build. Unknown versions fail open for the game, closed for export.
+  static final String SHA256 = BuildProfile.CLASS_HASHES.get(TARGET);
 
   @Override
   public byte[] transform(
@@ -26,7 +26,8 @@ public final class PositionTransformer implements ClassFileTransformer {
         return null;
       }
       byte[] result = instrument(bytes, loader);
-      PositionAgent.log("Installed position hook for Build 42.20.4; client mods unchanged.");
+      PositionAgent.log(
+          "Installed position hook for " + BuildProfile.BUILD + "; client mods unchanged.");
       return result;
     } catch (Throwable error) {
       PositionAgent.log("Could not install position hook; game continues without export.");

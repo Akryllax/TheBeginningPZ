@@ -7,7 +7,7 @@ import zombie.characters.IsoPlayer;
 
 /** Stock player byte-buffer codec; native fidelity remains a separate in-game round-trip gate. */
 public final class NativeActorBodyCodec {
-  public static final String BUILD = "42.20.4/b0bbce05d5";
+  public static final String BUILD = net.akr.scenario.compat.BuildProfile.BUILD;
   private final int worldVersion;
 
   public NativeActorBodyCodec(int worldVersion) {

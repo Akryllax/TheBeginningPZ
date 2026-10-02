@@ -304,8 +304,9 @@ public final class ScenarioFixture {
       Files.deleteIfExists(socket);
       Files.deleteIfExists(dir);
     }
+    Path oversizeDir = RuntimeTestPaths.directory("oversize-");
     try (ServerSocketChannel listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
-      Path socket2 = dir.resolve("oversize.sock");
+      Path socket2 = oversizeDir.resolve("oversize.sock");
       Files.deleteIfExists(socket2);
       listener.bind(UnixDomainSocketAddress.of(socket2));
       try (SocketChannel client = SocketChannel.open(UnixDomainSocketAddress.of(socket2));
@@ -316,6 +317,8 @@ public final class ScenarioFixture {
       } finally {
         Files.deleteIfExists(socket2);
       }
+    } finally {
+      Files.deleteIfExists(oversizeDir);
     }
     System.out.println(
         "Scenario fixtures passed: pinned build, JVM verification, bounded copy, protobuf, Unix"

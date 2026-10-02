@@ -17,11 +17,11 @@ final class GameExploration {
     verify(
         loader,
         "zombie/worldMap/WorldMapVisitedServer.class",
-        "815271c82d288dbcdfa35dbd8025bdbb0fea80eb16da7a467ac7366830bafdad");
+        BuildProfile.CLASS_HASHES.get("zombie/worldMap/WorldMapVisitedServer"));
     verify(
         loader,
         "zombie/worldMap/WorldMapVisited.class",
-        "ea0623bc9eaa67f2f4c609c66df1498220019e4f2025a75945283d45354a9749");
+        BuildProfile.CLASS_HASHES.get("zombie/worldMap/WorldMapVisited"));
     Class<?> visited = Class.forName("zombie.worldMap.WorldMapVisitedServer", false, loader);
     visitedInstance = visited.getDeclaredField("instance");
     dictionary = visited.getDeclaredField("dictionary");

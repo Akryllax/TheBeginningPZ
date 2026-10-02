@@ -39,3 +39,11 @@ dayone-watched-testing for the prepared batch. Record exact source/build/mod ide
 machine result, human result and outstanding gates in the current handoff and append
 material evidence to the ledger. Keep evolving status in the vault, not copied into
 every skill. Update procedures when commands change.
+
+For a game-version migration, read `TASK_42_21_Compatibility_Migration.md` and
+`compatibility/README.md` first. Use the isolated version worktree's wrapper: the root
+worktree is the frozen rollback. `compat` is code-only; native evidence belongs to the
+separate headless receipts. Snapshotting must not approve or refresh runtime pins.
+Candidate guards currently permit disposable worlds only. Load Observer before gameplay.
+Do not infer performance qualification from a functional pass, or launch the old pinned
+client against the candidate server. Watched candidate tooling must identify both versions.

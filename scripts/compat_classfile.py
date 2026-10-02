@@ -191,7 +191,13 @@ def parse_class(data):
             flags, member, descriptor = r.number(), utf(r.number()), utf(r.number())
             attributes = attrs(r)
             known, unknown = attribute_hashes([(k, v) for k, v in attributes if k != "Code"])
-            entry = {"access": flags, "attributes": known, "unknown": unknown}
+            entry = {
+                "name": member,
+                "descriptor": descriptor,
+                "access": flags,
+                "attributes": known,
+                "unknown": unknown,
+            }
             for key, raw in attributes:
                 if key == "Code":
                     body = code(raw)
@@ -203,6 +209,20 @@ def parse_class(data):
     if r.pos != len(data):
         raise ValueError("Trailing class-file bytes")
     return {
+        "references": sorted(
+            [
+                {
+                    "class": name(value[0]),
+                    "kind": "fields" if tag == 9 else "methods",
+                    "member": utf(pool[value[1]][1][0]) + utf(pool[value[1]][1][1]),
+                }
+                for entry in pool[1:]
+                if entry is not None
+                for tag, value in [entry]
+                if tag in (9, 10, 11)
+            ],
+            key=lambda item: (item["class"], item["kind"], item["member"]),
+        ),
         "name": this,
         "version": version,
         "access": access,

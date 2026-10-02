@@ -59,11 +59,11 @@ final class GameStoryteller {
     verify(
         loader,
         "zombie/world/moddata/GlobalModData.class",
-        "61b27632d28a63f92667a727d40614f6ec1e22640a64a65a93508427bcf4d47d");
+        BuildProfile.CLASS_HASHES.get("zombie/world/moddata/GlobalModData"));
     verify(
         loader,
         "se/krka/kahlua/vm/KahluaTable.class",
-        "398e2f6df2108991fdbf3290e2725236eb71e4d070039a114a3cc1cf5a14af18");
+        BuildProfile.CLASS_HASHES.get("se/krka/kahlua/vm/KahluaTable"));
     Class<?> data = Class.forName("zombie.world.moddata.GlobalModData", false, loader);
     tableType = Class.forName("se.krka.kahlua.vm.KahluaTable", false, loader);
     instance = data.getField("instance");

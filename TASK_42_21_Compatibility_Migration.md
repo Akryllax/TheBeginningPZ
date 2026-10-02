@@ -30,8 +30,8 @@ watched and two-client evidence separate from code-only checks.
 - Synthetic CI needs no proprietary input; absence of game inputs is BLOCKED, never PASS.
 - First migration edits: shared ShortFlags movement encoding, updated native hit-list
   combat relay and collection guards, persistent-ID factory descriptor, Lua door API.
-- Builder validates guards before packaging, avoiding creation of an unguarded candidate
-  JAR. The existing 42.20 guard intentionally still rejects the candidate runtime build.
+- Builder validates the exact reviewed game archive before packaging. A shared generated
+  profile now supplies both agents; gameplay startup is limited to disposable server worlds.
 - Short owned test socket directories replace paths dependent on checkout depth.
 
 ## Still required before runtime qualification
@@ -39,14 +39,14 @@ watched and two-client evidence separate from code-only checks.
 1. Complete dependency inventory (reflection and Lua included), subsystem ownership and
    fine-grained test selection. Current mapping is deliberately conservative and partial;
    test success still exits 2 while coverage/review is incomplete. Expand cache self-tests.
-2. Establish reviewed generated BuildProfile/CompatibilityContract data as the single
-   source for gameplay/Observer guards and package identity. Do not blanket-refresh hashes.
-3. Split transformer rules by subsystem; require hook counts at actual premain startup,
-   before a save is loaded. Current hook-count check is offline only.
-4. Finish migration review: native population register/release bookkeeping, scoped combat
-   effects exactly once, interruption, player path unchanged, Observer full-version/maps/
-   GlobalModData and Observer-first dual-agent startup, updated Bandits pins.
-5. Fix candidate JRE library layout and implement profile-aware isolated launchers,
+2. Generated test-only BuildProfile is implemented for both agents; normal-world approval
+   remains blocked. Keep profile edits separate from snapshot capture.
+3. Split transformer rules by subsystem. Exact hook counts now run in the transformer,
+   before premain accepts its target classes; missing/duplicate tick rejection is tested.
+4. Continue behavioral review and watched replication. Native population/lifecycle, scoped
+   combat, Observer version/map/moddata bindings and dual-agent startup now have tests;
+   actual incoming client-owned pursuit and two-client behavior remain separate gates.
+5. JRE library layout and isolated headless launcher are fixed. Finish candidate watched launchers,
    watched ports 16301/16302 and loopback RCON 27055; headless RCON 27065, no published
    game ports. Do not repoint the frozen default launchers.
 6. Run Java integration, C++/protobuf, packaging and isolated headless native navigation,
@@ -63,3 +63,27 @@ watched and two-client evidence separate from code-only checks.
 Release performance targets remain warmed p95 <2 ms and p99 <5 ms added game-thread work,
 with cold initialization reported separately. Two clients require explicit invitation.
 Neighborhood features, new crowds, hot reload and save migration remain deferred.
+
+## 2026-10-02 second checkpoint evidence
+
+- Java integration/premain/native-library guard passed. Whole-JAR verification and exact
+  method-level hook counts now execute before world load.
+- Native `run`: 23 cases passed, including repeat reuse, doors, corpse/reanimation and
+  32-body prewarm. Native `survival`: 26 cases passed, 13 encounters/contacts, zero occupied
+  resources after cleanup. These are separate disposable worlds, no client launched.
+- Observer five-mode export suite and Observer-first real premain composition passed.
+- Existing immutable worker bundle passed all 16 actual wire scenarios. This does not
+  claim a fresh C++ rebuild; its source/ABI is unchanged by the game upgrade.
+- Performance remains unqualified: first run walking p95/p99 1.4/3.1 ms, warm materialize
+  p95 4.9 ms; survival added work p95/p99 6.2/21.9 ms. Do not relax thresholds or describe
+  these short functional batches as capacity tests.
+- Evidence: candidate `artifacts/compat/` and `artifacts/civilian-headless/`.
+
+The subsequent planner run `20261002-094346-5af95e` also passed: eight plans/assignments,
+four initialized bodies, WALK 23.10 s vs RUN 12.10 s, routine p95 1.5 ms, zero occupied
+resources after cleanup. Candidate game processes are stopped; no watched client launched.
+
+Final identity reruns and Bandits client-guard correction are recorded in Current State.
+The corrected base/planner receipts are `20261002-100241-70c975` and
+`20261002-095605-886be9`; both passed and cleaned up. Client guard/profile drift is now
+checked during builds and offline qualification. The complete migration remains open.

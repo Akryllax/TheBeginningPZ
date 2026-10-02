@@ -18,7 +18,7 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / ".tooling/npc-service"
 PINNED_VENV = ROOT / ".tooling/venv"
-if Path(sys.prefix) != PINNED_VENV:
+if Path(sys.prefix).resolve() != PINNED_VENV.resolve():
     if not (PINNED_VENV / "bin/python").exists():
         raise RuntimeError(
             "Run project bootstrap first: wire tests need the project protobuf7.36.1 Python runtime"

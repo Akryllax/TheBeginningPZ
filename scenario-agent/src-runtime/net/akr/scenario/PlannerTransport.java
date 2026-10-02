@@ -64,7 +64,7 @@ final class PlannerTransport implements Runnable {
             envelope(0)
                 .setHello(
                     Handshake.newBuilder()
-                        .setBuild("42.20.4/b0bbce05d5")
+                        .setBuild(net.akr.scenario.compat.BuildProfile.BUILD)
                         .setModVersion("0.2.0")
                         .setRegistryHash(registryHash)
                         .setMaxFrameBytes(MAX_FRAME)

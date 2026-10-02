@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 PZ_PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-exec /usr/bin/podman --root "$PZ_PROJECT_ROOT/.tooling/containers" --runroot "/run/user/$(id -u)/zomboid-dayone" "$@"
+PZ_STORAGE_ROOT="$PZ_PROJECT_ROOT/.tooling/containers"
+if PZ_COMMON_GIT="$(git -C "$PZ_PROJECT_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+  if [[ -d "$PZ_COMMON_GIT/../.tooling/containers" ]]; then
+    PZ_STORAGE_ROOT="$(realpath "$PZ_COMMON_GIT/../.tooling/containers")"
+  fi
+fi
+exec /usr/bin/podman --root "$PZ_STORAGE_ROOT" --runroot "/run/user/$(id -u)/zomboid-dayone" "$@"

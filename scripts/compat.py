@@ -16,7 +16,15 @@ import zipfile
 from compat_classfile import fingerprint, parse_class
 
 ROOT = Path(__file__).resolve().parents[1]
-PENDING = ["native execution", "watched acceptance", "two-client replication"]
+PENDING = [
+    "native qualification beyond recorded fixtures",
+    "watched acceptance",
+    "two-client replication",
+]
+
+
+class ContractBreak(ValueError):
+    """A supplied input definitively differs from an explicitly pinned contract."""
 
 
 def digest(path):
@@ -38,7 +46,7 @@ def snapshot(root, profile):
     jar = root / profile["game_jar"]
     jar_hash = digest(jar)
     if jar_hash != profile["jar_sha256"]:
-        raise ValueError("Game archive differs from the selected exact profile")
+        raise ContractBreak("Game archive differs from the selected exact profile")
     result = {
         "schema": 1,
         "profile": profile["id"],
@@ -64,6 +72,14 @@ def snapshot(root, profile):
         result["native"][name] = digest(root / path)
     for name, path in profile.get("dependencies", {}).items():
         result["dependencies"][name] = digest(root / path)
+    for observed, pin_key in [
+        ("class_hashes", "class_pins"),
+        ("native", "native_pins"),
+        ("dependencies", "dependency_pins"),
+    ]:
+        for name, expected in profile.get(pin_key, {}).items():
+            if result[observed].get(name) != expected:
+                raise ContractBreak(f"Reviewed {pin_key} mismatch: {name}")
     directory = root / "artifacts/compat/snapshots" / profile["id"]
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / f"{fingerprint(result)}.json"
@@ -95,6 +111,8 @@ def compare(old, new, contracts):
             aa, bb = dict(a), dict(b)
             aa.pop("sha256")
             bb.pop("sha256")
+            aa.pop("references", None)
+            bb.pop("references", None)
             classification = "metadata-only" if aa == bb else "behavioral-review"
             for kind in ("fields", "methods"):
                 for member in sorted(a[kind].keys() | b[kind].keys()):
@@ -322,14 +340,17 @@ def dispatch(argv):
                 report.update(status="failed", exit_code=1)
             report["blocked"].extend(
                 [
-                    "Remaining engine dependency coverage and review decisions are incomplete",
-                    "Profile review not yet qualified for runtime",
+                    "Per-subsystem test selection and remaining migration reviews are incomplete",
+                    "Runtime approval is limited to disposable qualification worlds",
                 ]
             )
         else:
             report["blocked"].append(
                 "Snapshot captured; this operation does not approve a runtime build"
             )
+    except ContractBreak as error:
+        report.update(status="breaking", exit_code=1)
+        report["blocked"].append(str(error))
     except (OSError, ValueError, KeyError, zipfile.BadZipFile) as error:
         report["blocked"].append(str(error))
     write_report(ROOT, report)

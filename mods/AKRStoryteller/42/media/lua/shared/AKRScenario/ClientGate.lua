@@ -12,8 +12,8 @@ local G = {
 }
 AKRScenarioGate = G
 local expected =
-    { OnZombieUpdate = 2062, OnHitZombie = 2328, OnZombieDead = 2395, OnDeadBodySpawn = 2601 }
-G.manifest = "Bandits42.20:Update@2062,Hit@2328,Dead@2395,Body@2601:shield2"
+    { OnZombieUpdate = 2067, OnHitZombie = 2289, OnZombieDead = 2400, OnDeadBodySpawn = 2590 }
+G.manifest = "Bandits@319258424172526049:Update@2067,Hit@2289,Dead@2400,Body@2590:shield2"
 local function outfit(z)
     if not z or not instanceof(z, "IsoZombie") then
         return nil
