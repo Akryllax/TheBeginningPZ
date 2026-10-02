@@ -104,7 +104,8 @@ def test_client_only_holds_explicit_inactive_hunter():
         function hunter:setUseless(v) self.held=v end
         function hunter:setTarget(v) self.cleared=self.cleared+1 end
         blockedDoor=true;missingSquare=false
-        getCell=function() return {getGridSquare=function() if missingSquare then return nil end return {getDoor=function() return blockedDoor and {} or nil end} end,getZombieList=function() return {size=function() return 1 end,get=function() return hunter end} end} end
+        GridSquareEdgeFacingDirection={EAST_WEST={}}
+        getCell=function() return {getGridSquare=function() if missingSquare then return nil end return {getDoor=function(self,facing) assert(facing==GridSquareEdgeFacingDirection.EAST_WEST);return blockedDoor and {} or nil end} end,getZombieList=function() return {size=function() return 1 end,get=function() return hunter end} end} end
         facingCalls=0;getSpecificPlayer=function() return {faceLocationF=function(self,x,y) facingCalls=facingCalls+1;faceX=x;faceY=y end} end;getPlayerByOnlineID=function() return actor end
         sendClientCommand=function(p,m,c,r) lastReport=r end
         function configure(event,active)

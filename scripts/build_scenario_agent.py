@@ -95,18 +95,6 @@ def build(
         ],
         check=True,
     )
-    jar = out / "akr-scenario-agent.jar"
-    with zipfile.ZipFile(jar, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr(
-            "META-INF/MANIFEST.MF",
-            "Manifest-Version: 1.0\r\nPremain-Class: net.akr.scenario.ScenarioAgent\r\n\r\n",
-        )
-        for path in sorted(classes.rglob("*.class")):
-            archive.write(path, path.relative_to(classes).as_posix())
-        with zipfile.ZipFile(runtime) as upstream:
-            for name in upstream.namelist():
-                if not name.endswith("/") and name != "META-INF/MANIFEST.MF":
-                    archive.writestr(name, upstream.read(name))
     # Read the compiled compatibility contract. Source-text regexes silently lost every
     # guard when a Java formatter inserted spaces around Map.entry arguments.
     contract = subprocess.run(
@@ -131,6 +119,18 @@ def build(
         for name, expected_hash in guards.items():
             if hashlib.sha256(game.read(name + ".class")).hexdigest() != expected_hash:
                 raise ValueError(f"Unsupported game build: {name}")
+    jar = out / "akr-scenario-agent.jar"
+    with zipfile.ZipFile(jar, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "META-INF/MANIFEST.MF",
+            "Manifest-Version: 1.0\r\nPremain-Class: net.akr.scenario.ScenarioAgent\r\n\r\n",
+        )
+        for path in sorted(classes.rglob("*.class")):
+            archive.write(path, path.relative_to(classes).as_posix())
+        with zipfile.ZipFile(runtime) as upstream:
+            for name in upstream.namelist():
+                if not name.endswith("/") and name != "META-INF/MANIFEST.MF":
+                    archive.writestr(name, upstream.read(name))
     (out / "manifest.json").write_text(
         json.dumps(
             {

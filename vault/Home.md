@@ -73,3 +73,5 @@ The vault contains no credentials. Dependency source belongs in project `referen
 - [[Design/Offscreen Chase Staging]] — proposed loaded-area pursuit admission and reveal; failed 64-case lessons.
 
 - [[Design/Resident Plans and Locomotion]] — durable goals, worker routine, navigation and native WALK/RUN.
+
+- Compatibility migration: `TASK_42_21_Compatibility_Migration.md` and `compatibility/README.md` at the source root.

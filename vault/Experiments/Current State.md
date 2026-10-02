@@ -1,10 +1,38 @@
 ---
 type: handoff
 status: stationary-lifecycle-accepted-neighborhood-planned
-updated: 2026-09-30
+updated: 2026-10-02
 ---
 
 # Current state
+
+## 42.21 migration foundation (2026-10-02)
+
+Work is isolated in `.tooling/worktrees/pz42.21` on `pz/42.21.x`.
+`main`, `pz/42.20.x` and tag `pz-42.20.4-baseline-2026-10-02` preserve source checkpoint
+`4a93d8c`; these refs were pushed. Root runtime/distribution artifacts were independently
+preserved with 1,653 checksummed files before candidate work. See
+`TASK_42_21_Compatibility_Migration.md` and `compatibility/README.md` for scope and gaps.
+
+The new offline class-file auditor reproduced four removed upstream contracts (movement
+return type, combat packet setter and two zombie-factory overloads). It compares exact
+JAR/class/native/dependency identities and normalized code, with unknown metadata retained
+for review. Candidate first-pass adapters compile, and structural inspection verifies 46
+exact hook sites. The detached Java component suite passed after moving test Unix sockets
+to short private runtime directories. Python/Lua components passed; synthetic auditor
+checks cover removed/changed APIs, access/static changes, code-vs-debug changes, switches,
+exception handlers, native/unmapped changes, dirty identities and hook count failures.
+
+Movement uses a shared ShortFlags encoder; combat relays the native WeaponHit list and
+scopes native list collection; the factory hook includes persistentId. The Lua door fixture
+uses the new facing enum, matched against native Lua usage. These are code-only results.
+Runtime guards intentionally remain frozen and refuse 42.21 packaging; no server/client was
+started, no native compatibility or multiplayer claim is made. Reports retain exit 2 for
+incomplete dependency coverage/review even when selected tests pass. Finer incremental
+selection, generated reviewed guards, Observer, native validation and packaging remain open.
+
+Evidence lives under the candidate worktree's `artifacts/compat/`, including immutable
+snapshots, JSON/Markdown reports, compiler/component logs and exact structural hook counts.
 
 ## 42.21 acquisition and upgrade assessment complete (2026-09-30)
 

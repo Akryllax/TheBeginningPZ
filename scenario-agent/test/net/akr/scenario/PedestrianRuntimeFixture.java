@@ -268,7 +268,7 @@ final class PedestrianRuntimeFixture {
         runtime.scheduler.status(accepted.getEventId()).phase() == EventScheduler.Phase.CANCELLED,
         "cancel outcome");
 
-    Path folder = Files.createTempDirectory(Path.of(".tooling"), "rt-").toAbsolutePath();
+    Path folder = RuntimeTestPaths.directory("rt-");
     Path socket = folder.resolve("runtime.sock");
     try (RuntimeSocket server =
         new RuntimeSocket(socket, new RuntimeSession("world", "epoch", new Fake()))) {

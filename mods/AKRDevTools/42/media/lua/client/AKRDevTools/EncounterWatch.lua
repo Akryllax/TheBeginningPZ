@@ -172,7 +172,7 @@ K.Dispatch.on(K.instance().dispatch, "OnTick", "AKRDevTools.encounterWatch", fun
             exitClear = true
             for n = 0, 8 do
                 local sq = getCell():getGridSquare(r.exit_x, r.exit_y + n, 0)
-                if not sq or sq:getDoor(false) then
+                if not sq or sq:getDoor(GridSquareEdgeFacingDirection.EAST_WEST) then
                     exitClear = false
                     break
                 end

@@ -7,7 +7,6 @@ import zombie.ai.State;
 import zombie.ai.states.BumpedState;
 import zombie.characters.IsoPlayer;
 import zombie.characters.IsoZombie;
-import zombie.characters.NetworkPlayerVariables;
 import zombie.characters.SurvivorDesc;
 import zombie.characters.SurvivorFactory;
 import zombie.core.raknet.UdpConnection;
@@ -921,19 +920,8 @@ public final class ServerActors implements RuntimeSession.Backend {
     p.pathFindX = p.x;
     p.pathFindY = p.y;
     p.position.set(p.x, p.y, p.z);
-    short flags = NetworkPlayerVariables.getBooleanVariables(player);
-    // Walking, never running: the stock flag 256 (deferred movement) drives remote moving state.
-    flags =
-        (short)
-            (flags
-                & ~(NetworkPlayerVariables.Flags.isRunning
-                    | NetworkPlayerVariables.Flags.isSprinting
-                    | NetworkPlayerVariables.Flags.hasDeferredMovement));
-    if (moving) flags = (short) (flags | NetworkPlayerVariables.Flags.hasDeferredMovement);
-    if (moving && slot.running) flags = (short) (flags | NetworkPlayerVariables.Flags.isRunning);
-    // The trip/fall is driven by the stock state packet; keep the floor flag consistent.
-    if (player.isOnFloor()) flags = (short) (flags | NetworkPlayerVariables.Flags.isOnFloor);
-    packet.booleanVariables = flags;
+    packet.booleanVariables =
+        ActorMovementEncoding.flags(player, moving, slot.running, player.isOnFloor());
     packet.disconnected = false;
     packet.hitVehicleId.set(null);
     for (UdpConnection connection : GameServer.udpEngine.connections) {

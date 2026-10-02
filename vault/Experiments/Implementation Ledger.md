@@ -2449,3 +2449,14 @@ source, test harnesses, editor configuration, skills, design and evidence record
 generated output, upstream/game files, secrets and saves remain ignored. This is a source
 checkpoint, not a release or a claim that pending native/multiplayer gates have passed.
 No server operation or new watched test was performed for this checkpoint.
+
+## 2026-10-02 — Isolated compatibility foundation and first 42.21 adapter edits
+
+Preserved/pushed the 42.20 source checkpoint and retained checksummed runtime/dist copies.
+Candidate worktree owns outputs; current game installs and .160 were not modified.
+Synthetic class-file tests and the real upstream diff reproduce movement/combat/factory
+breaks. First-pass candidate source compiles; all 46 structural injection sites and detached
+Java components pass. Python/Lua component suite passes after updating the door enum fixture.
+The deep-checkout socket failure was reproduced and fixed with private runtime directories.
+No guard refresh, game launch, native qualification or watched acceptance occurred.
+See [[Current State]] and the root compatibility migration task for remaining gates.

@@ -6,6 +6,7 @@ import zombie.inventory.types.HandWeapon;
 import zombie.iso.IsoObject;
 import zombie.network.*;
 import zombie.network.fields.hit.TracerInfo;
+import zombie.network.fields.hit.WeaponHit;
 import zombie.network.packets.hit.PlayerHitZombiePacket;
 
 /** Scoped forwarding of the exact stock contact result, never a second server damage call. */
@@ -42,6 +43,11 @@ public final class NativeCombatRelay {
     ui.wiggle(moodle);
   }
 
+  /** Enable only native hit-list collection/forwarding within the synchronous Actor scope. */
+  public static boolean collectingHits() {
+    return GameClient.client || attacker != null && GameServer.server;
+  }
+
   public static boolean scoped(IsoGameCharacter a) {
     return attacker != null && a == attacker && GameServer.server;
   }
@@ -67,18 +73,12 @@ public final class NativeCombatRelay {
       IsoGameCharacter a,
       IsoObject t,
       HandWeapon w,
-      float d,
-      boolean ignore,
-      float range,
       boolean critical,
       List<TracerInfo> tracers,
-      boolean helmet,
-      boolean head,
-      boolean legs,
-      boolean knife) {
-    if (attacker == null || a != attacker || !GameServer.server) {
-      GameClient.sendPlayerHit(
-          a, t, w, d, ignore, range, critical, tracers, helmet, head, legs, knife);
+      List<WeaponHit> hits,
+      boolean helmet) {
+    if (!scoped(a)) {
+      GameClient.sendPlayerHit(a, t, w, critical, tracers, hits, helmet);
       return;
     }
     GameHooks.ownThread();
@@ -87,9 +87,11 @@ public final class NativeCombatRelay {
     if (t != target) throw new IllegalStateException("combat_probe_unexpected_contact");
     if (contacts != 0) throw new IllegalStateException("duplicate_native_contact");
     contacts++;
-    damage = d;
+    if (hits == null || hits.isEmpty()) throw new IllegalStateException("missing_native_hits");
+    damage = 0;
+    for (WeaponHit hit : hits) damage += hit.getDamage();
     var packet = new PlayerHitZombiePacket();
-    packet.set(attacker, w, ignore, critical, tracers, target, d, range, helmet, head, legs, knife);
+    packet.set(attacker, w, critical, tracers, hits, target, helmet);
     for (var c : GameServer.udpEngine.connections) {
       if (c == null || !c.isFullyConnected() || !c.isRelevantTo(a.getX(), a.getY())) continue;
       var writer = c.startPacket();

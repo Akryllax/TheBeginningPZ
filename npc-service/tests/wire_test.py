@@ -135,8 +135,9 @@ def closed(sock):
 
 
 def run(binary):
-    runs = TOOLS / "tests"
-    runs.mkdir(exist_ok=True)
+    runs = Path(f"/run/user/{os.getuid()}")
+    if not runs.is_dir():
+        runs = Path(tempfile.gettempdir())
     with tempfile.TemporaryDirectory(prefix="wire-", dir=runs) as directory:
         path = Path(directory) / "s"
         process = subprocess.Popen(

@@ -1,6 +1,7 @@
 package net.akr.scenario;
 
 import java.lang.classfile.*;
+import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.classfile.instruction.ReturnInstruction;
 import java.lang.constant.*;
@@ -60,10 +61,23 @@ final class ScenarioTransformer implements ClassFileTransformer {
             return;
           }
           String method = m.methodName().stringValue(), descriptor = m.methodType().stringValue();
+          int clientReads = 0;
+          if (name.equals("zombie/CombatManager")
+              && (method.equals("attackCollisionCheck") || method.equals("processClientHit"))) {
+            for (CodeElement instruction : m.code().get()) {
+              if (instruction instanceof FieldInstruction field
+                  && field.opcode() == Opcode.GETSTATIC
+                  && field.owner().asInternalName().equals("zombie/network/GameClient")
+                  && field.name().equalsString("client")) clientReads++;
+            }
+          }
+          final int collectRead = clientReads;
           cb.transformMethod(
               m,
               MethodTransform.transformingCode(
                   new CodeTransform() {
+                    int clientReadsSeen;
+
                     public void atStart(CodeBuilder b) {
                       if (name.equals("zombie/CombatManager")
                           && method.equals("CheckObjectHit")
@@ -266,7 +280,7 @@ final class ScenarioTransformer implements ClassFileTransformer {
                       if (name.equals("zombie/VirtualZombieManager")
                           && method.equals("createRealZombieAlways")
                           && descriptor.equals(
-                              "(Lzombie/iso/IsoDirections;ZI)Lzombie/characters/IsoZombie;")) {
+                              "(Lzombie/iso/IsoDirections;ZII)Lzombie/characters/IsoZombie;")) {
                         b.invokestatic(
                             NATIVE, "factoryBlocked", MethodTypeDesc.ofDescriptor("()Z"));
                         b.ifThen(x -> x.aconst_null().areturn());
@@ -285,6 +299,19 @@ final class ScenarioTransformer implements ClassFileTransformer {
                     }
 
                     public void accept(CodeBuilder b, CodeElement e) {
+                      if (collectRead > 0
+                          && e instanceof FieldInstruction field
+                          && field.opcode() == Opcode.GETSTATIC
+                          && field.owner().asInternalName().equals("zombie/network/GameClient")
+                          && field.name().equalsString("client")
+                          && ++clientReadsSeen == collectRead) {
+                        b.invokestatic(
+                            ClassDesc.of("net.akr.scenario.NativeCombatRelay"),
+                            "collectingHits",
+                            MethodTypeDesc.ofDescriptor("()Z"));
+                        return;
+                      }
+
                       if (name.equals("zombie/iso/objects/IsoDeadBody")
                           && method.equals("reanimate")
                           && descriptor.equals("()Lzombie/characters/IsoGameCharacter;")
@@ -326,7 +353,7 @@ final class ScenarioTransformer implements ClassFileTransformer {
                           && hit.name().equalsString("sendPlayerHit")
                           && hit.type()
                               .equalsString(
-                                  "(Lzombie/characters/IsoGameCharacter;Lzombie/iso/IsoObject;Lzombie/inventory/types/HandWeapon;FZFZLjava/util/List;ZZZZ)V")) {
+                                  "(Lzombie/characters/IsoGameCharacter;Lzombie/iso/IsoObject;Lzombie/inventory/types/HandWeapon;ZLjava/util/List;Ljava/util/List;Z)V")) {
                         b.invokestatic(
                             ClassDesc.of("net.akr.scenario.NativeCombatRelay"),
                             "sendPlayerHit",

@@ -405,6 +405,10 @@ def package():
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "compat":
+        import compat
+
+        raise SystemExit(compat.dispatch(sys.argv[2:]))
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "command",
@@ -424,6 +428,7 @@ def main():
             "test",
             "package",
             "dist",
+            "compat",
             "install-mod",
             "scenario-build",
             "scenario-test-create",
@@ -497,6 +502,10 @@ def main():
                         ROOT / "observer",
                     ]
                 )
+    elif args.command == "compat":
+        import compat
+
+        raise SystemExit(compat.dispatch(args.args))
     elif args.command == "dist":
         import dist
 

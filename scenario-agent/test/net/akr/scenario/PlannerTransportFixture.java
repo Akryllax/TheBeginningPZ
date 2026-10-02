@@ -9,8 +9,7 @@ import net.akr.scenario.protocol.NpcControl.*;
 /** Real framed IPC: a lost ack must retry the identical terminal outcome after reconnect. */
 final class PlannerTransportFixture {
   static void run() throws Exception {
-    Path folder = Files.createTempDirectory(Path.of(".tooling"), "pt-").toAbsolutePath(),
-        socket = folder.resolve("p.sock");
+    Path folder = RuntimeTestPaths.directory("pt-"), socket = folder.resolve("p.sock");
     var journal = new ResidentReceipts();
     var key = new ResidentReceipts.Key("resident", 2, 3, "walk-1");
     journal.finish(key, "completed", "arrived");

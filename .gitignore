@@ -10,7 +10,7 @@ mods/AKRStoryteller/42/media/lua/server/AKRScenario/MapIndex.lua
 **/__pycache__/
 **/.pytest_cache/
 **/.ruff_cache/
-**/node_modules/
+**/node_modules
 **/dist/
 **/.venv/
 **/test-results/

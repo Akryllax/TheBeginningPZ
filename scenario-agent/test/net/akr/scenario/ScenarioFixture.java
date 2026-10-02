@@ -224,7 +224,7 @@ public final class ScenarioFixture {
                 "ObservationBatch", ProtocolCodec.decode("ObservationBatch", navigation))
             .equals(navigation),
         "Navigation/vehicle observation roundtrip");
-    Path dir = Files.createTempDirectory(Path.of("artifacts/scenario-agent"), "ipc-fixture-");
+    Path dir = RuntimeTestPaths.directory("ipc-");
     Path socket = dir.resolve("npc.sock");
     try (ServerSocketChannel listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
       listener.bind(UnixDomainSocketAddress.of(socket));
@@ -305,7 +305,7 @@ public final class ScenarioFixture {
       Files.deleteIfExists(dir);
     }
     try (ServerSocketChannel listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
-      Path socket2 = Path.of("artifacts/scenario-agent/oversize-test.sock");
+      Path socket2 = dir.resolve("oversize.sock");
       Files.deleteIfExists(socket2);
       listener.bind(UnixDomainSocketAddress.of(socket2));
       try (SocketChannel client = SocketChannel.open(UnixDomainSocketAddress.of(socket2));

@@ -685,15 +685,9 @@ public final class NativeCivilianActors implements CivilianPool.Port<IsoPlayer> 
         p.speed = (float) speed;
         p.distance = (byte) Math.min(127, Math.floor(lookahead * 8));
       }
-      short flags = NetworkPlayerVariables.getBooleanVariables(body);
-      flags &=
-          ~(NetworkPlayerVariables.Flags.isRunning
-              | NetworkPlayerVariables.Flags.isSprinting
-              | NetworkPlayerVariables.Flags.hasDeferredMovement);
-      if (speed > 0) flags |= NetworkPlayerVariables.Flags.hasDeferredMovement;
-      if (speed > 0 && (b.gait == Gait.RUN || b.gait == Gait.IDLE && speed > 1.6))
-        flags |= NetworkPlayerVariables.Flags.isRunning;
-      packet.booleanVariables = flags;
+      packet.booleanVariables =
+          ActorMovementEncoding.flags(
+              body, speed > 0, b.gait == Gait.RUN || b.gait == Gait.IDLE && speed > 1.6, false);
       packet.disconnected = false;
       packet.hitVehicleId.set(null);
       for (UdpConnection connection : GameServer.udpEngine.connections) {
