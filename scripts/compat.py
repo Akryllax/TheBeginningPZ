@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 import datetime as dt
+import fcntl
 import hashlib
 import json
 from pathlib import Path
@@ -187,6 +188,15 @@ def write_report(root, report):
 
 
 def run_tests(root, profile, snap, full):
+    """Share the runtime-test output lock; concurrent qualification must not overwrite builds."""
+    directory = root / "artifacts/runtime-tests"
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / "runner.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return _run_tests(root, profile, snap, full)
+
+
+def _run_tests(root, profile, snap, full):
     """Run code-only groups; conservative source fingerprints invalidate all cached groups."""
     from runtime_tests import run_step
 
@@ -208,6 +218,13 @@ def run_tests(root, profile, snap, full):
     )
     cache = root / "artifacts/compat/cache" / f"{key}.json"
     previous = json.loads(cache.read_text()) if not full and cache.exists() else None
+    if previous and not all(
+        item.get("status") == "passed"
+        and Path(item["log"]).is_file()
+        and digest(Path(item["log"])) == item.get("log_sha256")
+        for item in previous["tests"]
+    ):
+        previous = None
     output = (
         root / "artifacts/compat/test-runs" / dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
     )
@@ -244,6 +261,18 @@ def run_tests(root, profile, snap, full):
         "always fresh: compile, structural verifier, exact hook counts, detached Java components"
     )
     tests[-1]["log"] = str(output / tests[-1]["log"])
+    for item in tests:
+        if item["status"] != "cached":
+            item["log_sha256"] = digest(Path(item["log"]))
+    if source_identity(root)["content_hash"] != identity["content_hash"]:
+        tests.append(
+            {
+                "name": "source-stability",
+                "status": "blocked",
+                "reason": "authored content changed during the run; no cache entry written",
+            }
+        )
+        return tests
     if not previous and all(t["status"] == "passed" for t in tests):
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps({"run": str(output), "tests": tests}, indent=2) + "\n")
@@ -289,7 +318,7 @@ def dispatch(argv):
             if report["breaks"]:
                 report.update(status="breaking", exit_code=1)
             report["tests"] = run_tests(ROOT, profile, snap, args.full)
-            if any(t["status"] not in {"passed", "cached"} for t in report["tests"]):
+            if any(t["status"] not in {"passed", "cached", "blocked"} for t in report["tests"]):
                 report.update(status="failed", exit_code=1)
             report["blocked"].extend(
                 [

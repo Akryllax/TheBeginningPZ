@@ -130,3 +130,49 @@ def test_missing_duplicate_and_extra_hooks_rejected(actual):
 
     assert verify_hooks({"site": 1}, actual)
     assert not verify_hooks({"site": 1}, {"site": 1})
+
+
+def test_cache_invalidates_on_unmapped_edit_and_lost_evidence(tmp_path, monkeypatch):
+    import runtime_tests
+    from compat import run_tests
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "fixture",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+    (tmp_path / ".gitignore").write_text("artifacts/\n")
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts/compat_classfile.py").write_text("fixture")
+    calls = []
+
+    def fake_step(name, command, timeout, root, output):
+        calls.append(name)
+        (output / f"{name}.log").write_text("passed")
+        return {"name": name, "status": "passed", "log": f"{name}.log"}
+
+    monkeypatch.setattr(runtime_tests, "run_step", fake_step)
+    profile, snapshot = {"id": "fixture"}, {"content": "first"}
+    first = run_tests(tmp_path, profile, snapshot, False)
+    assert all(t["status"] == "passed" for t in first)
+    second = run_tests(tmp_path, profile, snapshot, False)
+    assert second[0]["status"] == "cached"
+    assert second[1]["status"] == "passed"  # Hooks must never be cached.
+    assert len(calls) == 3
+    Path(first[0]["log"]).unlink()
+    assert run_tests(tmp_path, profile, snapshot, False)[0]["status"] == "passed"
+    (tmp_path / "unknown-extension.lua").write_text("changed")
+    assert run_tests(tmp_path, profile, snapshot, False)[0]["status"] == "passed"
+    assert run_tests(tmp_path, profile, {"content": "new game"}, False)[0]["status"] == "passed"
+    assert run_tests(tmp_path, profile, snapshot, True)[0]["status"] == "passed"
