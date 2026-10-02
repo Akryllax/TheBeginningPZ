@@ -1,6 +1,6 @@
 ---
 type: runbook
-status: prepared-not-watched
+status: partially-executed
 updated: 2026-09-29
 ---
 
@@ -8,8 +8,9 @@ updated: 2026-09-29
 
 User scope: exercise implemented cars, NPC movement/pooling, minimal combat and basic
 routines. After a noncritical failure, preserve the failure, clean up and continue.
-Preparation is not permission to start an unattended watched session. The latest request
-is to prepare; wait for in-world readiness when execution is requested.
+Preparation alone does not start a watched session. The user authorized the one-seat run
+and confirmed readiness on 2026-09-29; results and remaining harness blockers are recorded
+in [[../Experiments/Current State]]. Fresh runs still require current in-world readiness.
 
 `./dayone visual-test prepare` freezes a 17-case catalogue, available vehicle routes,
 source hashes and a checklist under `artifacts/visual-regression/`. It does not launch,

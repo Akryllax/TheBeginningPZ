@@ -1,10 +1,108 @@
 ---
 type: handoff
 status: stationary-lifecycle-accepted-neighborhood-planned
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Current state
+
+## 42.21 acquisition and upgrade assessment complete (2026-09-30)
+
+See [[../Research/42.21 Upgrade Impact]] for the migration sequence, effort estimate,
+exact identities, PDF cross-check and evidence limits. Recommendation: proceed with an
+isolated port; the port itself is pending. Existing 42.20.4 launchers, saves, mods, agents
+and dist remain unchanged. The before/after check verified all 93,520 recorded files.
+
+Both clean candidate copies are under `.tooling/game-builds/`: client
+`42.21-client-25485521/client/`, server `42.21-server-25485538/server/`.
+47,823 client files and 39,185 server files match their depot manifests. Candidate JARs
+are identical, SHA256 `e1a69eb743ede60b213a0fe7f8b83d4fcab773036d256cc4543a336f3b058a33`.
+The user-assisted Steam depot download completed; its temporary destination link was
+restored. The separate candidate Bandits snapshot is retained without installation.
+
+Unchanged agent compilation fails with 11 errors in three files: movement flag API and
+combat packet arguments. Of 63 guarded classes, 31 changed. Standalone transformer
+inspection found three missing method/helper entries (six old call sites), despite
+structurally valid class output: combat relay and zombie-factory suppression need porting.
+The user PDF also exposed one direct Lua door-fixture incompatibility. Observer's
+exploration guard and the updated Bandits dependency need review. Bullet library bytes
+match the baseline; native pathfinding/population libraries changed. No guard bypass or
+gameplay port was performed.
+
+Baseline validation in a frozen source copy passed 288 Python/Lua components, Java
+unit/integration reruns, CTest and 16 worker wire scenarios. Initial deep-path socket
+failures are retained, with the successful short-runtime-path reruns recorded separately.
+The candidate vanilla server booted, answered RCON, saved and exited 0 in a fresh private
+world, without mods or clients. Study containers were removed. Content/preload warnings
+remain in its log; this is startup evidence, not a modded or multiplayer qualification.
+
+Evidence: `artifacts/upgrade-study/20260930-100608-42.21/`. No candidate client was launched,
+no watched feedback was requested, and `.160` was untouched. Keep the existing four-Actor
+divergence, unqualified chase and blocked vehicle harness separate from upgrade regressions.
+The four-resident neighborhood task remains pending.
+
+## Private server/client distribution (2026-09-29)
+
+`./dayone dist` rebuilds the guarded server Java agent and native worker, then stages
+`dist/server/`, `dist/client/`, and separate deterministic ZIP archives. Both contain
+installation instructions, original AKR Lua modules (including test presentation and
+original driver assets), version/dependency manifests and checksums. Server includes
+matching tracked source/build tooling, the Java JAR and private Linux worker runtime.
+No game binaries, Workshop assets, live configuration, accounts, saves, credentials,
+generated map data, decompiled sources or client Java injection are packaged.
+`AKRDevConnect` is excluded; recipients join manually. Optional Observer is included as
+source, with build/deployment instructions, rather than copying a live exporter artifact.
+This is an operator development kit, not automatic fresh-host provisioning or a qualified
+First Week release. Exact 42.20.4/Bandits compatibility remains required.
+
+Build is staged and checked before replacing a previous packager-owned dist. Unknown
+existing directories and symlink inputs are refused. `./dayone dist verify` verifies every
+payload and rejects unexpected additions. Targeted tests cover corruption, unlisted files,
+symlink escapes, unknown output ownership, repeatable archives, executable permissions and
+empty mod directories. Packaging does not start, stop or install into any game session.
+
+
+
+## One-seat regression execution (2026-09-29)
+
+Executed revision `8fd17bd` with one ordinary pinned 42.20.4 client. The user
+confirmed readiness. Results are **machine evidence with human visual/audio feedback
+pending**, not blanket acceptance or two-client qualification.
+
+Batch index: `artifacts/visual-regression/20260929-125816-168ad3a1/plan.json`.
+
+- Nine runtime NPC cases: first eight passed; final four-Actor defense/escape failed
+  `client_replica_divergence:akr:2:3.52`. Cleanup verified, resources empty, four bodies
+  parked; continuation followed the ordinary-failure policy. No new scoped client errors.
+- Pooling: four southbound waves, four bodies, sixteen assignments passed the machine
+  gates and final removal. Archived report under the batch's `pool/` directory.
+- Off-screen chase: completed unqualified. Neither participant reported visible;
+  civilian travelled through the route while hunter travelled only about 13.59 tiles.
+  Hidden priming passed, but entrance/pursuit did not qualify. Zero retained resources;
+  archive under `chase/`. Investigate this independently from the position divergence.
+- Fatal lifecycle: passed machine gates, ten defensive contacts, eighteen damaging
+  injuries, native corpse/reanimation, exact Actor reuse, replacement route and cleanup.
+  No new scoped client errors. Evidence:
+  `artifacts/scenario-tests/20260929-140611-5e12c2/encounter-batches/20260929-140746-2aedec78/`.
+- Five vehicle cases: BLOCKED, not executed. The legacy vehicle harness lacks the current
+  verified automatic spectator/loadout/visibility setup; the four obstacle cases also
+  require updated exact-owned fixture controls. Historical Lofers helper scripts were
+  not run. Prepared lane world `AKRVehicleProbe_20260929_141337_282c75` was never started,
+  and no vehicle or fixture was spawned. Port the harness before the next watched group.
+
+Total: ten machine passes awaiting human feedback, one failed, one unqualified, five
+blocked. NPC evidence:
+`artifacts/scenario-tests/20260929-134056-07b84f/encounter-batches/20260929-134335-5967a421/`.
+The stale worker bundle still referenced `opt/lofers`; rebuilding the project-local bundle
+and restarting the empty disposable server resolved startup before any case was submitted.
+Deployed agent SHA256: `b84dcd26d152672763bd450726ae1933de6b3b5a5db671a826f4cb63de2795d8`.
+At session end the pinned client was closed and disposable servers stopped cleanly;
+`podman ps` showed no running containers. No production .160 changes were made.
+
+Next: collect human observations, diagnose the four-Actor divergence and failed chase
+visibility/pursuit, and bring vehicle spectator/fixture controls up to the maintained
+watched-test contract. Do not call the entire 17-case catalogue passed.
+
 
 ## Explicit spectator spots (2026-09-29)
 

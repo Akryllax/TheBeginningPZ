@@ -202,6 +202,8 @@ Run `./dayone --help` for the current command list. Arguments after the command 
 | `./dayone restore-test <backup.tar.gz>` | Verify checksum, extract into an isolated path and check SQLite integrity |
 | `./dayone test` | Run project/Observer automated checks and frontend build |
 | `./dayone package` | Build the versioned original companion-mod ZIP |
+| `./dayone dist [build]` | Rebuild and stage private server/client bundles, source, manifests and installation guides in `dist/`; no deployment |
+| `./dayone dist verify` | Check all distribution inventories without building or launching |
 
 `stop` and `backup` do not stop the independently launched scenario test or vehicle probe. `test` covers project/Observer checks and the frontend build; native-worker, Java fixtures, browser acceptance and in-game multiplayer validation have separate evidence. See [[Runbooks/Backup and Restore]] and [[Runbooks/Multiplayer Validation]].
 

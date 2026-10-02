@@ -1,10 +1,13 @@
 ---
 type: index
 status: active
-updated: 2026-09-27
+updated: 2026-09-30
 ---
 
 # The Beginning
+
+Latest maintenance assessment: [[Research/42.21 Upgrade Impact]] — isolated client/server
+downloads verified; port recommended and pending. The 42.20.4 baseline remains intact.
 
 Next task for **2026-09-30**: [Four-resident neighborhood](../TASK_Four_Resident_Neighborhood.md).
 The accepted scope includes real ground-floor homes and controlled restart for living
@@ -39,6 +42,7 @@ pedestrian feasibility milestone. Use [[Experiments/Implementation Ledger]] for 
 
 ## Evidence and decisions
 
+- [[Research/42.21 Upgrade Impact]] — verified downloads, Java/Lua breakages, native risks and port sequence.
 - [[Research/Sources]] — source provenance and dependency IDs.
 - [[Research/Bandits Compatibility]] — the integration audit and multiplayer evidence.
 - [[Decisions/0001 Living World]] — chosen scope and campaign alternatives.

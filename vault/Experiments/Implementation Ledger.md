@@ -1,10 +1,37 @@
 ---
 type: experiment-ledger
 status: first-week-implementation-in-progress
-updated: 2026-09-28
+updated: 2026-09-30
 ---
 
 # Implementation ledger
+
+## Isolated 42.21 compatibility assessment (2026-09-30)
+
+Downloaded and verified client build 25485521 and server build 25485538, both reporting
+42.21.0 with identical game JAR SHA256
+`e1a69eb743ede60b213a0fe7f8b83d4fcab773036d256cc4543a336f3b058a33`.
+Client/server manifest verification covered 47,823/39,185 files. Preserved 42.20.4 and
+existing WIP: all 93,520 recorded baseline hashes remain identical. Separate source and
+upstream Bandits snapshots, manifests and private bytecode research are retained under
+the project. The Steam depot destination link was restored after the user's download.
+
+Confirmed 11 candidate compile errors, 31 changed guarded classes and three lost
+transformer method/helper entries. Reviewed the supplied PZ Codex PDF against source
+usage and native descriptors. Movement flags, hit-list combat, factory suppression,
+the watched door fixture, Bandits pin and Observer exploration guard need work.
+No gameplay source or compatibility guard changed; no claim of a completed port.
+
+Frozen baseline: 288 Python/Lua components passed; Java unit/integration passed after
+short-path harness correction; CTest and all 16 worker IPC scenarios passed. Original
+socket-path failures remain recorded. Candidate vanilla-only startup/RCON/save/quit
+passed in `AKRUpgrade_42_21_20260930`, with exit 0; no clients or mods joined. Initial
+cached-entrypoint mismatch and remaining preload/content warnings are documented.
+Study containers stopped/removed; normal deployment and `.160` untouched.
+
+Assessment and proposed qualification order: [[../Research/42.21 Upgrade Impact]].
+Evidence: `artifacts/upgrade-study/20260930-100608-42.21/`. Modded native, watched and
+two-client tests remain pending; pre-existing visual failures are not upgrade results.
 
 ## Lifecycle watched attempt interrupted before contact (2026-09-29)
 

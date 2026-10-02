@@ -423,6 +423,7 @@ def main():
             "restore-test",
             "test",
             "package",
+            "dist",
             "install-mod",
             "scenario-build",
             "scenario-test-create",
@@ -496,6 +497,10 @@ def main():
                         ROOT / "observer",
                     ]
                 )
+    elif args.command == "dist":
+        import dist
+
+        dist.dispatch(args.args)
     elif args.command == "visual-test":
         import visual_regression
 
