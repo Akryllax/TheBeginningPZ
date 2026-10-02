@@ -6,6 +6,21 @@ updated: 2026-10-02
 
 # Current state
 
+## House watched batch: machine pass, human verdict pending (2026-10-02)
+
+After the loading-boundary fix, batch `20261002-120523-301140ef` on
+`AKR_DayOne_Test_20261002_120335_c1afa5`, epoch `3a28de69-4e42-4a33-bb64-6d1a4a5c1c0e`,
+completed HOUSE_ROUTINE/1, HOUSE_BLOCKED/1 and HOUSE_ROUTINE/4. All three completed with
+verified cleanup and empty resources. Four constructed/parked Actors, six assignments;
+zero client error lines in each case and the complete batch. User was automatically
+positioned with admin/god/invisible/ghost and the loadout gate. Asked for a separate
+human visual/audio verdict; do not mark visual acceptance yet. This is one client only.
+
+Evidence: `artifacts/scenario-tests/20261002-120335-c1afa5/encounter-batches/20261002-120523-301140ef/`.
+Deployed agent `c494375b3fcb3b1a5a2b664aaea82790564778cd1db2ffe65acf1d22ec3ff51b`;
+loading fix source checkpoint `f9de0a3`. Server/client remain running with no active case.
+The earlier defense batch's retained death resources remain a separate unresolved record.
+
 ## Watched house setup boundary fix (2026-10-02)
 
 First watched batch `20261002-115731-aa976a17` stayed in PREWARM with no Actors or

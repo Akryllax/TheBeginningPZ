@@ -2552,3 +2552,21 @@ parallel planner dispatcher. Distribution artifacts have not been refreshed or r
 The earlier watched defense batch remains CLEANUP_BLOCKED after reported player
 interference. Its server was gracefully stopped and its world/reports preserved; the
 headless house tests do not reconcile that ownership problem. No client was launched.
+
+
+## 2026-10-02 — Watched house batch machine pass after loading-boundary correction
+
+The first attempt (`20261002-115731-aa976a17`) stalled before spawning; cancelled with
+verified empty cleanup. Explicit retention of every server cell intersecting the house
+survey fixed the boundary, and the unrelated headless interest call was removed.
+The same-world restart encountered the retained planner-socket guard; preserved that
+socket and prepared a fresh disposable world only after the empty cleanup was verified.
+No prior failed death cleanup was overwritten or promoted to success.
+
+Batch `20261002-120523-301140ef`, world `AKR_DayOne_Test_20261002_120335_c1afa5`, epoch
+`3a28de69-4e42-4a33-bb64-6d1a4a5c1c0e`: all three cases (one routine, blocked exit,
+four routines) COMPLETED, scenario passed, cleanup verified, resources empty. Four
+constructed bodies, six assignments, four parked. Case-scoped and batch client logs
+recorded zero ERROR/Exception lines. Reports and samples are beneath that world's
+`encounter-batches/20261002-120523-301140ef/`. One ordinary 42.21 client; visual feedback
+requested and still pending. Do not infer presentation or two-client acceptance.
