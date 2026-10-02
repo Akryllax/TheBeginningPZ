@@ -1,6 +1,7 @@
 """Distribution boundaries and corruption checks, independent of the game runtime."""
 
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -70,6 +71,21 @@ class DistributionTests(unittest.TestCase):
                 self.assertEqual(
                     (archive.getinfo("server/dayone").external_attr >> 16) & 0o777, 0o755
                 )
+
+    def test_mixed_build_and_scope_rejected(self):
+        source = Path(__file__).parents[1]
+        profile = json.loads((source / "compatibility/profiles/pz42.21.json").read_text())
+        manifest = {
+            "compatibility_profile": profile["id"],
+            "game_build": profile["build"],
+            "game_jar_sha256": profile["jar_sha256"],
+            "guard_scope": "disposable-worlds-only",
+            "bandits_update_sha256": profile["dependency_pins"]["BanditUpdate.lua"],
+        }
+        self.assertEqual(dist.validate_profile(source, manifest)["id"], "pz42.21")
+        for key in manifest:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                dist.validate_profile(source, {**manifest, key: "stale"})
 
     def test_unknown_dist_not_overwritten(self):
         with tempfile.TemporaryDirectory() as tmp:

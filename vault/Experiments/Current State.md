@@ -63,6 +63,53 @@ both Python components and fresh Java/hook checks. Overall exit 2 intentionally 
 incomplete review/selection and runtime qualification gates; it is not a release approval.
 All native test processes are stopped. Frozen 42.20 and production .160 remain untouched.
 
+## 42.21 native worker and packaging checkpoint (2026-10-02)
+
+Fresh candidate-local C++ compilation (352 build steps, pinned dependencies) passed
+CTest's npc-core suite and all 16 actual wire scenarios. Wire test: 32 residents,
+30 batches, p50/p95/max 16.70/17.79/18.11 ms asynchronous round trip. The new local runtime
+bundle replaces only the candidate copy; no baseline outputs were overwritten.
+
+`./dayone dist` built and verified matching server/client packages under the candidate
+worktree's `dist/`. Manifests record 42.21.0/4a0e9546ec, disposable-worlds-only guards and
+pending watched/two-client qualification. Packaging now rejects mixed profile/build/JAR/
+Bandits identities and incorrect guard scope. Updated ordinary Lua client/server install
+notes and candidate client depot reference. Archive inspection found no game archive,
+Workshop payload, secrets, saves or decompiled output; client contains no JVM/native agent.
+
+307 Python tests, lint, fresh Java code/hook checks and 24 targeted packaging/vehicle
+operation checks passed. Compatibility run `20261002T103921.567529Z` still returns 2 for
+incomplete selection/review and native/watched/multiplayer gates. Existing watched launchers
+remain unported and must not be used for this candidate. No client launched.
+The fresh-worker native run `20261002-104109-9c49c9` passed: eight worker plans and
+assignments, four initialized bodies, WALK 23.10 s versus RUN 12.10 s, routine p95/p99
+1.5/2.9 ms, zero occupied resources. The disposable server and worker stopped cleanly.
+This remains sequential routine coverage, not the planned independent-concurrency test.
+
+Evidence: `artifacts/compat/worker-fresh-build.log`, `dist-42.21-build.log`,
+`port-packaging-python.log`, `port-packaging-lint.log` and corresponding compat report.
+
+## Cost and NPC scheduling follow-up (2026-10-02)
+
+User requested recording this analysis while continuing the 42.21 migration. Do not
+silently expand the port into a scheduler redesign. The C++ planner already has two
+worker threads, but Java permits one outstanding batch, worker collection waits for
+all jobs, and plannerPending is global rather than resident-specific. Survival advances
+all active controllers per tick; routine fixtures and event admission are sequential.
+This does not prove independent progress under a delayed planner job.
+
+Next optimization work: export per-component timings and separate fixture/setup costs;
+measure queue age, compute, IPC and apply separately; bounded per-resident outstanding
+requests and independent completions; fair game-thread application; a four-resident
+concurrency regression with one deliberately delayed plan. Keep engine mutations on
+the game thread and preserve revision/generation guards. Stage Actor preparation safely
+before visibility rather than assuming pooling removes restore/dressing costs.
+
+Measured cold initialization p95 ~159 ms, warm materialization 5.2 ms; walking fixture
+p95/p99 1.5/3.0 ms; survival batch 6.2/21.9 ms (includes fixture/setup/cleanup); planner
+routine 1.7/3.4 ms. Wire p95 16.75 ms is asynchronous round-trip latency. These are not
+32/64-Actor capacity qualification or attribution of the survival cost to one component.
+
 ## 42.21 migration foundation (2026-10-02)
 
 Work is isolated in `.tooling/worktrees/pz42.21` on `pz/42.21.x`.

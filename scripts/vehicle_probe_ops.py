@@ -147,7 +147,7 @@ def package_driver_assets(root, destination):
         for name in ("AnimSets", "actiongroups"):
             (destination / scope / "media" / name).mkdir(parents=True, exist_ok=True)
     (version / "mod.info").write_text(
-        "name=AKR original driver test\nid=AKRDriverProbe\nversionMin=42.20\n"
+        "name=AKR original driver test\nid=AKRDriverProbe\nversionMin=42.21\n"
         "description=Original static seated driver; disposable visual test only.\n"
     )
     files = [

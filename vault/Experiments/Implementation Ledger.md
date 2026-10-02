@@ -2480,3 +2480,12 @@ identity correction; receipts and timings are in Current State. Updated Bandits 
 guards and added build/offline validation against the reviewed profile and upstream file.
 Offline groups pass while report exit 2 retains incomplete migration gates. No client
 launched; warm materialization and survival remain outside release performance targets.
+
+### 2026-10-02 — Fresh candidate worker and private distribution
+
+Recorded cost/scheduling analysis as a follow-up, not a scheduler change in the port.
+Rebuilt C++ and pinned dependencies locally; CTest and all 16 wire scenarios passed.
+Updated 42.21 package instructions, client depot reference and manifest checks; the
+server/client packages build, verify and pass archive boundary inspection. Full Python
+suite (307) and fresh Java compatibility checks pass; overall qualification retains
+exit 2. See Current State for logs, limitations and native integration follow-up.

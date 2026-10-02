@@ -34,10 +34,9 @@ SOURCE_FILES = (
     "CODE_STYLE.md",
 )
 REFERENCES = (
-    "pinned-client.json",
+    "candidate-client.json",
     "tool-downloads.json",
     "java-decompiler.json",
-    "workshop-files.json",
 )
 MARKER = ".akr-dist.json"
 
@@ -91,6 +90,25 @@ def archive(folder, destination):
             output.writestr(info, b"" if directory else path.read_bytes())
 
 
+def validate_profile(root, manifest):
+    """Reject mixed-version or unreviewed artifacts before making a handoff."""
+    profile = json.loads((root / "compatibility/profiles/pz42.21.json").read_text())
+    client = json.loads((root / "references/candidate-client.json").read_text())
+    expected = {
+        "compatibility_profile": profile["id"],
+        "game_build": profile["build"],
+        "game_jar_sha256": profile["jar_sha256"],
+        "guard_scope": "disposable-worlds-only",
+        "bandits_update_sha256": profile["dependency_pins"]["BanditUpdate.lua"],
+    }
+    for key, value in expected.items():
+        if manifest.get(key) != value:
+            raise ValueError(f"Distribution profile mismatch: {key}")
+    if client["jar_sha256"] != profile["jar_sha256"]:
+        raise ValueError("Client/server engine mismatch")
+    return profile
+
+
 def assemble(root, target):
     """Assemble checked artifacts into an unpublished staging directory."""
     names = source_names(root)
@@ -127,6 +145,7 @@ def assemble(root, target):
         copy_file(root, Path(relative), target / "server" / relative)
     agent = root / "artifacts/scenario-agent"
     manifest = json.loads((agent / "manifest.json").read_text())
+    profile = validate_profile(root, manifest)
     jar = agent / "akr-scenario-agent.jar"
     if digest(jar) != manifest["jar_sha256"]:
         raise ValueError("Scenario JAR does not match build manifest")
@@ -174,7 +193,10 @@ def assemble(root, target):
         "platform": "server Linux x86_64; ordinary compatible client",
         "mods": [*MODS, "AKRDriverProbe"],
         "agent_sha256": manifest["jar_sha256"],
-        "qualification": "One-client experimental checks only; not a complete First Week release",
+        "qualification": "42.21 code-only/headless checks; watched and two-client validation pending",
+        "compatibility_profile": profile["id"],
+        "guard_scope": manifest["guard_scope"],
+        "game_jar_sha256": profile["jar_sha256"],
         "upstream": {
             "Bandits2": {
                 "workshop_id": "3268487204",

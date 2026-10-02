@@ -16,14 +16,18 @@ alone does not schedule civilians or activate the seven-day scenario.
 - `scripts/`, `scenario-agent/`, `npc-service/`, `protocol/` and tests — corresponding
   authored source. Observer source and deployment files are included, but its optional
   exporter/UI must be built separately. Observer is not required for NPC gameplay.
-- `references/pinned-client.json` and `references/workshop-files.json` — recorded
+- `references/candidate-client.json` and `compatibility/profiles/pz42.21.json` — recorded
   compatibility/dependency hashes, not redistributed game/Workshop assets.
+
+The reviewed guard permits only disposable server worlds prefixed `AKR_DayOne_Test_`
+or `AKRVehicleProbe_`. Normal-world approval is blocked. The existing watched/client
+launchers are not migrated yet; do not use their old 42.20 defaults with this candidate.
 
 ## Install into an isolated development server
 
 1. Verify `SHA256SUMS` (`sha256sum -c SHA256SUMS` from this directory). Start in a new
    directory/world, never extract over a running server or an existing world.
-2. Supply a legally obtained **42.20.4/b0bbce05d5 dedicated server** and its matching
+2. Supply a legally obtained **42.21.0/4a0e9546ec dedicated server** and its matching
    Java 25 runtime separately. Put it in `data/game-files/` for the project tooling,
    or configure the paths for your existing dedicated-server launcher. Do not allow
    SteamCMD to silently update it. Both engine-class and Linux physics-library hashes
@@ -48,7 +52,7 @@ alone does not schedule civilians or activate the seven-day scenario.
    ```properties
    side=server
    scenario.enabled=true
-   world=YOUR_NEW_WORLD
+   world=AKR_DayOne_Test_YOUR_NEW_WORLD
    socket=/absolute/private/ipc/npc.sock
    bandits_update_file=/absolute/path/to/Bandits/42.20/media/lua/client/BanditUpdate.lua
    ```
@@ -60,9 +64,9 @@ alone does not schedule civilians or activate the seven-day scenario.
    ```
 
    Watched NPC/vehicle tests need their additional harness-specific configuration.
-   Use the included `civilian_combat.py`, `pedestrian_ops.py`, `civilian_watch.py` and
-   `vehicle_probe_ops.py` through `./dayone`; do not guess flags or enable tests in a
-   normal world. Runtime/debug sockets must stay private. Controls are not a public API.
+   The candidate `./dayone civilian-headless` harness is validated. Watched launchers
+   still require migration before use; do not guess flags or enable tests in a normal
+   world. Runtime/debug sockets must stay private. Controls are not a public API.
 7. For the planner, build its image with the existing `npc-service/Dockerfile` (context
    is this server directory), then run it with a private shared IPC mount and matching
    `--socket`, `--world` and `--rules /opt/akr/rules`. Use `--workers 2` for the current
@@ -72,7 +76,8 @@ alone does not schedule civilians or activate the seven-day scenario.
    share generated native-map or decompiler output as original assets.
 8. Verify startup compatibility, worker/socket access and mod hashes in a disposable
    world before inviting players. Rebuilding/publishing the bundle is not a gameplay
-   test. Current evidence is one-client experimental testing; two-client replication,
+   test. Current 42.21 evidence is code-only and headless testing; watched acceptance,
+   two-client replication,
    generalized crowd capacity and a complete civilian opening remain separate gates.
 
 ## Rebuilding

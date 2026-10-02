@@ -1,8 +1,8 @@
 # AKR client installation
 
 This is an experimental private test bundle, not the completed First Week scenario.
-Use **Project Zomboid 42.20.4** matching the server. 42.21 is not compatible with this
-runtime. `manifest.json` records the build and companion mods; the server must use the
+Use **Project Zomboid 42.21.0 (4a0e9546ec)** matching the server. This candidate has
+code-only and headless evidence; watched acceptance and two-client validation are pending. `manifest.json` records the build and companion mods; the server must use the
 same bundle revision. No Java agent or replacement engine files go on the client.
 
 1. Exit Project Zomboid completely.

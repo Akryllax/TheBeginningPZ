@@ -49,10 +49,12 @@ watched and two-client evidence separate from code-only checks.
 5. JRE library layout and isolated headless launcher are fixed. Finish candidate watched launchers,
    watched ports 16301/16302 and loopback RCON 27055; headless RCON 27065, no published
    game ports. Do not repoint the frozen default launchers.
-6. Run Java integration, C++/protobuf, packaging and isolated headless native navigation,
-   doors, cancellation/restore, prewarm/reuse and fatal lifecycle, repeatedly in one process.
-7. Build candidate server/client dist with matching manifests and ordinary Lua client
-   instructions; no game or upstream binaries, credentials or client agent.
+6. Java integration, fresh C++ build/CTest/wire and packaging checks have passed.
+   Headless navigation, doors, cancellation/restore, reuse and fatal lifecycle have
+   passed; keep new native receipts tied to the rebuilt worker where applicable.
+7. Candidate server/client dist now builds and verifies with matching test-only 42.21
+   manifests and ordinary Lua installation instructions. Packaging is not watched
+   qualification; no game/Workshop assets, credentials or client agent are included.
 8. Prepare watched regression: WALK/RUN and doors, one/four combat, pooling/death/reanimation,
    routines/chase, then repaired vehicle harness. Fresh readiness required, one spectator
    by default, automatic placement/protection/daylight, loaded 9mm, announcements. Failure
@@ -87,3 +89,6 @@ Final identity reruns and Bandits client-guard correction are recorded in Curren
 The corrected base/planner receipts are `20261002-100241-70c975` and
 `20261002-095605-886be9`; both passed and cleaned up. Client guard/profile drift is now
 checked during builds and offline qualification. The complete migration remains open.
+
+Fresh rebuilt worker integration also passed in `20261002-104109-9c49c9`: eight plans/
+assignments on four bodies, routine p95/p99 1.5/2.9 ms, zero occupied resources.
