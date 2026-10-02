@@ -6,6 +6,20 @@ updated: 2026-10-02
 
 # Current state
 
+## Watched house setup boundary fix (2026-10-02)
+
+First watched batch `20261002-115731-aa976a17` stayed in PREWARM with no Actors or
+resources: the 49×49 house survey extended into a server cell not retained by the
+center/radius interest call. The headless harness's additional southern interest call
+masked that boundary. Operator interrupted the batch; native CANCELLED, cleanup verified,
+empty resource ledger, separate reconciliation receipt retained. No visual case ran.
+
+House interest now explicitly retains every intersected 64-tile server cell. The headless
+house case no longer gets the unrelated harness interest call. Detached Java/build checks
+passed. Restarting the same disposable world was rejected by the retained planner-socket
+guard; that socket was not removed. A fresh disposable retry is being prepared after the
+verified empty cleanup. Warned the user before the client reconnect. Watched outcome pending.
+
 ## Ground-floor house routine implemented; watched acceptance pending (2026-10-02)
 
 The 42.21 candidate now has opt-in native routine routes, bounded walk/door fallback,

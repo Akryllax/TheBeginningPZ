@@ -127,7 +127,8 @@ final class HeadlessCivilianHarness {
         throw new IllegalStateException("phase_timeout_" + phase);
       // Native ServerMap loading interest without a fake network player or account.
       // The integer overload accepts B42 chunk coordinates (8 tiles), not world tiles.
-      ServerMap.instance.characterIn(Math.floorDiv(10756, 8), Math.floorDiv(9856, 8), 5);
+      if (!houseEnabled)
+        ServerMap.instance.characterIn(Math.floorDiv(10756, 8), Math.floorDiv(9856, 8), 5);
       if (houseEnabled) {
         if (house == null) house = new NativeHouseRoutineBatch(epoch);
         if (house.tick(begin)) {

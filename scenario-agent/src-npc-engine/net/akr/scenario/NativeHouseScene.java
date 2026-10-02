@@ -36,11 +36,18 @@ final class NativeHouseScene {
   int observedOpenings;
   private final Set<IsoDoor> observed = Collections.newSetFromMap(new IdentityHashMap<>());
 
+  /** Keep every server cell touched by the full survey, including an exact radius boundary. */
+  static void keepLoaded() {
+    for (int y = Math.floorDiv(ORIGIN.y() - 24, 64); y <= Math.floorDiv(ORIGIN.y() + 24, 64); y++)
+      for (int x = Math.floorDiv(ORIGIN.x() - 24, 64); x <= Math.floorDiv(ORIGIN.x() + 24, 64); x++)
+        ServerMap.instance.importantAreaIn(x, y);
+  }
+
   /** Examine at most 32 squares per call; never scan the loaded world. */
   boolean survey() {
     GameHooks.ownThread();
     if (ready) return true;
-    ServerMap.instance.characterIn(Math.floorDiv(ORIGIN.x(), 8), Math.floorDiv(ORIGIN.y(), 8), 7);
+    keepLoaded();
     IsoGridSquare origin = square(ORIGIN);
     if (origin == null) return false;
     if (building == null) {

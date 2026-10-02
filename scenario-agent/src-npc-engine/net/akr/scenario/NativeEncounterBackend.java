@@ -267,11 +267,7 @@ final class NativeEncounterBackend implements RuntimeSession.Backend {
   }
 
   private void interest() {
-    if (houseCase())
-      ServerMap.instance.characterIn(
-          Math.floorDiv(NativeHouseScene.ORIGIN.x(), 8),
-          Math.floorDiv(NativeHouseScene.ORIGIN.y(), 8),
-          7);
+    if (houseCase()) NativeHouseScene.keepLoaded();
     for (int y = Y - 16; y <= 10224; y += 32)
       ServerMap.instance.characterIn(Math.floorDiv(X + 8, 8), Math.floorDiv(y, 8), 5);
   }
