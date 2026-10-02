@@ -2489,3 +2489,12 @@ Updated 42.21 package instructions, client depot reference and manifest checks; 
 server/client packages build, verify and pass archive boundary inspection. Full Python
 suite (307) and fresh Java compatibility checks pass; overall qualification retains
 exit 2. See Current State for logs, limitations and native integration follow-up.
+
+### 2026-10-02 — 42.21 watched regression partial result
+
+Migrated candidate watched ports/client data isolation and real Kahlua closure guard
+validation. Client presentation ready after guarded relaunch; immediate spectator
+protection now uses 42.21 targeted commands. First five NPC regression cases completed
+and cleaned; visual acceptance pending. Defense/escape case stopped on the shared
+Actor/hunter alive guard with retained death resources. Remaining groups not run.
+Participant death attribution and cleanup unresolved; see Current State and batch evidence.

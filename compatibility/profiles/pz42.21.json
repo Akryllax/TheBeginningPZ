@@ -7789,10 +7789,16 @@
     "BanditUpdate.lua": "d0cd95a166b275c3cec636f389aef1c4758975601f6c557f1db6f929c268f34d"
   },
   "bandits_callbacks": {
+    "OnZombieUpdate": 2069,
+    "OnHitZombie": 2335,
+    "OnZombieDead": 2402,
+    "OnDeadBodySpawn": 2599
+  },
+  "bandits_client_manifest": "Bandits@319258424172526049:Update@2069,Hit@2335,Dead@2402,Body@2599:shield2",
+  "bandits_callback_declarations": {
     "OnZombieUpdate": 2067,
     "OnHitZombie": 2289,
     "OnZombieDead": 2400,
     "OnDeadBodySpawn": 2590
-  },
-  "bandits_client_manifest": "Bandits@319258424172526049:Update@2067,Hit@2289,Dead@2400,Body@2590:shield2"
+  }
 }

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
 import shutil
 import scenario_ops as scenario
 
@@ -31,12 +30,16 @@ def create(m):
             ini.read_text(),
             {
                 "Mods": "Bandits2;AKRCore;AKRDevTools",
-                "WorkshopItems": "3268487204",
+                "WorkshopItems": "",
                 "PublicName": "AKR pedestrian feasibility",
                 "PauseEmpty": "true",
                 "SpawnPoint": "10756,9850,0",
             },
         ),
+    )
+    shutil.copytree(
+        m.ROOT / ".tooling/game-builds/42.21-workshop/3268487204/mods/Bandits",
+        target / "Zomboid/mods/Bandits",
     )
     for mod in MODS:
         shutil.copytree(m.ROOT / "mods" / mod, target / "Zomboid/mods" / mod)
@@ -99,11 +102,11 @@ def start(m):
             "--ulimit",
             "core=0:0",
             "-p",
-            "192.168.1.132:16281:16281/udp",
+            "192.168.1.132:16301:16301/udp",
             "-p",
-            "192.168.1.132:16282:16282/udp",
+            "192.168.1.132:16302:16302/udp",
             "-p",
-            "127.0.0.1:27035:27035/tcp",
+            "127.0.0.1:27055:27055/tcp",
             "-e",
             f"PZ_WORLD={receipt['world']}",
             "-e",
@@ -130,7 +133,7 @@ def start(m):
         ]
     )
     print(
-        "Pedestrian test server starting at 192.168.1.132:16281; enabled adapters are recorded in its receipt."
+        "Pedestrian test server starting at 192.168.1.132:16301; enabled adapters are recorded in its receipt."
     )
 
 
@@ -168,7 +171,7 @@ def join(m):
     receipt, target = scenario.test_receipt(m)
     if receipt.get("experiment") != "pedestrian":
         raise RuntimeError("Current disposable world is not the pedestrian experiment")
-    if not (Path.home() / "Zomboid/mods/AKRDevConnect").is_dir():
+    if not (m.ROOT / "artifacts/candidate-client/Zomboid/mods/AKRDevConnect").is_dir():
         raise RuntimeError(
             "Install mods/AKRDevConnect into ~/Zomboid/mods and enable it at the main menu"
         )
@@ -194,7 +197,7 @@ def join(m):
         raise RuntimeError("Client did not exit after SIGTERM")
     seen = _user_log_lines(target)
     # Exact archived client; Steam Play can silently upgrade before joining.
-    args = [str(m.ROOT / "scripts/launch-pinned-client"), "+connect", "192.168.1.132:16281"]
+    args = [str(m.ROOT / "scripts/launch-pinned-client"), "+connect", "192.168.1.132:16301"]
     if password:
         args += ["+password", password]
     subprocess.Popen(
@@ -233,7 +236,18 @@ def join(m):
             )
         line = _wait_user_log(target, seen, "fully connected", time.time() + 6)
         if line:
+            # 42.21 separates self-only commands from targeted operator commands.
+            # Protect the spectator immediately, before any encounter is submitted.
+            for command, confirmation in (
+                ("setaccesslevel akr admin", "User akr is now admin"),
+                ("godmodeplayer akr -true", "User akr is now invincible."),
+                ("invisibleplayer akr -true", "User akr is now invisible."),
+            ):
+                result = scenario.test_rcon(m, command)
+                if confirmation not in result:
+                    raise RuntimeError("Spectator protection not confirmed: " + command.split()[0])
             print(line)
+            print("Spectator admin/god/invisible/ghost enabled and replicated before testing")
             return
     raise RuntimeError("Client loaded but did not pass Click to Start")
 

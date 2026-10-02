@@ -6,7 +6,7 @@ updated: 2026-09-28
 
 # Watched testing
 
-The ordinary client and server are pinned to 42.20.4. Use project commands and
+The ordinary client and server are pinned to 42.21.0. Use project commands and
 `scripts/launch-pinned-client`, never Steam Play for these tests.
 
 ## Preparation

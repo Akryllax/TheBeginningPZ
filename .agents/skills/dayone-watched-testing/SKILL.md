@@ -9,9 +9,9 @@ Read the latest checkpoint in [Current State](../../../vault/Experiments/Current
 and the relevant case in [Operations](../../../vault/Runbooks/Operations.md).
 Use [Watched Testing](../../../vault/Runbooks/Watched%20Testing.md) for the maintained procedure.
 
-Use the disposable .132:16281 world, not normal .132 or production .160. Verify the
+Use the disposable .132:16301 world, not normal .132 or production .160. Verify the
 server receipt, current epoch, deployed agent and Lua hashes, and pinned ordinary
-42.20.4 client before joining. The ordinary Steam launcher can update to an incompatible
+42.21.0 client before joining. The ordinary Steam launcher can update to an incompatible
 version. Never install a client Java agent or replace engine files.
 
 Existing authorization covers launching the pinned client, test administration and

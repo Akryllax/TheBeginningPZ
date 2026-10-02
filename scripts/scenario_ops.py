@@ -12,7 +12,7 @@ import time
 import uuid
 
 SPAWN = (10753, 9839, 0)  # Ground-floor living room, verified in installed 41_38.lotheader.
-BANDITS_SOURCE = "/pzserver/steamapps/workshop/content/108600/3268487204/mods/Bandits/42.20/media/lua/client/BanditUpdate.lua"
+BANDITS_SOURCE = "/home/pzuser/Zomboid/mods/Bandits/42.20/media/lua/client/BanditUpdate.lua"
 
 
 def replace_ini(text, changes):
@@ -111,9 +111,9 @@ def create_test(m):
     ini = replace_ini(
         ini,
         {
-            "DefaultPort": 16281,
-            "UDPPort": 16282,
-            "RCONPort": 27035,
+            "DefaultPort": 16301,
+            "UDPPort": 16302,
+            "RCONPort": 27055,
             "Public": "false",
             "PublicName": "AKR First Week validation",
             "SpawnPoint": ",".join(map(str, SPAWN)),
@@ -153,9 +153,9 @@ def create_test(m):
     receipt = {
         "world": world,
         "path": str(target),
-        "container": "akr-scenario-test",
-        "worker_container": "akr-scenario-test-npc",
-        "ports": [16281, 16282, 27035],
+        "container": "akr-scenario-test-pz42-21",
+        "worker_container": "akr-scenario-test-pz42-21-npc",
+        "ports": [16301, 16302, 27055],
         "spawn": SPAWN,
         "created_at": stamp,
         "kind": "disposable",
@@ -170,9 +170,9 @@ def free_ports():
     sockets = []
     try:
         for port, kind in [
-            (16281, socket.SOCK_DGRAM),
-            (16282, socket.SOCK_DGRAM),
-            (27035, socket.SOCK_STREAM),
+            (16301, socket.SOCK_DGRAM),
+            (16302, socket.SOCK_DGRAM),
+            (27055, socket.SOCK_STREAM),
         ]:
             sock = socket.socket(socket.AF_INET, kind)
             sockets.append(sock)
@@ -245,11 +245,11 @@ def start_test(m):
                 "--memory=5g",
                 "--cpus=4",
                 "-p",
-                "192.168.1.132:16281:16281/udp",
+                "192.168.1.132:16301:16301/udp",
                 "-p",
-                "192.168.1.132:16282:16282/udp",
+                "192.168.1.132:16302:16302/udp",
                 "-p",
-                "127.0.0.1:27035:27035/tcp",
+                "127.0.0.1:27055:27055/tcp",
                 "-e",
                 f"PZ_WORLD={receipt['world']}",
                 "-e",
@@ -276,7 +276,7 @@ def start_test(m):
     except BaseException:
         m.run([m.PODMAN, "stop", receipt["worker_container"]], capture=True, check=False)
         raise
-    print(f"Disposable server starting: 192.168.1.132:16281 ({receipt['world']})")
+    print(f"Disposable server starting: 192.168.1.132:16301 ({receipt['world']})")
 
 
 def test_rcon(m, command):
@@ -286,7 +286,7 @@ def test_rcon(m, command):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.rcon_command(
-        "127.0.0.1", 27035, m.credentials()["rcon_password"], command, timeout=15
+        "127.0.0.1", 27055, m.credentials()["rcon_password"], command, timeout=15
     )
 
 

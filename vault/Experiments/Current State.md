@@ -6,6 +6,46 @@ updated: 2026-10-02
 
 # Current state
 
+## 42.21 watched batch halted on retained death resources (2026-10-02)
+
+After fresh readiness, ran the requested one-seat NPC regression on
+`AKR_DayOne_Test_20261002_105215_1b1675`, epoch
+`850f89c7-6e33-4e47-a4ce-06a84c493160`. Batch `20261002-110238-81acc69b`.
+WALK/RUN, routine, locomotion, open escape and incoming injury completed with verified
+cleanup; human acceptance pending. Case 6 DEFENSE_ESCAPE reached
+`unexpected_death_resources_retained` and CLEANUP_BLOCKED. The shared guard checks both
+Actor and hunter alive; **which participant died is not established**. Last Actor health
+91.44, four injuries, one contact, ~5.95 tiles travelled. Do not call this proven Actor
+death or a planner regression. Asked for user observation/interference information.
+
+All advancement stopped, including four-Actor cases and later groups. Terrain, Actor,
+aftermath and hunter resources remain owned; do not force-clear or use another world to
+conceal unresolved cleanup. Current server remains available for inspection. No auto retry.
+Evidence under the world's `encounter-batches/20261002-110238-81acc69b/`; linked into
+`artifacts/visual-regression/20261002-105213-91c635b1/plan.json`.
+
+## 42.21 watched regression preparation (2026-10-02)
+
+Candidate watched ports are now 16301/16302 and loopback RCON 27055; dedicated container
+`akr-scenario-test-pz42-21`. The ordinary pinned 42.21 client uses isolated
+`artifacts/candidate-client/Zomboid` for mods, connection profile and diagnostic logs.
+No 42.20 player save was imported into the fresh candidate world. One spectator.
+
+Initial client joined but presentation guard failed before any case submission. Diagnosis:
+getFirstLineOfClosure returns Prototype.lines[0], not the Lua declaration line. Real
+42.21 Kahlua compilation of the hash-pinned Bandits source reports update/hit/dead/body
+2069/2335/2402/2599. Previous 2067/2289/2400/2590 were declaration positions. Profile now
+records both separately; both client gates and server manifest corrected. The code-only
+suite compiles upstream Lua without executing it and checks actual closure metadata.
+This corrects the earlier incomplete source-line check; initial attempt is not a pass.
+After coordinated relaunch the client reported presentation ready. No case submitted yet.
+User reported missing spectator protection before submission: join now applies targeted
+42.21 `godmodeplayer` and `invisibleplayer` commands (the latter sets ghost mode), plus
+admin; it requires server confirmations before returning. Self-only godmode/invisible
+commands do not accept a target in 42.21. Current observer was explicitly protected.
+The stopped worker namespace left its socket: old container identity was confirmed gone,
+connection refused, socket preserved under a stopped suffix, then fresh worker started.
+
 ## 42.21 guarded native qualification (2026-10-02)
 
 The isolated candidate now builds with a shared generated identity for gameplay and

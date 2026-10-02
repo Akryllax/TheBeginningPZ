@@ -20,7 +20,7 @@ local C = {
     maxPlayers = 4,
     scenarioHours = 168,
     vehicleExecution = false,
-    clientManifest = "Bandits@319258424172526049:Update@2067,Hit@2289,Dead@2400,Body@2590:shield2",
+    clientManifest = "Bandits@319258424172526049:Update@2069,Hit@2335,Dead@2402,Body@2599:shield2",
 }
 C.actions = {
     "WAIT",

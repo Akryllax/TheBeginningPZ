@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 PZ_PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-PZ_CLIENT_ROOT="$PZ_PROJECT_ROOT/.tooling/client-42.20.4/depot_108603"
+PZ_CLIENT_ROOT="$PZ_PROJECT_ROOT/.tooling/game-builds/42.21-client-25485521/client"
 python3 - "$PZ_PROJECT_ROOT" <<'PY'
 import hashlib,json,sys
 from pathlib import Path
-root=Path(sys.argv[1]);spec=json.loads((root/'references/pinned-client.json').read_text())
-jar=root/'.tooling/client-42.20.4/depot_108603/projectzomboid/projectzomboid.jar'
+root=Path(sys.argv[1]);spec=json.loads((root/'references/candidate-client.json').read_text())
+jar=root/'.tooling/game-builds/42.21-client-25485521/client/projectzomboid/projectzomboid.jar'
 if not jar.is_file() or hashlib.file_digest(jar.open('rb'),'sha256').hexdigest()!=spec['jar_sha256']:
     raise SystemExit('Pinned client is missing or has changed; refusing a mismatched launch.')
 PY
@@ -15,4 +15,4 @@ PZ_RUNTIME="$PZ_STEAM_ROOT/steamapps/common/SteamLinuxRuntime_soldier/_v2-entry-
 PZ_SCOUT="$PZ_STEAM_ROOT/steamapps/common/SteamLinuxRuntime/scout-on-soldier-entry-point-v2"
 export SteamAppId=108600 SteamGameId=108600
 cd "$PZ_CLIENT_ROOT"
-exec "$PZ_RUNTIME" --verb=waitforexitandrun -- "$PZ_SCOUT" -- "$PZ_CLIENT_ROOT/projectzomboid.sh" "$@"
+exec "$PZ_RUNTIME" --verb=waitforexitandrun -- "$PZ_SCOUT" -- "$PZ_CLIENT_ROOT/projectzomboid.sh" "-cachedir=$PZ_PROJECT_ROOT/artifacts/candidate-client/Zomboid" "$@"

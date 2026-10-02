@@ -67,6 +67,22 @@ def main():
     )
     write_hook_contract(profile, classes)
     command = [str(jdk / "java"), "-ea", "-cp", f"{classes}:{cp}"]
+    closure = subprocess.run(
+        [
+            *command,
+            "net.akr.scenario.ClosureProbe",
+            str(ROOT / profile["dependencies"]["BanditUpdate.lua"]),
+        ],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    closure_lines = dict(line.rsplit("\t", 1) for line in closure.stdout.splitlines())
+    for event, expected in profile["bandits_callbacks"].items():
+        function = "OnBanditUpdate" if event == "OnZombieUpdate" else event
+        if int(closure_lines.get(function, -1)) != expected:
+            raise ValueError(f"Compiled Lua closure guard mismatch: {event}")
+    (output / "closure-lines.json").write_text(json.dumps(closure_lines, indent=2) + "\n")
     result = subprocess.run(
         [*command, "net.akr.scenario.HookProbe", str(game)],
         text=True,

@@ -48,8 +48,8 @@ def test_real_operator_continues_clean_failure_and_stops_uncertain_cleanup(
 ):
     target = tmp_path / "world"
     target.mkdir()
-    console = tmp_path / "Zomboid/console.txt"
-    console.parent.mkdir()
+    console = tmp_path / "artifacts/candidate-client/Zomboid/console.txt"
+    console.parent.mkdir(parents=True)
     console.write_text("before\n")
     monkeypatch.setattr(ops.Path, "home", lambda: tmp_path)
     monkeypatch.setattr(

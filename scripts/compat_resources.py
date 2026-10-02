@@ -96,7 +96,7 @@ def validate_client_profile(profile: dict, root: Path, *, upstream: bool = True)
         raise ValueError("Server/client manifest disagreement")
     if upstream:
         lines = (root / profile["dependencies"]["BanditUpdate.lua"]).read_text().splitlines()
-        for event, line in callbacks.items():
+        for event, line in profile["bandits_callback_declarations"].items():
             function = "OnBanditUpdate" if event == "OnZombieUpdate" else event
             if (
                 line < 1

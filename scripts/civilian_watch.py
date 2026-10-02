@@ -3,7 +3,6 @@
 from __future__ import annotations
 import json
 import hashlib
-from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
@@ -32,6 +31,8 @@ def create(m, actors=4, hunters=0):
         raise ValueError("Hunters require at least 32 civilian slots")
     if actors not in {4, 32, 64}:
         raise ValueError("Watched actor count must be 4, 32 or 64")
+    if not (m.ROOT / "artifacts/scenario-tests/current.json").exists():
+        pedestrian.create(m)
     previous, old = scenario.test_receipt(m)
     pedestrian.create(m)  # Requires the previous server stopped; its files remain intact.
     receipt, target = scenario.test_receipt(m)
@@ -81,7 +82,7 @@ def create(m, actors=4, hunters=0):
 def install_client(m, target):
     if subprocess.run(["pgrep", "-f", "^./ProjectZomboid64"], capture_output=True).stdout:
         raise RuntimeError("Close the current game before installing watched diagnostics")
-    installed = Path.home() / "Zomboid/mods"
+    installed = m.ROOT / "artifacts/candidate-client/Zomboid/mods"
     hashes = {}
     installation = str(time.time_ns())
     for name in pedestrian.mods_for(json.loads((target / "receipt.json").read_text())):

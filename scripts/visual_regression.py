@@ -118,7 +118,7 @@ def prepare(root, viewers=1):
             ["git", "rev-parse", "HEAD"], cwd=root, text=True
         ).strip(),
         "source_dirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=root)),
-        "target": "disposable 192.168.1.132:16281; pinned ordinary 42.20.4 client",
+        "target": "disposable 192.168.1.132:16301; pinned ordinary 42.21.0 client",
         "policy": {
             "case_failure": "record failure, cancel if active, verify exact-resource cleanup, then continue",
             "critical": "stop on uncertain cleanup/ownership, epoch change, transport failure, observer loss/stale reports, invalid protection or engine failure",

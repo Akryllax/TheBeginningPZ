@@ -200,7 +200,7 @@ def run(m, selection="batch", actors=1):
         batch_id = time.strftime("%Y%m%d-%H%M%S", time.gmtime()) + "-" + uuid.uuid4().hex[:8]
         folder = target / "encounter-batches" / batch_id
         folder.mkdir(parents=True)
-        console = Path.home() / "Zomboid/console.txt"
+        console = m.ROOT / "artifacts/candidate-client/Zomboid/console.txt"
         boundary = log_boundary(console)
         since = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         report = {

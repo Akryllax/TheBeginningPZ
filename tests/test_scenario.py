@@ -477,9 +477,9 @@ function register(event,line,fn)
  sources[fn]='media/lua/client/BanditUpdate.lua';lines[fn]=line;Events[event].Add(fn);return fn
 end
 function rest()
- register('OnHitZombie',2289,function() end)
- register('OnZombieDead',2400,function() end)
- register('OnDeadBodySpawn',2590,function() end)
+ register('OnHitZombie',2335,function() end)
+ register('OnZombieDead',2402,function() end)
+ register('OnDeadBodySpawn',2599,function() end)
 end
 """
 
@@ -488,7 +488,7 @@ def test_lua_gate_captures_private_callbacks_and_preserves_remove_identity(lua):
     lua.execute(
         GATE
         + """
-        calls=0;local original=register('OnZombieUpdate',2067,function() calls=calls+1 end)
+        calls=0;local original=register('OnZombieUpdate',2069,function() calls=calls+1 end)
         assert(not G.ready());rest();assert(G.ready())
         fire('OnZombieUpdate',z);assert(calls==0)
         fire('OnZombieUpdate',other);assert(calls==1)
@@ -513,7 +513,7 @@ def test_target_shield_restores_after_nested_callback_failure(lua):
         GATE
         + """
         calls=0
-        register('OnZombieUpdate',2067,function(actor)
+        register('OnZombieUpdate',2069,function(actor)
             calls=calls+1
             assert(BanditZombie.CacheLightB[42]==nil and BanditZombie.CacheLight[42]==nil)
             assert(BanditZombie.CacheLightB[99]=='unrelated')
@@ -532,7 +532,7 @@ def test_target_shield_cannot_enqueue_managed_victim_but_unrelated_ai_runs(lua):
         GATE
         + """
         victims={}
-        register('OnZombieUpdate',2067,function()
+        register('OnZombieUpdate',2069,function()
             for id in pairs(BanditZombie.CacheLightB) do victims[id]=true end
         end)
         rest();fire('OnZombieUpdate',other)
